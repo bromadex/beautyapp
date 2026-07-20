@@ -1,0 +1,1 @@
+ C:\\Users\\bhero\\beauty_app\\build\\26a22921adc88ded869bf81a492625dc\\dart_build_result.json:  C:\\Hairdressapp\\flutter\\bin\\cache\\dart-sdk\\version C:\\Users\\bhero\\beauty_app\\.dart_tool\\package_config.json C:\\Users\\bhero\\beauty_app\\pubspec.yaml c:\\users\\bhero\\beauty_app\\.dart_tool\\package_config.json
