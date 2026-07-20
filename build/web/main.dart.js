@@ -8641,7 +8641,7 @@ var $async$aTL=A.o(function(a,b){if(a===1)return A.p(b,r)
 for(;;)switch(s){case 0:if($.a7==null)A.Zr()
 $.a7.toString
 s=2
-return A.n(A.aya("sb_publishable_YzzBCHOuVH-Xb-ujnONQJQ_EBPBajiZ","https://rjiavvtbrmumjvuvrbyv.supabase.co"),$async$aTL)
+return A.n(A.aya("sb_publishable_uMr64oTLkPo4HJGQFos_IQ_BFm7CHTN","https://suxohsmcgjzzllmyesgt.supabase.co"),$async$aTL)
 case 2:if($.a7==null)A.Zr()
 q=$.a7
 q.toString
