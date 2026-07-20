@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../config/app_config.dart';
+import '../theme.dart';
 import '../widgets/payment_method_card.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -75,7 +76,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (_selectedMethod == 'mobile_money' &&
         _mobileNumberCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your mobile number')),
+        SnackBar(
+          content: const Text('Please enter your mobile number'),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
@@ -121,7 +125,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Payment failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -134,42 +141,94 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
+        contentPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxl, AppSpacing.xxxl, AppSpacing.xxl, AppSpacing.lg,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isCod ? Icons.handshake_rounded : Icons.check_circle_rounded,
-              color: isCod ? Colors.orange : Colors.green,
-              size: 64,
+            // Celebratory icon with layered rings
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: (isCod ? AppColors.warning : AppColors.success)
+                    .withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: (isCod ? AppColors.warning : AppColors.success)
+                      .withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCod ? Icons.handshake_rounded : Icons.check_circle_rounded,
+                  color: isCod ? AppColors.warning : AppColors.success,
+                  size: 48,
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.xxl),
             Text(
               isCod ? 'Booking Confirmed!' : 'Payment Successful!',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               isCod
                   ? 'You will pay \$${_amount.toStringAsFixed(2)} in cash when the service is completed.'
                   : 'Your payment of \$${_amount.toStringAsFixed(2)} was processed successfully.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.4,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text('Ref: $ref',
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs + 2,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: AppRadius.smAll,
+              ),
+              child: Text(
+                'Ref: $ref',
                 style: const TextStyle(
-                    fontSize: 11, color: Colors.grey, fontFamily: 'monospace')),
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                  fontFamily: 'monospace',
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
           ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxl, 0, AppSpacing.xxl, AppSpacing.xxl,
         ),
         actions: [
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: FilledButton(
               onPressed: () {
                 Navigator.pop(context);
                 context.go('/client/bookings');
               },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               child: const Text('View My Bookings'),
             ),
           ),
@@ -187,7 +246,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
 
     final providerName = _booking?['profiles']?['full_name'] ?? 'Provider';
@@ -195,63 +258,113 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Payment')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order summary
+            // Order summary card
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: AppSpacing.cardPadding,
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+                borderRadius: AppRadius.lgAll,
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Order Summary',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 14),
-                  _SummaryRow(label: 'Service', value: _service?['service_name'] ?? '—'),
-                  _SummaryRow(label: 'Provider', value: providerName),
-                  _SummaryRow(label: 'Duration', value: '${_service?['duration_minutes'] ?? '—'} mins'),
-                  const Divider(height: 24),
-                  _SummaryRow(label: 'Service Price', value: '\$${_amount.toStringAsFixed(2)}'),
-                  _SummaryRow(label: 'Platform Fee (10%)', value: '\$${_fee.toStringAsFixed(2)}', valueColor: Colors.grey),
-                  const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('\$${_amount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Theme.of(context).colorScheme.primary)),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: AppRadius.smAll,
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Text(
+                        'Order Summary',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                     ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _SummaryRow(
+                    label: 'Service',
+                    value: _service?['service_name'] ?? '--',
+                  ),
+                  _SummaryRow(label: 'Provider', value: providerName),
+                  _SummaryRow(
+                    label: 'Duration',
+                    value: '${_service?['duration_minutes'] ?? '--'} mins',
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    child: Divider(color: Colors.grey.shade200),
+                  ),
+                  _SummaryRow(
+                    label: 'Service Price',
+                    value: '\$${_amount.toStringAsFixed(2)}',
+                  ),
+                  _SummaryRow(
+                    label: 'Platform Fee (10%)',
+                    value: '\$${_fee.toStringAsFixed(2)}',
+                    valueColor: AppColors.textTertiary,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.05),
+                      borderRadius: AppRadius.smAll,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          '\$${_amount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            color: AppColors.primary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpacing.xxxl),
 
             // Payment methods
-            const Text('Select Payment Method',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 14),
+            Text(
+              'Select Payment Method',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
             PaymentMethodCard(
               title: 'Credit / Debit Card',
-              subtitle: 'Visa, Mastercard — simulated for now',
+              subtitle: 'Visa, Mastercard -- simulated for now',
               icon: Icons.credit_card_rounded,
               value: 'card',
               selectedValue: _selectedMethod,
               onTap: (v) => setState(() => _selectedMethod = v),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             PaymentMethodCard(
               title: 'Mobile Money',
               subtitle: 'EcoCash, OneMoney, Telecash',
@@ -260,7 +373,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               selectedValue: _selectedMethod,
               onTap: (v) => setState(() => _selectedMethod = v),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             PaymentMethodCard(
               title: 'Cash on Delivery',
               subtitle: 'Pay the stylist in cash after the service',
@@ -272,50 +385,67 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
             // Mobile money fields
             if (_selectedMethod == 'mobile_money') ...[
-              const SizedBox(height: 20),
-              const Text('Mobile Money Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.xxl),
+              Text(
+                'Mobile Money Details',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
                 value: _selectedNetwork,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Network',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                items: _networks.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+                items: _networks
+                    .map((n) => DropdownMenuItem(value: n, child: Text(n)))
+                    .toList(),
                 onChanged: (v) => setState(() => _selectedNetwork = v!),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _mobileNumberCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Mobile Number',
                   hintText: '077XXXXXXX',
-                  prefixIcon: const Icon(Icons.phone_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: Icon(Icons.phone_rounded),
                 ),
               ),
             ],
 
             // COD notice
             if (_selectedMethod == 'cash_on_delivery') ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
+                  color: AppColors.warning.withValues(alpha: 0.08),
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: Colors.orange),
-                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.15),
+                        borderRadius: AppRadius.smAll,
+                      ),
+                      child: const Icon(Icons.info_outline_rounded,
+                          color: AppColors.warning, size: 18),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
                     const Expanded(
                       child: Text(
                         'You will pay the stylist directly in cash when the service is done. Please have the exact amount ready.',
-                        style: TextStyle(fontSize: 13),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -323,29 +453,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ],
 
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
 
             // Pay button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: FilledButton(
                 onPressed: _processing ? null : _processPayment,
-                style: ElevatedButton.styleFrom(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _processing
-                    ? const SizedBox(height: 22, width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text(
                         _selectedMethod == 'cash_on_delivery'
                             ? 'Confirm Booking (Pay Later)'
                             : 'Pay \$${_amount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
@@ -362,15 +502,25 @@ class _SummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: valueColor ?? Colors.black87)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

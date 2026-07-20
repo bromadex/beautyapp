@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 
 class StarRatingWidget extends StatelessWidget {
   final double rating;
   final int starCount;
   final double size;
-  final Color color;
+  final Color? filledColor;
+  final Color? emptyColor;
   final ValueChanged<int>? onRatingChanged;
 
   const StarRatingWidget({
@@ -12,28 +14,32 @@ class StarRatingWidget extends StatelessWidget {
     required this.rating,
     this.starCount = 5,
     this.size = 28,
-    this.color = Colors.amber,
+    this.filledColor,
+    this.emptyColor,
     this.onRatingChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final filled_ = filledColor ?? AppColors.warning;
+    final empty_ = emptyColor ?? AppColors.textTertiary;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(starCount, (i) {
-        final filled = i < rating.floor();
-        final half = !filled && (i < rating);
+        final isFilled = i < rating.floor();
+        final isHalf = !isFilled && (i < rating);
         return GestureDetector(
           onTap: onRatingChanged != null
               ? () => onRatingChanged!(i + 1)
               : null,
           child: Icon(
-            filled
+            isFilled
                 ? Icons.star_rounded
-                : half
+                : isHalf
                     ? Icons.star_half_rounded
                     : Icons.star_outline_rounded,
-            color: color,
+            color: isFilled || isHalf ? filled_ : empty_,
             size: size,
           ),
         );

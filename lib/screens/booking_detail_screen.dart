@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final String bookingId;
@@ -83,7 +84,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  // ── Navigation ──────────────────────────────────────────
+  // -- Navigation --
 
   Future<void> _openMaps(String address) async {
     final encoded = Uri.encodeComponent(address);
@@ -103,7 +104,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  // ── Status updates (provider only) ─────────────────────
+  // -- Status updates (provider only) --
 
   Future<void> _markArrived() async {
     await supabase.from('bookings').update({
@@ -124,6 +125,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        icon: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check_circle_outline,
+              color: AppColors.success, size: 32),
+        ),
         title: const Text('Complete Service?'),
         content: const Text('Confirm the service has been fully delivered.'),
         actions: [
@@ -141,12 +151,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  // ── Helpers ─────────────────────────────────────────────
+  // -- Helpers --
 
   String _fmt(String? iso) {
-    if (iso == null) return '—';
+    if (iso == null) return '--';
     final dt = DateTime.tryParse(iso);
-    if (dt == null) return '—';
+    if (dt == null) return '--';
     final local = dt.toLocal();
     return '${local.day}/${local.month}/${local.year} '
         '${local.hour.toString().padLeft(2, '0')}:'
@@ -162,15 +172,32 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Booking Details')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
-            ],
+          child: Padding(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.error),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(_error!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -192,18 +219,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final canMarkStarted  = _isProvider && status == 'confirmed' && arrivedAt != null && startedAt == null;
     final canMarkComplete = _isProvider && status == 'confirmed' && startedAt != null;
 
-    Color statusColor;
-    switch (status) {
-      case 'pending':   statusColor = Colors.orange; break;
-      case 'confirmed': statusColor = Colors.green;  break;
-      case 'completed': statusColor = Colors.blue;   break;
-      default:          statusColor = Colors.grey;
-    }
+    final statusFg = StatusColors.foreground(status);
+    final statusBg = StatusColors.background(status);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Booking Details')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -211,88 +233,100 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             // Status pill
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withOpacity(0.4)),
+                  color: statusBg,
+                  borderRadius: AppRadius.xxlAll,
+                  border: Border.all(color: statusFg.withValues(alpha: 0.3)),
                 ),
                 child: Text(
-                  status[0].toUpperCase() + status.substring(1),
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16),
+                  StatusColors.label(status),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: statusFg,
+                      ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
 
-            // Service info
+            // Service info section
             _Section(
-              title: 'Service',
+              title: 'SERVICE',
               child: Row(children: [
-                Text(cat?['icon'] ?? '✂️', style: const TextStyle(fontSize: 28)),
-                const SizedBox(width: 12),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.mdAll,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(cat?['icon'] ?? '', style: const TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(service?['service_name'] ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('${cat?['name'] ?? ''} · ${service?['duration_minutes'] ?? ''} min'),
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text('${cat?['name'] ?? ''} -- ${service?['duration_minutes'] ?? ''} min',
+                          style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
                 ),
                 Text('\$${service?['price'] ?? b['total_price']}',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: Theme.of(context).colorScheme.primary)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(color: AppColors.primary)),
               ]),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
 
-            // People
+            // People section
             _Section(
-              title: _isProvider ? 'Client' : 'Provider',
+              title: _isProvider ? 'CLIENT' : 'PROVIDER',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _InfoRow(
                     icon: Icons.person_outline,
                     label: _isProvider
-                        ? (client?['full_name'] ?? '—')
-                        : (provider?['full_name'] ?? '—'),
+                        ? (client?['full_name'] ?? '--')
+                        : (provider?['full_name'] ?? '--'),
                   ),
-                  if (_isProvider && client?['phone'] != null)
+                  if (_isProvider && client?['phone'] != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
                     _InfoRow(icon: Icons.phone_outlined, label: client!['phone']),
+                  ],
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
 
-            // Date & Address
+            // When & Where section
             _Section(
-              title: 'When & Where',
+              title: 'WHEN & WHERE',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _InfoRow(icon: Icons.calendar_month_outlined, label: _fmt(b['booking_time'])),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   _InfoRow(icon: Icons.location_on_outlined, label: address.isNotEmpty ? address : 'No address provided'),
                   if (address.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () => _openMaps(address),
-                        icon: const Icon(Icons.navigation_outlined),
-                        label: const Text('Open in Maps / Navigate'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          foregroundColor: Theme.of(context).colorScheme.primary,
-                        ),
+                        icon: const Icon(Icons.navigation_outlined, size: 18),
+                        label: const Text('Open in Maps'),
                       ),
                     ),
                   ],
@@ -300,78 +334,72 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
             ),
 
+            // Client note
             if (b['client_note'] != null && (b['client_note'] as String).isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _Section(
-                title: 'Client Note',
-                child: Text(b['client_note'], style: const TextStyle(fontStyle: FontStyle.italic)),
+                title: 'CLIENT NOTE',
+                child: Text(b['client_note'],
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(fontStyle: FontStyle.italic)),
               ),
             ],
 
-            // Journey timeline
+            // Service timeline
             if (arrivedAt != null || startedAt != null || completedAt != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _Section(
-                title: 'Service Timeline',
-                child: Column(
-                  children: [
-                    _TimelineRow(label: 'Provider Arrived', time: _fmt(arrivedAt), done: arrivedAt != null),
-                    _TimelineRow(label: 'Service Started', time: _fmt(startedAt), done: startedAt != null),
-                    _TimelineRow(label: 'Service Completed', time: _fmt(completedAt), done: completedAt != null),
-                  ],
+                title: 'SERVICE TIMELINE',
+                child: _ServiceTimeline(
+                  arrivedAt: arrivedAt,
+                  startedAt: startedAt,
+                  completedAt: completedAt,
+                  fmt: _fmt,
                 ),
               ),
             ],
 
-            // CHAT BUTTON
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Action cards: Chat, Track, Pay
             if (status == 'confirmed' || status == 'completed') ...[
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => context.push('/chat/${widget.bookingId}'),
-                icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: const Text('Open Chat'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  minimumSize: const Size(double.infinity, 0),
-                ),
+              _ActionCard(
+                icon: Icons.chat_bubble_outline_rounded,
+                label: 'Open Chat',
+                subtitle: 'Message about this booking',
+                color: AppColors.info,
+                onTap: () => context.push('/chat/${widget.bookingId}'),
               ),
+              const SizedBox(height: AppSpacing.sm),
             ],
 
-            // LIVE TRACKING BUTTON
             if (status == 'confirmed') ...[
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.push('/tracking/${widget.bookingId}'),
-                icon: const Icon(Icons.my_location_rounded),
-                label: const Text('Live Tracking'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  minimumSize: const Size(double.infinity, 0),
-                ),
+              _ActionCard(
+                icon: Icons.my_location_rounded,
+                label: 'Live Tracking',
+                subtitle: 'Track provider location in real time',
+                color: AppColors.success,
+                onTap: () => context.push('/tracking/${widget.bookingId}'),
               ),
+              const SizedBox(height: AppSpacing.sm),
             ],
 
-            // PAY NOW BUTTON (client only)
             if (!_isProvider && status == 'confirmed' && b['payment_status'] == 'unpaid') ...[
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.push('/payment/${widget.bookingId}'),
-                icon: const Icon(Icons.payment_rounded),
-                label: const Text('Pay Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  minimumSize: const Size(double.infinity, 0),
-                ),
+              _ActionCard(
+                icon: Icons.payment_rounded,
+                label: 'Pay Now',
+                subtitle: 'Complete payment for this service',
+                color: AppColors.primary,
+                onTap: () => context.push('/payment/${widget.bookingId}'),
               ),
+              const SizedBox(height: AppSpacing.sm),
             ],
 
-            // REVIEW BUTTON (client only, after completed)
+            // Review section (client only, after completed)
             if (!_isProvider && status == 'completed') ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.sm),
               FutureBuilder(
                 future: supabase
                     .from('reviews')
@@ -382,31 +410,33 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   final hasReview = snapshot.data != null;
                   if (hasReview) {
                     return Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: AppSpacing.cardPadding,
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(10),
+                        color: AppColors.success.withValues(alpha: 0.08),
+                        borderRadius: AppRadius.lgAll,
+                        border: Border.all(
+                            color: AppColors.success.withValues(alpha: 0.2)),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.check_circle_rounded, color: Colors.green),
-                          SizedBox(width: 8),
+                          const Icon(Icons.check_circle_rounded,
+                              color: AppColors.success, size: 22),
+                          const SizedBox(width: AppSpacing.sm),
                           Text('You have reviewed this booking',
-                              style: TextStyle(color: Colors.green)),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: AppColors.success)),
                         ],
                       ),
                     );
                   }
-                  return ElevatedButton.icon(
-                    onPressed: () => context.push('/review/${widget.bookingId}'),
-                    icon: const Icon(Icons.star_rounded),
-                    label: const Text('Leave a Review'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      minimumSize: const Size(double.infinity, 0),
-                    ),
+                  return _ActionCard(
+                    icon: Icons.star_rounded,
+                    label: 'Leave a Review',
+                    subtitle: 'Rate your experience with this service',
+                    color: AppColors.warning,
+                    onTap: () => context.push('/review/${widget.bookingId}'),
                   );
                 },
               ),
@@ -414,31 +444,31 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             // Provider action buttons
             if (_isProvider && status == 'confirmed') ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
               if (canMarkArrived)
-                FilledButton.icon(
+                _ProviderActionButton(
+                  icon: Icons.place_rounded,
+                  label: 'Mark as Arrived',
+                  color: AppColors.info,
                   onPressed: _markArrived,
-                  icon: const Icon(Icons.place_rounded),
-                  label: const Text('Mark as Arrived'),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), backgroundColor: Colors.blue),
                 ),
               if (canMarkStarted)
-                FilledButton.icon(
+                _ProviderActionButton(
+                  icon: Icons.play_circle_outline,
+                  label: 'Start Service',
+                  color: AppColors.secondary,
                   onPressed: _markStarted,
-                  icon: const Icon(Icons.play_circle_outline),
-                  label: const Text('Start Service'),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), backgroundColor: Colors.purple),
                 ),
               if (canMarkComplete)
-                FilledButton.icon(
+                _ProviderActionButton(
+                  icon: Icons.check_circle_outline,
+                  label: 'Complete Service',
+                  color: AppColors.success,
                   onPressed: _markCompleted,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Complete Service'),
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
             ],
 
-            const SizedBox(height: 40),
+            const SizedBox(height: AppSpacing.xxxl + AppSpacing.sm),
           ],
         ),
       ),
@@ -446,7 +476,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 }
 
-// ── Sub-widgets ─────────────────────────────────────────────
+// -- Sub-widgets --
 
 class _Section extends StatelessWidget {
   final String title;
@@ -456,16 +486,21 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
+        color: AppColors.cardLight,
         border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.lgAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
-          const SizedBox(height: 10),
+          Text(title,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(letterSpacing: 0.8)),
+          const SizedBox(height: AppSpacing.md),
           child,
         ],
       ),
@@ -481,31 +516,216 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Icon(icon, size: 16, color: Colors.grey),
-      const SizedBox(width: 8),
-      Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
+      Icon(icon, size: 18, color: AppColors.textTertiary),
+      const SizedBox(width: AppSpacing.sm),
+      Expanded(
+        child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+      ),
     ]);
   }
 }
 
-class _TimelineRow extends StatelessWidget {
+class _ServiceTimeline extends StatelessWidget {
+  final String? arrivedAt;
+  final String? startedAt;
+  final String? completedAt;
+  final String Function(String?) fmt;
+
+  const _ServiceTimeline({
+    required this.arrivedAt,
+    required this.startedAt,
+    required this.completedAt,
+    required this.fmt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = [
+      _TimelineStep('Provider Arrived', fmt(arrivedAt), arrivedAt != null),
+      _TimelineStep('Service Started', fmt(startedAt), startedAt != null),
+      _TimelineStep('Service Completed', fmt(completedAt), completedAt != null),
+    ];
+
+    return Column(
+      children: List.generate(steps.length, (i) {
+        final step = steps[i];
+        final isLast = i == steps.length - 1;
+
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Dot + connecting line
+              SizedBox(
+                width: 24,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      margin: const EdgeInsets.only(top: 3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: step.done
+                            ? AppColors.success
+                            : Colors.grey.shade300,
+                        border: step.done
+                            ? Border.all(
+                                color: AppColors.success.withValues(alpha: 0.3),
+                                width: 3)
+                            : null,
+                      ),
+                      child: step.done
+                          ? const Icon(Icons.check,
+                              size: 8, color: Colors.white)
+                          : null,
+                    ),
+                    if (!isLast)
+                      Expanded(
+                        child: Container(
+                          width: 2,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          color: step.done
+                              ? AppColors.success.withValues(alpha: 0.3)
+                              : Colors.grey.shade200,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Label + time
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      bottom: isLast ? 0 : AppSpacing.lg),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        step.label,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: step.done
+                                  ? AppColors.textPrimary
+                                  : AppColors.textTertiary,
+                              fontWeight: step.done
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                      ),
+                      Text(step.time,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _TimelineStep {
   final String label;
   final String time;
   final bool done;
-  const _TimelineRow({required this.label, required this.time, required this.done});
+  const _TimelineStep(this.label, this.time, this.done);
+}
+
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cardLight,
+      borderRadius: AppRadius.lgAll,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.lgAll,
+        child: Container(
+          padding: AppSpacing.cardPadding,
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.lgAll,
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: AppRadius.mdAll,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: AppColors.textTertiary, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _ProviderActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        Icon(done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-            color: done ? Colors.green : Colors.grey, size: 20),
-        const SizedBox(width: 10),
-        Expanded(child: Text(label, style: TextStyle(color: done ? Colors.black87 : Colors.grey,
-            fontWeight: done ? FontWeight.w600 : FontWeight.normal))),
-        Text(time, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ]),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }

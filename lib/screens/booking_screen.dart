@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 
 class BookingScreen extends StatefulWidget {
   final String providerId;
@@ -166,9 +167,9 @@ class _BookingScreenState extends State<BookingScreen> {
       if (pp?['availability_status'] == 'busy') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('This provider is currently busy'),
-              backgroundColor: Colors.orange,
+            SnackBar(
+              content: const Text('This provider is currently busy'),
+              backgroundColor: AppColors.warning,
             ),
           );
         }
@@ -180,10 +181,10 @@ class _BookingScreenState extends State<BookingScreen> {
       if (conflict) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
+            SnackBar(
+              content: const Text(
                   'The provider already has a booking at that time. Please choose another slot.'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -208,7 +209,19 @@ class _BookingScreenState extends State<BookingScreen> {
           context: context,
           barrierDismissible: false,
           builder: (_) => AlertDialog(
-            title: const Text('Booking Sent! 🎉'),
+            icon: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.success,
+                size: 40,
+              ),
+            ),
+            title: const Text('Booking Sent!'),
             content: const Text(
                 'Your booking request has been sent to the provider. '
                 'You\'ll be notified once they confirm.'),
@@ -227,7 +240,7 @@ class _BookingScreenState extends State<BookingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -245,21 +258,40 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(body: const Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Book Appointment')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
-            ],
+          child: Padding(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.error),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(_error!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -276,140 +308,176 @@ class _BookingScreenState extends State<BookingScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Book Appointment')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Service summary card
+            // Service summary card with gradient accent
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.cardLight,
+                borderRadius: AppRadius.lgAll,
+                border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Row(children: [
-                Text(cat?['icon'] ?? '✂️',
-                    style: const TextStyle(fontSize: 32)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_service!['service_name'],
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(
-                        '${cat?['name'] ?? ''} · ${_service!['duration_minutes']} min',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      Text('with ${_provider!['full_name']}',
-                          style: const TextStyle(fontSize: 13)),
-                    ],
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  // Gradient accent strip
+                  Container(
+                    height: 4,
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                    ),
                   ),
-                ),
-                Text('\$${_service!['price']}',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Theme.of(context).colorScheme.primary)),
-              ]),
+                  Padding(
+                    padding: AppSpacing.cardPadding,
+                    child: Row(children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: AppRadius.mdAll,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(cat?['icon'] ?? '',
+                            style: const TextStyle(fontSize: 26)),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_service!['service_name'],
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              '${cat?['name'] ?? ''} -- ${_service!['duration_minutes']} min',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text('with ${_provider!['full_name']}',
+                                style: Theme.of(context).textTheme.bodyMedium),
+                          ],
+                        ),
+                      ),
+                      Text('\$${_service!['price']}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(color: AppColors.primary)),
+                    ]),
+                  ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 28),
-            const Text('Date & Time',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.xxl),
 
+            // Section header
+            Text('Date & Time',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Date and time picker cards
             Row(children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  label: Text(dateStr),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                child: _PickerCard(
+                  icon: Icons.calendar_month_outlined,
+                  label: 'Date',
+                  value: dateStr,
+                  isSelected: _selectedDate != null,
+                  onTap: _pickDate,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _pickTime,
-                  icon: const Icon(Icons.access_time_rounded),
-                  label: Text(timeStr),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                child: _PickerCard(
+                  icon: Icons.access_time_rounded,
+                  label: 'Time',
+                  value: timeStr,
+                  isSelected: _selectedTime != null,
+                  onTap: _pickTime,
                 ),
               ),
             ]),
 
-            const SizedBox(height: 20),
-            const Text('Your Address',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Address section
+            Text('Your Address',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
 
             TextFormField(
               controller: _addressCtrl,
               decoration: const InputDecoration(
                 hintText: 'e.g. 12 Borrowdale Rd, Harare',
                 prefixIcon: Icon(Icons.location_on_outlined),
-                border: OutlineInputBorder(),
               ),
               maxLines: 2,
             ),
 
-            const SizedBox(height: 20),
-            const Text('Note to Provider (optional)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Note section
+            Text('Note to Provider (optional)',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
 
             TextFormField(
               controller: _noteCtrl,
               decoration: const InputDecoration(
                 hintText: 'e.g. Please bring your own products',
-                border: OutlineInputBorder(),
               ),
               maxLines: 3,
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
 
-            // Price summary
+            // Price summary card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: AppSpacing.cardPadding,
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.surfaceLight,
+                borderRadius: AppRadius.lgAll,
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Column(children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Service'),
-                    Text('\$${_service!['price']}'),
+                    Text('Service',
+                        style: Theme.of(context).textTheme.bodyMedium),
+                    Text('\$${_service!['price']}',
+                        style: Theme.of(context).textTheme.bodyLarge),
                   ],
                 ),
-                const Divider(height: 20),
+                Divider(
+                  height: AppSpacing.xxl,
+                  color: Colors.grey.shade200,
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Total',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Total',
+                        style: Theme.of(context).textTheme.titleMedium),
                     Text('\$${_service!['price']}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(color: AppColors.primary)),
                   ],
                 ),
-                const SizedBox(height: 4),
-                const Text('Payment collected at time of service',
-                    style: TextStyle(color: Colors.grey, fontSize: 11)),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Payment collected at time of service',
+                    style: Theme.of(context).textTheme.bodySmall),
               ]),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
 
+            // Confirm button
             FilledButton.icon(
               onPressed: _submitting ? null : _confirmBooking,
               icon: _submitting
@@ -422,10 +490,84 @@ class _BookingScreenState extends State<BookingScreen> {
               label: Text(_submitting
                   ? 'Sending Request...'
                   : 'Confirm Booking Request'),
-              style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16)),
             ),
+
+            const SizedBox(height: AppSpacing.xxl),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A styled card for date/time picker triggers.
+class _PickerCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PickerCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected
+          ? AppColors.primary.withValues(alpha: 0.05)
+          : AppColors.cardLight,
+      borderRadius: AppRadius.mdAll,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.mdAll,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon,
+                  size: 22,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textTertiary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(context).textTheme.labelSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: isSelected
+                                ? AppColors.textPrimary
+                                : AppColors.textTertiary,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

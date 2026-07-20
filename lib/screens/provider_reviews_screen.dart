@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
 import '../widgets/review_card.dart';
 
@@ -52,53 +53,177 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     }
   }
 
+  /// Build the star distribution bars (5 down to 1).
+  Map<int, int> get _ratingDistribution {
+    final dist = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    for (final r in _reviews) {
+      final star = (r['rating'] as num?)?.toInt() ?? 0;
+      if (star >= 1 && star <= 5) dist[star] = dist[star]! + 1;
+    }
+    return dist;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
     }
 
     final avg = (_providerProfile?['average_rating'] as num?)?.toDouble() ?? 0.0;
     final total = _providerProfile?['total_reviews'] ?? 0;
+    final dist = _ratingDistribution;
+    final maxCount = dist.values.fold(0, (a, b) => a > b ? a : b);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Reviews')),
       body: Column(
         children: [
-          // Rating summary
+          // Rating summary card
           Container(
-            padding: const EdgeInsets.all(24),
-            color: Colors.pink.shade50,
+            margin: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            decoration: BoxDecoration(
+              color: AppColors.cardLight,
+              borderRadius: AppRadius.lgAll,
+              border: Border.all(color: Colors.grey.shade200),
+            ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  avg.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 56, fontWeight: FontWeight.bold, color: Colors.pink),
+                // Large rating number
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Text(
+                        avg.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      StarRatingWidget(rating: avg, size: 22),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '$total review${total == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StarRatingWidget(rating: avg, size: 28),
-                    const SizedBox(height: 6),
-                    Text('$total review${total == 1 ? '' : 's'}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 14)),
-                  ],
+
+                const SizedBox(width: AppSpacing.lg),
+
+                // Distribution bars
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    children: List.generate(5, (i) {
+                      final star = 5 - i;
+                      final count = dist[star] ?? 0;
+                      final fraction = maxCount > 0 ? count / maxCount : 0.0;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Text(
+                              '$star',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: AppRadius.smAll,
+                                child: LinearProgressIndicator(
+                                  value: fraction,
+                                  minHeight: 6,
+                                  backgroundColor: AppColors.surfaceLight,
+                                  valueColor: AlwaysStoppedAnimation(AppColors.warning),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            SizedBox(
+                              width: 24,
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ],
             ),
           ),
 
+          // Divider
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Row(
+              children: [
+                Text(
+                  'All Reviews',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const Spacer(),
+                Text(
+                  '$total total',
+                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
           // Reviews list
           Expanded(
             child: _reviews.isEmpty
-                ? const Center(
-                    child: Text('No reviews yet', style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.rate_review_outlined, size: 56, color: AppColors.textTertiary),
+                        const SizedBox(height: AppSpacing.lg),
+                        const Text(
+                          'No reviews yet',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        const Text(
+                          'Be the first to leave a review!',
+                          style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     itemCount: _reviews.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
                     itemBuilder: (_, i) => ReviewCard(review: _reviews[i]),
                   ),
           ),

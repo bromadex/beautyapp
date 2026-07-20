@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
 
 class ReviewScreen extends StatefulWidget {
@@ -91,7 +92,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Future<void> _submitReview() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a star rating')),
+        SnackBar(
+          content: const Text('Please select a star rating'),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
@@ -131,27 +135,40 @@ class _ReviewScreenState extends State<ReviewScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.favorite_rounded, color: Colors.pink, size: 60),
-                const SizedBox(height: 16),
-                const Text('Thank You!',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Your review has been submitted. It helps other clients find great stylists!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
+          builder: (dialogContext) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
+            content: Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 36),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Text(
+                    'Thank You!',
+                    style: Theme.of(dialogContext).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Your review has been submitted. It helps other clients find great stylists!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                ],
+              ),
             ),
             actions: [
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: () {
                     Navigator.pop(context);
                     context.go('/client/bookings');
@@ -166,7 +183,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting review: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error submitting review: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -183,137 +200,248 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
 
     final providerName = _booking?['profiles']?['full_name'] ?? 'your stylist';
     final serviceName = _booking?['services']?['service_name'] ?? 'the service';
+    final ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Leave a Review')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Provider info
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: Colors.pink.shade100,
-              child: Text(
-                providerName.isNotEmpty ? providerName[0].toUpperCase() : '?',
-                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+            // Provider info card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              decoration: BoxDecoration(
+                color: AppColors.cardLight,
+                borderRadius: AppRadius.lgAll,
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        providerName.isNotEmpty ? providerName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'How was $providerName?',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    serviceName,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text('How was $providerName?',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(serviceName, style: const TextStyle(color: Colors.grey, fontSize: 14)),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: AppSpacing.xxl),
 
-            // Star Rating
-            const Text('Your Rating',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-            const SizedBox(height: 12),
-            StarRatingWidget(
-              rating: _rating.toDouble(),
-              size: 48,
-              onRatingChanged: (r) => setState(() => _rating = r),
+            // Star Rating section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              decoration: BoxDecoration(
+                color: AppColors.cardLight,
+                borderRadius: AppRadius.lgAll,
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Your Rating',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  StarRatingWidget(
+                    rating: _rating.toDouble(),
+                    size: 48,
+                    onRatingChanged: (r) => setState(() => _rating = r),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      _rating == 0 ? 'Tap to rate' : ratingLabels[_rating],
+                      key: ValueKey(_rating),
+                      style: TextStyle(
+                        color: _rating == 0 ? AppColors.textTertiary : AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              _rating == 0
-                  ? 'Tap to rate'
-                  : ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][_rating],
-              style: TextStyle(
-                  color: _rating == 0 ? Colors.grey : Colors.amber.shade700,
-                  fontWeight: FontWeight.w600),
+
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Comment field
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Your Comment',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
             ),
-
-            const SizedBox(height: 28),
-
-            // Comment
+            const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _commentCtrl,
-              maxLines: 4,
+              maxLines: 5,
               decoration: InputDecoration(
-                labelText: 'Write a comment (optional)',
                 hintText: 'How was the experience? Would you recommend this stylist?',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 alignLabelWithHint: true,
+                border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
 
-            // Photo Upload
-            const Align(
+            // Photo Upload section
+            Align(
               alignment: Alignment.centerLeft,
-              child: Text('Add a Photo (optional)',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+              child: Text(
+                'Add a Photo',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
             ),
-            const SizedBox(height: 8),
-            const Align(
+            const SizedBox(height: AppSpacing.xs),
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 'Share a photo of your finished hairstyle. It may appear in the stylist\'s gallery.',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
 
             if (_imageBytes != null) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.memory(
-                  _imageBytes!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                borderRadius: AppRadius.lgAll,
+                child: Stack(
+                  children: [
+                    Image.memory(
+                      _imageBytes!,
+                      height: 220,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: Material(
+                        color: Colors.black45,
+                        borderRadius: AppRadius.smAll,
+                        child: InkWell(
+                          borderRadius: AppRadius.smAll,
+                          onTap: _pickImage,
+                          child: const Padding(
+                            padding: EdgeInsets.all(AppSpacing.sm),
+                            child: Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Change Photo'),
-              ),
             ] else ...[
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                label: const Text('Upload Photo'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              InkWell(
+                onTap: _pickImage,
+                borderRadius: AppRadius.lgAll,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxxl),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.04),
+                    borderRadius: AppRadius.lgAll,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.add_photo_alternate_outlined,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Tap to upload a photo',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Optional',
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
 
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
 
             // Submit Button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: FilledButton(
                 onPressed: _submitting ? null : _submitReview,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
                 child: _submitting
                     ? const SizedBox(
                         height: 22,
                         width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Submit Review',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    : const Text('Submit Review'),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
           ],
         ),
       ),

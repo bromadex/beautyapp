@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 import 'star_rating_widget.dart';
 
 class ReviewCard extends StatelessWidget {
@@ -18,33 +19,39 @@ class ReviewCard extends StatelessWidget {
         : '';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // -- Header --
             Row(
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: Colors.pink.shade100,
+                  backgroundColor:
+                      AppColors.accent.withValues(alpha: 0.15),
                   child: Text(
-                    clientName.isNotEmpty ? clientName[0].toUpperCase() : '?',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    clientName.isNotEmpty
+                        ? clientName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(clientName,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(dateStr,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          style: Theme.of(context).textTheme.labelSmall),
                     ],
                   ),
                 ),
@@ -52,17 +59,23 @@ class ReviewCard extends StatelessWidget {
               ],
             ),
 
-            // Comment
+            // -- Comment --
             if (comment.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(comment, style: const TextStyle(fontSize: 14, height: 1.5)),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                comment,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium!
+                    .copyWith(height: 1.5),
+              ),
             ],
 
-            // After-service photo
+            // -- After-service photo --
             if (imageUrl != null && imageUrl.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.mdAll,
                 child: Image.network(
                   imageUrl,
                   height: 180,

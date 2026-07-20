@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 
 class ProviderProfileEditorScreen extends StatefulWidget {
   const ProviderProfileEditorScreen({super.key});
@@ -55,22 +56,30 @@ class _ProviderProfileEditorScreenState
     };
 
     try {
-      // Upsert — creates or updates
       await supabase
           .from('provider_profiles')
           .upsert(payload, onConflict: 'provider_id');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved ✓'),
-              backgroundColor: Colors.green),
+          SnackBar(
+            content: const Text('Profile saved successfully'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
         );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
         );
       }
     } finally {
@@ -85,48 +94,109 @@ class _ProviderProfileEditorScreenState
     super.dispose();
   }
 
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: AppRadius.smAll,
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionDivider() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+      child: Divider(color: Colors.grey.shade200, thickness: 1),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Profile')),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Provider Profile')),
+      appBar: AppBar(title: const Text('Edit Profile')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.screenPadding,
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _bioCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Bio / About You',
-                  hintText: 'e.g. Professional braider with 5 years experience...',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
+              // -- Bio Section --
+              _buildSectionHeader('About You', Icons.person_outline_rounded),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cardLight,
+                  borderRadius: AppRadius.lgAll,
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
-                maxLines: 4,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Please add a bio' : null,
+                padding: AppSpacing.cardPadding,
+                child: TextFormField(
+                  controller: _bioCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio',
+                    hintText: 'e.g. Professional braider with 5 years experience...',
+                    alignLabelWithHint: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  maxLines: 4,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                    height: 1.5,
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Please add a bio' : null,
+                ),
               ),
-              const SizedBox(height: 16),
 
+              _buildSectionDivider(),
+
+              // -- Location Section --
+              _buildSectionHeader('Location', Icons.location_on_outlined),
               TextFormField(
                 controller: _addressCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Service Area / Address',
                   hintText: 'e.g. Borrowdale, Harare',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.map_outlined),
                 ),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Please add your address' : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
-              // Lat/Lng — manual for now, map picker in Stage 6
               Row(children: [
                 Expanded(
                   child: TextFormField(
@@ -134,44 +204,89 @@ class _ProviderProfileEditorScreenState
                     decoration: const InputDecoration(
                       labelText: 'Latitude',
                       hintText: '-17.8292',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true, signed: true),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: TextFormField(
                     controller: _lngCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Longitude',
                       hintText: '31.0522',
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true, signed: true),
                   ),
                 ),
               ]),
-              const SizedBox(height: 8),
-              const Text(
-                'Tip: Find your coordinates on Google Maps — right-click your location.',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: 0.08),
+                  borderRadius: AppRadius.smAll,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 14, color: AppColors.info),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Find your coordinates on Google Maps -- right-click your location.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.info,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 32),
 
-              FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(height: 18, width: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save_rounded),
-                label: Text(_saving ? 'Saving...' : 'Save Profile'),
-                style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16)),
+              const SizedBox(height: AppSpacing.xxxl),
+
+              // -- Save Button --
+              Container(
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: AppRadius.mdAll,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save_rounded),
+                  label: Text(_saving ? 'Saving...' : 'Save Profile'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    disabledBackgroundColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                  ),
+                ),
               ),
+              const SizedBox(height: AppSpacing.xxl),
             ],
           ),
         ),

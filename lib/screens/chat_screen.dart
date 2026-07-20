@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 import '../widgets/chat_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -170,7 +171,10 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Send failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Send failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -190,7 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await supabase.storage.from('chat-images').uploadBinary(path, bytes);
 
-      // Get signed URL (valid 1 year — long enough for chat history)
+      // Get signed URL (valid 1 year -- long enough for chat history)
       final signedUrl = await supabase.storage
           .from('chat-images')
           .createSignedUrl(path, 60 * 60 * 24 * 365);
@@ -199,7 +203,10 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image upload failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Image upload failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -237,21 +244,49 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chat')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
-            ],
+          child: Padding(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline,
+                      size: 48, color: AppColors.error),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Could not load chat',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _error!,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -259,48 +294,87 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final bookingStatus = _booking?['status'] as String? ?? '';
     final canChat = bookingStatus == 'confirmed' || bookingStatus == 'completed';
+    final statusColor = StatusColors.foreground(bookingStatus);
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_chatTitle(),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             Text(
-              'Booking ${bookingStatus[0].toUpperCase()}${bookingStatus.substring(1)}',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              _chatTitle(),
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  StatusColors.label(bookingStatus),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
       body: Column(
         children: [
-          // Messages list - reversed order so newest at bottom
+          // Messages list
           Expanded(
             child: _messages.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.chat_bubble_outline,
-                            size: 56, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        const Text('No messages yet',
-                            style: TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.chat_bubble_outline_rounded,
+                              size: 40, color: AppColors.primary),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'No messages yet',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           canChat
                               ? 'Send a message to get started'
                               : 'Chat available for confirmed bookings',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
                     controller: _scrollCtrl,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                      horizontal: AppSpacing.xs,
+                    ),
                     itemCount: _messages.length,
                     itemBuilder: (_, i) {
                       final msg = _messages[i];
@@ -309,8 +383,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       // Show date separator when day changes
                       final showDate = i == 0 ||
                           _isDifferentDay(
-                              _messages[i - 1]['sent_at'],
-                              msg['sent_at']);
+                              _messages[i - 1]['sent_at'], msg['sent_at']);
 
                       return Column(
                         children: [
@@ -332,71 +405,131 @@ class _ChatScreenState extends State<ChatScreen> {
           if (canChat)
             Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: SafeArea(
-                child: Row(children: [
-                  // Image picker button
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined),
-                    color: Theme.of(context).colorScheme.primary,
-                    onPressed: _sending ? null : _pickAndSendImage,
-                    tooltip: 'Send image',
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
                   ),
-
-                  // Text field
-                  Expanded(
-                    child: Container(
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    // Image picker button
+                    Container(
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(24),
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
                       ),
-                      child: TextField(
-                        controller: _messageCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        ),
-                        maxLines: 4,
-                        minLines: 1,
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(text: _messageCtrl.text),
+                      child: IconButton(
+                        icon: const Icon(Icons.image_outlined, size: 22),
+                        color: AppColors.primary,
+                        onPressed: _sending ? null : _pickAndSendImage,
+                        tooltip: 'Send image',
                       ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.sm),
 
-                  const SizedBox(width: 8),
-
-                  // Send button
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _sending
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : IconButton(
-                            key: const ValueKey('send'),
-                            icon: const Icon(Icons.send_rounded),
-                            color: Theme.of(context).colorScheme.primary,
-                            onPressed: () => _sendMessage(text: _messageCtrl.text),
+                    // Text field
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.grey.shade200,
                           ),
-                  ),
-                ]),
+                        ),
+                        child: TextField(
+                          controller: _messageCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            hintStyle: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.md,
+                            ),
+                          ),
+                          maxLines: 4,
+                          minLines: 1,
+                          textCapitalization: TextCapitalization.sentences,
+                          onSubmitted: (_) =>
+                              _sendMessage(text: _messageCtrl.text),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: AppSpacing.sm),
+
+                    // Send button
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _sending
+                          ? Container(
+                              width: 44,
+                              height: 44,
+                              padding: const EdgeInsets.all(10),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : Container(
+                              key: const ValueKey('send'),
+                              decoration: const BoxDecoration(
+                                gradient: AppColors.primaryGradient,
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.send_rounded, size: 20),
+                                color: Colors.white,
+                                onPressed: () =>
+                                    _sendMessage(text: _messageCtrl.text),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
             )
           else
             Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.grey.shade100,
-              child: const Text(
-                'Chat is only available for confirmed bookings',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              margin: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.08),
+                borderRadius: AppRadius.mdAll,
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 16, color: AppColors.warning),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Chat is only available for confirmed bookings',
+                    style: TextStyle(
+                      color: AppColors.warning,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -413,26 +546,54 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// ── Date separator ───────────────────────────────────────────
+// -- Date separator ----------------------------------------------------------
 
 class _DateSeparator extends StatelessWidget {
   final String? iso;
   const _DateSeparator({this.iso});
 
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(dt.year, dt.month, dt.day);
+    final diff = today.difference(date).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dt = iso != null ? DateTime.tryParse(iso!)?.toLocal() : null;
-    final label = dt != null ? '${dt.day}/${dt.month}/${dt.year}' : '';
+    final label = dt != null ? _formatDate(dt) : '';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(children: [
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textTertiary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-        const Expanded(child: Divider()),
-      ]),
+      ),
     );
   }
 }

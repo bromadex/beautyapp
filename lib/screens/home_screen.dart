@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,14 +44,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Map<String, dynamic>? providerProfile;
     Map<String, dynamic>? subscription;
-    
+
     if (profile['user_type'] == 'provider') {
       try {
         providerProfile = await supabase
             .from('provider_profiles').select()
             .eq('provider_id', userId).single();
       } catch (_) {}
-      
+
       // Load subscription for providers
       try {
         final sub = await supabase
@@ -90,9 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isProvider = userType == 'provider';
     final isVerified = _profile?['is_verified'] == true;
     final vStatus    = _verification?['status'];
-    
+
     // Check if subscription is active
-    final bool hasActiveSubscription = _subscription != null && 
+    final bool hasActiveSubscription = _subscription != null &&
         _subscription!['status'] == 'active';
 
     return Scaffold(
@@ -109,60 +110,93 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+            // Welcome hero card
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.heroGradient,
+                borderRadius: AppRadius.lgAll,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.lg),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome back,',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 2),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(children: [
+                          _Badge(
+                            label: isProvider ? 'Provider' : 'Client',
+                            color: Colors.white.withValues(alpha: 0.2),
+                            textColor: Colors.white,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          _Badge(
+                            label: isVerified ? 'Verified' : 'Unverified',
+                            color: isVerified
+                                ? AppColors.success.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.2),
+                            textColor: Colors.white,
+                          ),
+                        ]),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Welcome back,',
-                              style: Theme.of(context).textTheme.bodySmall),
-                          Text(name,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            _Badge(
-                              label: isProvider ? '✂️ Provider' : '💅 Client',
-                              color: isProvider ? Colors.purple.shade100 : Colors.pink.shade100,
-                              textColor: isProvider ? Colors.purple.shade800 : Colors.pink.shade800,
-                            ),
-                            const SizedBox(width: 8),
-                            _Badge(
-                              label: isVerified ? '✅ Verified' : '⏳ Unverified',
-                              color: isVerified ? Colors.green.shade100 : Colors.orange.shade100,
-                              textColor: isVerified ? Colors.green.shade800 : Colors.orange.shade800,
-                            ),
-                          ]),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
 
             // Verification banner
             if (!isVerified) ...[
@@ -176,15 +210,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
             ],
 
             // Provider dashboard
             if (isProvider && isVerified) ...[
-              Text('Provider Dashboard',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
+              Text(
+                'Provider Dashboard',
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: AppSpacing.md),
 
               // Availability status
               if (_providerProfile != null)
@@ -200,30 +236,48 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
               // Subscription warning banner
               if (!hasActiveSubscription)
                 GestureDetector(
                   onTap: () => context.go('/provider/subscription'),
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade200),
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: AppRadius.lgAll,
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.25),
+                      ),
                     ),
-                    child: const Row(children: [
-                      Icon(Icons.workspace_premium_rounded, color: Colors.red),
-                      SizedBox(width: 10),
+                    child: Row(children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.workspace_premium_rounded,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
                           'No active subscription — your profile is hidden from clients.',
-                          style: TextStyle(color: Colors.red, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      Icon(Icons.chevron_right, color: Colors.red),
+                      const Icon(Icons.chevron_right, color: AppColors.error),
                     ]),
                   ),
                 ),
@@ -233,50 +287,50 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.3,
+                crossAxisSpacing: AppSpacing.md,
+                mainAxisSpacing: AppSpacing.md,
+                childAspectRatio: 1.4,
                 children: [
                   _DashTile(
                     icon: Icons.person_outline,
                     label: 'Edit Profile',
-                    color: Colors.blue,
+                    color: AppColors.info,
                     onTap: () => context.go('/provider/profile/edit'),
                   ),
                   _DashTile(
                     icon: Icons.content_cut_rounded,
                     label: 'My Services',
-                    color: Colors.purple,
+                    color: AppColors.secondary,
                     onTap: () => context.go('/provider/services'),
                   ),
                   _DashTile(
                     icon: Icons.photo_library_outlined,
                     label: 'Gallery',
-                    color: Colors.pink,
+                    color: AppColors.accent,
                     onTap: () => context.go('/provider/gallery'),
                   ),
                   _DashTile(
                     icon: Icons.public_outlined,
                     label: 'My Public Profile',
-                    color: Colors.teal,
+                    color: AppColors.available,
                     onTap: () => context.go('/provider/${supabase.auth.currentUser!.id}'),
                   ),
                   _DashTile(
                     icon: Icons.workspace_premium_rounded,
                     label: 'Subscription',
-                    color: Colors.green,
+                    color: AppColors.success,
                     onTap: () => context.go('/provider/subscription'),
                   ),
                   _DashTile(
                     icon: Icons.calendar_month_rounded,
                     label: 'Bookings',
-                    color: Colors.orange,
+                    color: AppColors.warning,
                     onTap: () => context.go('/provider/bookings'),
                   ),
                   _DashTile(
                     icon: Icons.account_balance_wallet_rounded,
                     label: 'My Earnings',
-                    color: Colors.green,
+                    color: AppColors.success,
                     onTap: () => context.go('/earnings'),
                   ),
                 ],
@@ -285,69 +339,107 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Provider not yet set up
             if (isProvider && isVerified && _providerProfile == null) ...[
-              const SizedBox(height: 12),
-              Card(
-                color: Colors.blue.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Text('Complete your provider profile to appear in search results.',
-                          textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: () {
-                          context.go('/provider/profile/edit');
-                        },
-                        child: const Text('Set Up Profile'),
-                      ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.info.withValues(alpha: 0.08),
+                      AppColors.info.withValues(alpha: 0.03),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: AppRadius.lgAll,
+                  border: Border.all(
+                    color: AppColors.info.withValues(alpha: 0.2),
+                  ),
+                ),
+                padding: AppSpacing.cardPadding,
+                child: Column(
+                  children: [
+                    const Text(
+                      'Complete your provider profile to appear in search results.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    FilledButton(
+                      onPressed: () {
+                        context.go('/provider/profile/edit');
+                      },
+                      child: const Text('Set Up Profile'),
+                    ),
+                  ],
                 ),
               ),
             ],
 
             // Client home
             if (!isProvider && isVerified) ...[
-              Text('Find a Stylist',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
+              Text(
+                'Find a Stylist',
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: AppSpacing.md),
               _DashTile(
                 icon: Icons.search_rounded,
                 label: 'Browse Stylists',
-                color: Colors.blue,
+                color: AppColors.info,
                 onTap: () => context.go('/browse'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               _DashTile(
                 icon: Icons.calendar_today_outlined,
                 label: 'My Bookings',
-                color: Colors.pink,
+                color: AppColors.primary,
                 onTap: () => context.go('/client/bookings'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               _DashTile(
                 icon: Icons.favorite_rounded,
                 label: 'Favourite Stylists',
-                color: Colors.red,
+                color: AppColors.error,
                 onTap: () => context.go('/favorites'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.info.withValues(alpha: 0.08),
+                  borderRadius: AppRadius.lgAll,
+                  border: Border.all(
+                    color: AppColors.info.withValues(alpha: 0.15),
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.info_outline, size: 16, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Expanded(
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        size: 15,
+                        color: AppColors.info,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(
                       child: Text(
                         'Browse available stylists and tap "Book Now" to schedule an appointment.',
-                        style: TextStyle(fontSize: 12, color: Colors.blue),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.info,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -370,35 +462,131 @@ class _AvailabilityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     Color color;
     String label;
+    IconData statusIcon;
     switch (status) {
       case 'available':
-        color = Colors.green; label = '🟢 Available'; break;
+        color = AppColors.available;
+        label = 'Available';
+        statusIcon = Icons.check_circle_rounded;
+        break;
       case 'busy':
-        color = Colors.orange; label = '🟠 Busy'; break;
+        color = AppColors.busy;
+        label = 'Busy';
+        statusIcon = Icons.pause_circle_filled_rounded;
+        break;
       default:
-        color = Colors.grey; label = '⚫ Offline';
+        color = AppColors.offline;
+        label = 'Offline';
+        statusIcon = Icons.cancel_rounded;
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: color, fontSize: 15)),
-            const Spacer(),
-            PopupMenuButton<String>(
-              onSelected: onChanged,
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'available', child: Text('🟢 Available')),
-                PopupMenuItem(value: 'busy',      child: Text('🟠 Busy')),
-                PopupMenuItem(value: 'offline',   child: Text('⚫ Offline')),
-              ],
-              child: const Chip(label: Text('Change')),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
+            child: Icon(statusIcon, color: color, size: 22),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Status',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          PopupMenuButton<String>(
+            onSelected: onChanged,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'available',
+                child: Row(children: [
+                  Icon(Icons.check_circle_rounded, color: AppColors.available, size: 18),
+                  const SizedBox(width: 8),
+                  const Text('Available'),
+                ]),
+              ),
+              PopupMenuItem(
+                value: 'busy',
+                child: Row(children: [
+                  Icon(Icons.pause_circle_filled_rounded, color: AppColors.busy, size: 18),
+                  const SizedBox(width: 8),
+                  const Text('Busy'),
+                ]),
+              ),
+              PopupMenuItem(
+                value: 'offline',
+                child: Row(children: [
+                  Icon(Icons.cancel_rounded, color: AppColors.offline, size: 18),
+                  const SizedBox(width: 8),
+                  const Text('Offline'),
+                ]),
+              ),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: AppRadius.smAll,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Change',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.keyboard_arrow_down_rounded, color: color, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -414,24 +602,49 @@ class _DashTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(label,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.lgAll,
+        child: Container(
+          padding: AppSpacing.cardPadding,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withValues(alpha: 0.1),
+                color.withValues(alpha: 0.04),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: AppRadius.lgAll,
+            border: Border.all(color: color.withValues(alpha: 0.15)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                label,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: color, fontWeight: FontWeight.w600, fontSize: 13)),
-          ],
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -445,35 +658,63 @@ class _VerificationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bg; String message; IconData icon;
+    Color bannerColor;
+    String message;
+    IconData icon;
     switch (status) {
       case 'pending':
-        bg = Colors.orange.shade50;
+        bannerColor = AppColors.warning;
         message = 'Your verification is under review. Tap to see status.';
-        icon = Icons.hourglass_top_rounded; break;
+        icon = Icons.hourglass_top_rounded;
+        break;
       case 'rejected':
-        bg = Colors.red.shade50;
+        bannerColor = AppColors.error;
         message = 'Verification rejected. Tap to re-submit your documents.';
-        icon = Icons.cancel_outlined; break;
+        icon = Icons.cancel_outlined;
+        break;
       default:
-        bg = Colors.blue.shade50;
+        bannerColor = AppColors.info;
         message = 'Verify your identity to unlock all features. Tap to start.';
         icon = Icons.verified_user_outlined;
     }
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: AppSpacing.cardPadding,
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          gradient: LinearGradient(
+            colors: [
+              bannerColor.withValues(alpha: 0.1),
+              bannerColor.withValues(alpha: 0.04),
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: AppRadius.lgAll,
+          border: Border.all(color: bannerColor.withValues(alpha: 0.2)),
         ),
         child: Row(children: [
-          Icon(icon, color: Colors.grey.shade700),
-          const SizedBox(width: 12),
-          Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
-          const Icon(Icons.chevron_right, color: Colors.grey),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: bannerColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: bannerColor, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right, color: bannerColor),
         ]),
       ),
     );
@@ -486,9 +727,19 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-      child: Text(label, style: TextStyle(fontSize: 12, color: textColor)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: AppRadius.smAll,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
     );
   }
 }

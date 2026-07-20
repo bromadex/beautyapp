@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../widgets/booking_card.dart';
+import '../theme.dart';
 
 class ClientBookingsScreen extends StatefulWidget {
   const ClientBookingsScreen({super.key});
@@ -79,6 +80,15 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        icon: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.error.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.cancel_outlined,
+              color: AppColors.error, size: 32),
+        ),
         title: const Text('Cancel Booking?'),
         content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
@@ -87,7 +97,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
               child: const Text('No')),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
               child: const Text('Cancel Booking')),
         ],
       ),
@@ -109,15 +119,32 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('My Bookings')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
-            ],
+          child: Padding(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.error),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(_error!,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    textAlign: TextAlign.center),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -127,25 +154,47 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
       appBar: AppBar(title: const Text('My Bookings')),
       body: _bookings.isEmpty
           ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('No bookings yet'),
-                  const SizedBox(height: 8),
-                  FilledButton(
-                    onPressed: () => context.go('/home'),
-                    child: const Text('Find a Stylist'),
-                  ),
-                ],
+              child: Padding(
+                padding: AppSpacing.screenPadding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xxl),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 48,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Text('No bookings yet',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'Browse services and book your first appointment',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    FilledButton.icon(
+                      onPressed: () => context.go('/home'),
+                      icon: const Icon(Icons.search_rounded),
+                      label: const Text('Find a Stylist'),
+                    ),
+                  ],
+                ),
               ),
             )
           : ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: AppSpacing.screenPadding,
               itemCount: _bookings.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (_, i) {
                 final b = _bookings[i];
                 // TODO: Fetch actual unread count per booking

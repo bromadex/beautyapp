@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../theme.dart';
 
 class BookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -32,47 +33,39 @@ class BookingCard extends StatelessWidget {
         ? '${bookingTime.day}/${bookingTime.month}/${bookingTime.year} at ${TimeOfDay.fromDateTime(bookingTime).format(context)}'
         : 'Unknown time';
 
-    Color statusColor;
-    switch (status) {
-      case 'pending':
-        statusColor = Colors.orange;
-        break;
-      case 'confirmed':
-        statusColor = Colors.green;
-        break;
-      case 'completed':
-        statusColor = Colors.blue;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
+    final statusBg = StatusColors.background(status);
+    final statusFg = StatusColors.foreground(status);
+    final statusLabel = StatusColors.label(status);
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        borderRadius: AppRadius.lgAll,
         onTap: () => context.push('/booking/${booking['id']}'),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppSpacing.cardPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // -- Header row: icon, service/provider, status chip, unread --
               Row(children: [
                 Text(cat?['icon'] ?? '✂️',
                     style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(service?['service_name'] ?? 'Service',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(
+                        service?['service_name'] ?? 'Service',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         isClient
                             ? 'with ${profile?['full_name'] ?? 'Provider'}'
                             : 'Client: ${profile?['full_name'] ?? 'Client'}',
-                        style: const TextStyle(
-                            color: Colors.grey, fontSize: 13),
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
@@ -82,35 +75,37 @@ class BookingCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: statusBg,
+                        borderRadius: AppRadius.mdAll,
                         border: Border.all(
-                            color: statusColor.withOpacity(0.4)),
+                            color: statusFg.withValues(alpha: 0.4)),
                       ),
                       child: Text(
-                        status[0].toUpperCase() + status.substring(1),
+                        statusLabel,
                         style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12),
+                          color: statusFg,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     if (unreadCount > 0) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: const BoxDecoration(
-                          color: Colors.red,
+                          color: AppColors.error,
                           shape: BoxShape.circle,
                         ),
                         child: Text(
                           '$unreadCount',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold),
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -118,64 +113,74 @@ class BookingCard extends StatelessWidget {
                 ),
               ]),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
+
+              // -- Date/time row --
               Row(children: [
-                const Icon(Icons.access_time_rounded,
-                    size: 15, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(timeStr,
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.grey)),
-              ]),
-              const SizedBox(height: 4),
-              Row(children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 15, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(booking['address'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.grey),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                Text('\$${booking['total_price']}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
+                Icon(Icons.access_time_rounded,
+                    size: 15, color: AppColors.textTertiary),
+                const SizedBox(width: AppSpacing.xs),
+                Text(timeStr, style: Theme.of(context).textTheme.bodySmall),
               ]),
 
+              const SizedBox(height: AppSpacing.xs),
+
+              // -- Address & price row --
+              Row(children: [
+                Icon(Icons.location_on_outlined,
+                    size: 15, color: AppColors.textTertiary),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    booking['address'] ?? '',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '\$${booking['total_price']}',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ]),
+
+              // -- Client note --
               if (booking['client_note'] != null &&
                   (booking['client_note'] as String).isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text('Note: ${booking['client_note']}',
-                    style: const TextStyle(
-                        fontSize: 12,
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Note: ${booking['client_note']}',
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
                         fontStyle: FontStyle.italic,
-                        color: Colors.grey)),
+                      ),
+                ),
               ],
 
-              // Action buttons
-              if (onAccept != null || onDecline != null ||
-                  onComplete != null || onCancel != null) ...[
-                const SizedBox(height: 12),
+              // -- Action buttons --
+              if (onAccept != null ||
+                  onDecline != null ||
+                  onComplete != null ||
+                  onCancel != null) ...[
+                const SizedBox(height: AppSpacing.md),
                 Row(children: [
                   if (onDecline != null) ...[
                     Expanded(
                       child: OutlinedButton(
                         onPressed: onDecline,
                         style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red)),
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
                         child: const Text('Decline'),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: AppSpacing.md),
                   ],
                   if (onAccept != null)
                     Expanded(
                       child: FilledButton(
                         onPressed: onAccept,
                         style: FilledButton.styleFrom(
-                            backgroundColor: Colors.green),
+                            backgroundColor: AppColors.success),
                         child: const Text('Accept'),
                       ),
                     ),
@@ -191,8 +196,9 @@ class BookingCard extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: onCancel,
                         style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red)),
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
                         child: const Text('Cancel'),
                       ),
                     ),
@@ -227,14 +233,17 @@ class BookingList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (bookings.isEmpty) {
-      return const Center(
-        child: Text('Nothing here', style: TextStyle(color: Colors.grey)),
+      return Center(
+        child: Text(
+          'Nothing here',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.screenPadding,
       itemCount: bookings.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
       itemBuilder: (_, i) => BookingCard(
         booking: bookings[i],
         isClient: !isProvider,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 
 class PaymentMethodCard extends StatelessWidget {
   final String title;
@@ -21,60 +22,86 @@ class PaymentMethodCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = value == selectedValue;
+
     return GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        curve: Curves.easeInOut,
+        padding: AppSpacing.cardPadding,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppRadius.lgAll,
           border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey.shade300,
+            color: selected ? AppColors.primary : Colors.grey.shade200,
             width: selected ? 2 : 1,
           ),
           color: selected
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.06)
+              ? AppColors.primary.withValues(alpha: 0.04)
               : Colors.white,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: selected
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.15)
-                    : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : AppColors.surfaceLight,
+                borderRadius: AppRadius.mdAll,
               ),
               child: Icon(icon,
+                  size: 22,
                   color: selected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade600),
+                      ? AppColors.primary
+                      : AppColors.textSecondary),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: selected
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.black87)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: selected ? AppColors.primary : AppColors.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(subtitle,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      )),
                 ],
               ),
             ),
-            if (selected)
-              Icon(Icons.check_circle_rounded,
-                  color: Theme.of(context).colorScheme.primary),
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: selected ? 1.0 : 0.0,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
           ],
         ),
       ),

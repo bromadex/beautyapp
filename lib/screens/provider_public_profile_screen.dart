@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
 
 class ProviderPublicProfileScreen extends StatefulWidget {
@@ -12,7 +13,7 @@ class ProviderPublicProfileScreen extends StatefulWidget {
 }
 
 class _ProviderPublicProfileScreenState
-    extends State<ProviderPublicProfileScreen> {
+    extends State<ProviderPublicProfileScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _providerProfile;
   List<Map<String, dynamic>> _services = [];
@@ -21,10 +22,27 @@ class _ProviderPublicProfileScreenState
   String? _error;
   bool _isFavorited = false;
 
+  late final AnimationController _heartController;
+  late final Animation<double> _heartScale;
+
   @override
   void initState() {
     super.initState();
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _heartScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
     _load();
+  }
+
+  @override
+  void dispose() {
+    _heartController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -129,11 +147,12 @@ class _ProviderPublicProfileScreenState
           'provider_id': widget.providerId,
         });
         setState(() => _isFavorited = true);
+        _heartController.forward(from: 0);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -142,32 +161,53 @@ class _ProviderPublicProfileScreenState
   void _showServicePicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Select a Service',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            Text('Select a Service', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: AppSpacing.lg),
             ..._services.map((s) {
               final cat = s['service_categories'] as Map?;
-              return ListTile(
-                leading: Text(cat?['icon'] ?? '✂️',
-                    style: const TextStyle(fontSize: 22)),
-                title: Text(s['service_name']),
-                subtitle: Text('${s['duration_minutes']} min'),
-                trailing: Text('\$${s['price']}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/book/${widget.providerId}/${s['id']}');
-                },
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: AppRadius.smAll,
+                    ),
+                    child: Center(
+                      child: Text(cat?['icon'] ?? '', style: const TextStyle(fontSize: 20)),
+                    ),
+                  ),
+                  title: Text(s['service_name'], style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    '${s['duration_minutes']} min',
+                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                  ),
+                  trailing: Text(
+                    '\$${s['price']}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/book/${widget.providerId}/${s['id']}');
+                  },
+                ),
               );
             }),
           ],
@@ -179,8 +219,8 @@ class _ProviderPublicProfileScreenState
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
 
@@ -191,11 +231,11 @@ class _ProviderPublicProfileScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
-              ElevatedButton(
+              Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              const SizedBox(height: AppSpacing.lg),
+              Text(_error!, style: TextStyle(color: AppColors.error)),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
                 onPressed: () => _load(),
                 child: const Text('Retry'),
               ),
@@ -221,262 +261,379 @@ class _ProviderPublicProfileScreenState
     String statusLabel;
     switch (status) {
       case 'available':
-        statusColor = Colors.green;
-        statusLabel = '🟢 Available';
+        statusColor = AppColors.available;
+        statusLabel = 'Available';
         break;
       case 'busy':
-        statusColor = Colors.orange;
-        statusLabel = '🟠 Currently Busy';
+        statusColor = AppColors.busy;
+        statusLabel = 'Currently Busy';
         break;
       default:
-        statusColor = Colors.grey;
-        statusLabel = '⚫ Offline';
+        statusColor = AppColors.offline;
+        statusLabel = 'Offline';
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(name),
-        actions: [
-          if (supabase.auth.currentUser != null &&
-              supabase.auth.currentUser!.id != widget.providerId)
-            IconButton(
-              icon: Icon(
-                _isFavorited ? Icons.favorite : Icons.favorite_border,
-                color: _isFavorited ? Colors.red : null,
-              ),
-              tooltip: _isFavorited ? 'Remove from favorites' : 'Add to favorites',
-              onPressed: _toggleFavorite,
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Status
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(statusLabel, style: TextStyle(color: statusColor)),
-            ),
-            const SizedBox(height: 8),
-
-            // Star rating + reviews link (Stage 9)
-            FutureBuilder(
-              future: supabase
-                  .from('provider_profiles')
-                  .select('average_rating, total_reviews')
-                  .eq('provider_id', widget.providerId)
-                  .maybeSingle(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data == null) {
-                  return const SizedBox.shrink();
-                }
-                final data = snapshot.data as Map<String, dynamic>;
-                final avg = (data['average_rating'] as num?)?.toDouble() ?? 0.0;
-                final total = data['total_reviews'] ?? 0;
-                if (total == 0) {
-                  return const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text('No reviews yet',
-                        style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  );
-                }
-                return GestureDetector(
-                  onTap: () => context.push('/provider/${widget.providerId}/reviews'),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      children: [
-                        StarRatingWidget(rating: avg, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${avg.toStringAsFixed(1)} ($total review${total == 1 ? '' : 's'})',
-                          style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey,
-                              decoration: TextDecoration.underline),
-                        ),
-                      ],
+      body: CustomScrollView(
+        slivers: [
+          // Hero section with gradient
+          SliverAppBar(
+            expandedHeight: 220,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            actions: [
+              if (supabase.auth.currentUser != null &&
+                  supabase.auth.currentUser!.id != widget.providerId)
+                ScaleTransition(
+                  scale: _heartScale,
+                  child: IconButton(
+                    icon: Icon(
+                      _isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: _isFavorited ? AppColors.accent : Colors.white,
+                      size: 28,
                     ),
+                    tooltip: _isFavorited ? 'Remove from favorites' : 'Add to favorites',
+                    onPressed: _toggleFavorite,
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            // Address
-            if (address.isNotEmpty) ...[
-              Row(
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      address,
-                      style: const TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                ),
             ],
-
-            // Bio
-            if (bio.isNotEmpty) ...[
-              const Text(
-                'About',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(bio, style: const TextStyle(fontSize: 14)),
-              const SizedBox(height: 24),
-            ],
-
-            // Services
-            const Text(
-              'Services & Prices',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            if (_services.isEmpty)
-              const Text(
-                'No services listed yet.',
-                style: TextStyle(color: Colors.grey),
-              )
-            else
-              ..._services.map((s) {
-                final cat = s['service_categories'] as Map?;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade200),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        cat?['icon'] ?? '✂️',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s['service_name'],
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+                        ),
+                        child: Center(
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      // Status chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: AppRadius.xxlAll,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xs + 2),
                             Text(
-                              '${cat?['name'] ?? ''} · ${s['duration_minutes']} min',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              statusLabel,
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ),
-                      Text(
-                        '\$${s['price']}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
+                      const SizedBox(height: AppSpacing.xl),
                     ],
                   ),
-                );
-              }),
-
-            const SizedBox(height: 24),
-
-            // Gallery
-            const Text(
-              'Gallery',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-            if (_gallery.isEmpty)
-              const Text(
-                'No gallery photos yet.',
-                style: TextStyle(color: Colors.grey),
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 6,
-                ),
-                itemCount: _gallery.length,
-                itemBuilder: (_, i) {
-                  final img = _gallery[i];
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      img['image_url'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.broken_image),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: AppSpacing.screenPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Rating + reviews link
+                  FutureBuilder(
+                    future: supabase
+                        .from('provider_profiles')
+                        .select('average_rating, total_reviews')
+                        .eq('provider_id', widget.providerId)
+                        .maybeSingle(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || snapshot.data == null) {
+                        return const SizedBox.shrink();
+                      }
+                      final data = snapshot.data as Map<String, dynamic>;
+                      final avg = (data['average_rating'] as num?)?.toDouble() ?? 0.0;
+                      final total = data['total_reviews'] ?? 0;
+                      if (total == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                          child: Text(
+                            'No reviews yet',
+                            style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                          ),
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: InkWell(
+                          borderRadius: AppRadius.smAll,
+                          onTap: () => context.push('/provider/${widget.providerId}/reviews'),
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.08),
+                              borderRadius: AppRadius.mdAll,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                StarRatingWidget(rating: avg, size: 18),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  '${avg.toStringAsFixed(1)} ($total review${total == 1 ? '' : 's'})',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textTertiary),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Address
+                  if (address.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined, size: 18, color: AppColors.textTertiary),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            address,
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
 
-            const SizedBox(height: 40),
+                  // Bio
+                  if (bio.isNotEmpty) ...[
+                    Text('About', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      bio,
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                  ],
 
-            // Book button
-            if (status == 'available')
-              FilledButton.icon(
-                onPressed: _services.isEmpty
-                    ? null
-                    : () => _showServicePicker(context),
-                icon: const Icon(Icons.calendar_month_outlined),
-                label: const Text('Book Appointment'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 52),
-                ),
-              )
-            else if (status == 'busy')
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: const Text(
-                  '🟠 This provider is currently busy',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.orange),
-                ),
-              )
-            else
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  '⚫ This provider is currently offline',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
+                  // Services
+                  Text('Services & Prices', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.md),
+                  if (_services.isEmpty)
+                    Text(
+                      'No services listed yet.',
+                      style: TextStyle(color: AppColors.textTertiary),
+                    )
+                  else
+                    ..._services.map((s) {
+                      final cat = s['service_categories'] as Map?;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardLight,
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: AppRadius.mdAll,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: AppRadius.smAll,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  cat?['icon'] ?? '',
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s['service_name'],
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${cat?['name'] ?? ''} · ${s['duration_minutes']} min',
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '\$${s['price']}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 17,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+
+                  const SizedBox(height: AppSpacing.xxl),
+
+                  // Gallery
+                  Text('Gallery', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.md),
+                  if (_gallery.isEmpty)
+                    Text(
+                      'No gallery photos yet.',
+                      style: TextStyle(color: AppColors.textTertiary),
+                    )
+                  else
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                      ),
+                      itemCount: _gallery.length,
+                      itemBuilder: (_, i) {
+                        final img = _gallery[i];
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: Image.network(
+                            img['image_url'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: AppColors.surfaceLight,
+                              child: Icon(Icons.broken_image, color: AppColors.textTertiary),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                  // Spacer for the bottom button
+                  const SizedBox(height: 100),
+                ],
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
+
+      // Persistent bottom book button
+      bottomNavigationBar: _buildBottomBar(context, status),
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context, String status) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.md,
+        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.cardLight,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: status == 'available'
+          ? FilledButton.icon(
+              onPressed: _services.isEmpty ? null : () => _showServicePicker(context),
+              icon: const Icon(Icons.calendar_month_outlined),
+              label: const Text('Book Appointment'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+              ),
+            )
+          : Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: status == 'busy'
+                    ? AppColors.busy.withValues(alpha: 0.1)
+                    : AppColors.surfaceLight,
+                borderRadius: AppRadius.mdAll,
+                border: Border.all(
+                  color: status == 'busy'
+                      ? AppColors.busy.withValues(alpha: 0.3)
+                      : Colors.grey.shade200,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: status == 'busy' ? AppColors.busy : AppColors.offline,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    status == 'busy'
+                        ? 'This provider is currently busy'
+                        : 'This provider is currently offline',
+                    style: TextStyle(
+                      color: status == 'busy' ? AppColors.busy : AppColors.textTertiary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }

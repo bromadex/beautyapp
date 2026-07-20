@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 
 class ChatBubble extends StatelessWidget {
   final String? message;
@@ -18,15 +19,14 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = isMine
-        ? Theme.of(context).colorScheme.primary
-        : Colors.grey.shade200;
-    final textColor = isMine ? Colors.white : Colors.black87;
+    final textColor =
+        isMine ? Colors.white : AppColors.textPrimary;
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        margin: const EdgeInsets.symmetric(
+            vertical: AppSpacing.xs, horizontal: AppSpacing.md),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.72,
         ),
@@ -38,19 +38,30 @@ class ChatBubble extends StatelessWidget {
               padding: imageUrl != null
                   ? EdgeInsets.zero
                   : const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                      horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               decoration: BoxDecoration(
-                color: imageUrl != null ? Colors.transparent : bubbleColor,
+                gradient: isMine && imageUrl == null
+                    ? const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFFFF6BAE)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: imageUrl != null
+                    ? Colors.transparent
+                    : (isMine ? null : Colors.grey.shade100),
                 borderRadius: BorderRadius.only(
-                  topLeft:     const Radius.circular(18),
-                  topRight:    const Radius.circular(18),
-                  bottomLeft:  Radius.circular(isMine ? 18 : 4),
-                  bottomRight: Radius.circular(isMine ? 4 : 18),
+                  topLeft: Radius.circular(AppRadius.xl),
+                  topRight: Radius.circular(AppRadius.xl),
+                  bottomLeft:
+                      Radius.circular(isMine ? AppRadius.xl : AppSpacing.xs),
+                  bottomRight:
+                      Radius.circular(isMine ? AppSpacing.xs : AppRadius.xl),
                 ),
               ),
               child: imageUrl != null
                   ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.mdAll,
                       child: Image.network(
                         imageUrl!,
                         width: 200,
@@ -58,19 +69,38 @@ class ChatBubble extends StatelessWidget {
                         loadingBuilder: (_, child, progress) =>
                             progress == null
                                 ? child
-                                : const SizedBox(
+                                : Container(
                                     height: 120,
                                     width: 200,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: AppRadius.mdAll,
+                                    ),
                                     child: Center(
-                                        child: CircularProgressIndicator()),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
                                   ),
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.broken_image,
-                            size: 48),
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 120,
+                          width: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: AppRadius.mdAll,
+                          ),
+                          child: const Icon(Icons.broken_image_rounded,
+                              size: 40, color: AppColors.textTertiary),
+                        ),
                       ),
                     )
                   : Text(message ?? '',
-                      style: TextStyle(color: textColor, fontSize: 15)),
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 15,
+                        height: 1.35,
+                      )),
             ),
             const SizedBox(height: 3),
             Row(
@@ -78,13 +108,13 @@ class ChatBubble extends StatelessWidget {
               children: [
                 Text(time,
                     style: const TextStyle(
-                        fontSize: 10, color: Colors.grey)),
+                        fontSize: 10, color: AppColors.textTertiary)),
                 if (isMine) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Icon(
                     isRead ? Icons.done_all : Icons.done,
                     size: 12,
-                    color: isRead ? Colors.blue : Colors.grey,
+                    color: isRead ? AppColors.info : AppColors.textTertiary,
                   ),
                 ],
               ],

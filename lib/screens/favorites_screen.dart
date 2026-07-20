@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../theme.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -54,8 +55,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Favourite Stylists')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
+              color: AppColors.primary,
               onRefresh: _load,
               child: _favorites.isEmpty
                   ? ListView(
@@ -66,22 +68,33 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.favorite_border,
-                                    size: 64, color: Colors.grey.shade400),
-                                const SizedBox(height: 16),
-                                const Text('No favourites yet',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 8),
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.favorite_border_rounded,
+                                    size: 40,
+                                    color: AppColors.primary.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.xxl),
+                                Text(
+                                  'No favourites yet',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
                                 const Text(
-                                    'Save your favourite stylists for quick booking.',
-                                    style: TextStyle(
-                                        color: Colors.grey, fontSize: 14)),
-                                const SizedBox(height: 24),
+                                  'Save your favourite stylists for quick booking.',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                                ),
+                                const SizedBox(height: AppSpacing.xxl),
                                 FilledButton.icon(
                                   onPressed: () => context.go('/browse'),
-                                  icon: const Icon(Icons.search),
+                                  icon: const Icon(Icons.search_rounded),
                                   label: const Text('Browse Stylists'),
                                 ),
                               ],
@@ -91,22 +104,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ],
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       itemCount: _favorites.length,
                       itemBuilder: (_, i) {
                         final fav = _favorites[i];
                         final providerId = fav['provider_id'] as String;
-                        final profile =
-                            fav['profiles'] as Map<String, dynamic>?;
-                        final pp = fav['provider_profiles']
-                            as Map<String, dynamic>?;
+                        final profile = fav['profiles'] as Map<String, dynamic>?;
+                        final pp = fav['provider_profiles'] as Map<String, dynamic>?;
                         final name = profile?['full_name'] ?? 'Stylist';
                         final location = profile?['location'] ?? '';
-                        final status =
-                            pp?['availability_status'] ?? 'offline';
-                        final rating =
-                            (pp?['average_rating'] as num?)?.toDouble() ??
-                                0.0;
+                        final status = pp?['availability_status'] ?? 'offline';
+                        final rating = (pp?['average_rating'] as num?)?.toDouble() ?? 0.0;
                         final totalReviews = pp?['total_reviews'] ?? 0;
                         final isHidden = pp?['is_hidden'] == true;
 
@@ -117,145 +125,163 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           subExpired = subs.first['status'] != 'active';
                         }
 
-                        final bool canBook = !isHidden &&
-                            !subExpired &&
-                            status != 'offline';
+                        final bool canBook = !isHidden && !subExpired && status != 'offline';
 
                         Color statusColor;
                         String statusLabel;
                         switch (status) {
                           case 'available':
-                            statusColor = Colors.green;
+                            statusColor = AppColors.available;
                             statusLabel = 'Available';
                             break;
                           case 'busy':
-                            statusColor = Colors.orange;
+                            statusColor = AppColors.busy;
                             statusLabel = 'Busy';
                             break;
                           default:
-                            statusColor = Colors.grey;
+                            statusColor = AppColors.offline;
                             statusLabel = 'Offline';
                         }
 
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 26,
-                                      backgroundColor:
-                                          Colors.pink.shade100,
-                                      child: Text(
-                                        name.isNotEmpty
-                                            ? name[0].toUpperCase()
-                                            : '?',
-                                        style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 14),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(name,
-                                              style: const TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.bold,
-                                                  fontSize: 16)),
-                                          if (location.isNotEmpty)
-                                            Text(location,
-                                                style: const TextStyle(
-                                                    color: Colors.grey,
-                                                    fontSize: 13)),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                width: 8,
-                                                height: 8,
-                                                decoration: BoxDecoration(
-                                                  color: statusColor,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(statusLabel,
-                                                  style: TextStyle(
-                                                      color: statusColor,
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w600)),
-                                              if (totalReviews > 0) ...[
-                                                const SizedBox(width: 12),
-                                                Icon(Icons.star,
-                                                    size: 14,
-                                                    color: Colors
-                                                        .amber.shade700),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  '${rating.toStringAsFixed(1)} ($totalReviews)',
-                                                  style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.grey),
-                                                ),
-                                              ],
-                                            ],
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.cardLight,
+                              borderRadius: AppRadius.lgAll,
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Padding(
+                              padding: AppSpacing.cardPadding,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      // Gradient avatar
+                                      Container(
+                                        width: 52,
+                                        height: 52,
+                                        decoration: const BoxDecoration(
+                                          gradient: AppColors.primaryGradient,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.favorite,
-                                          color: Colors.red),
-                                      onPressed: () =>
-                                          _removeFavorite(providerId),
+                                      const SizedBox(width: AppSpacing.lg),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(name, style: Theme.of(context).textTheme.titleMedium),
+                                            if (location.isNotEmpty) ...[
+                                              const SizedBox(height: 2),
+                                              Row(
+                                                children: [
+                                                  Icon(Icons.location_on_outlined, size: 14, color: AppColors.textTertiary),
+                                                  const SizedBox(width: 2),
+                                                  Expanded(
+                                                    child: Text(
+                                                      location,
+                                                      style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                            const SizedBox(height: AppSpacing.xs),
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  decoration: BoxDecoration(
+                                                    color: statusColor,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: AppSpacing.xs + 2),
+                                                Text(
+                                                  statusLabel,
+                                                  style: TextStyle(
+                                                    color: statusColor,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (totalReviews > 0) ...[
+                                                  const SizedBox(width: AppSpacing.md),
+                                                  Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                                                  const SizedBox(width: 2),
+                                                  Text(
+                                                    '${rating.toStringAsFixed(1)} ($totalReviews)',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Favorite heart button
+                                      IconButton(
+                                        icon: Icon(Icons.favorite_rounded, color: AppColors.accent, size: 26),
+                                        tooltip: 'Remove from favourites',
+                                        onPressed: () => _removeFavorite(providerId),
+                                      ),
+                                    ],
+                                  ),
+
+                                  if (subExpired) ...[
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpacing.sm,
+                                        vertical: AppSpacing.xs,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.error.withValues(alpha: 0.08),
+                                        borderRadius: AppRadius.smAll,
+                                      ),
+                                      child: Text(
+                                        'Subscription expired',
+                                        style: TextStyle(
+                                          color: AppColors.error,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
                                   ],
-                                ),
-                                if (subExpired) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade50,
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Subscription expired',
-                                      style: TextStyle(
-                                          color: Colors.red.shade700,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600),
+
+                                  const SizedBox(height: AppSpacing.md),
+
+                                  // Book Again button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed: canBook
+                                          ? () => context.push('/provider/$providerId')
+                                          : null,
+                                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                                      label: const Text('Book Again'),
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton.icon(
-                                    onPressed: canBook
-                                        ? () => context.push(
-                                            '/provider/$providerId')
-                                        : null,
-                                    icon: const Icon(
-                                        Icons.calendar_month_outlined,
-                                        size: 18),
-                                    label: const Text('Book Again'),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         );
