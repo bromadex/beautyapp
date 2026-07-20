@@ -62,4 +62,4 @@ class LocationService {
     return perm == LocationPermission.whileInUse ||
         perm == LocationPermission.always;
   }
-}nameu  
+}
