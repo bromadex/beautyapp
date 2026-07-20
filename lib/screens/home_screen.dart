@@ -327,6 +327,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () => context.go('/client/bookings'),
               ),
               const SizedBox(height: 8),
+              _DashTile(
+                icon: Icons.favorite_rounded,
+                label: 'Favourite Stylists',
+                color: Colors.red,
+                onTap: () => context.go('/favorites'),
+              ),
+              const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

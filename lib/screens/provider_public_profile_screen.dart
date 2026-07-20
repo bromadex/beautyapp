@@ -19,6 +19,7 @@ class _ProviderPublicProfileScreenState
   List<Map<String, dynamic>> _gallery = [];
   bool _loading = true;
   String? _error;
+  bool _isFavorited = false;
 
   @override
   void initState() {
@@ -85,6 +86,18 @@ class _ProviderPublicProfileScreenState
         _gallery = [];
       }
 
+      // Check if this provider is favorited by the current user
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser != null) {
+        final fav = await supabase
+            .from('favorites')
+            .select()
+            .eq('client_id', currentUser.id)
+            .eq('provider_id', id)
+            .maybeSingle();
+        _isFavorited = fav != null;
+      }
+
       if (mounted) {
         setState(() => _loading = false);
       }
@@ -94,6 +107,34 @@ class _ProviderPublicProfileScreenState
           _error = 'Failed to load profile';
           _loading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final currentUser = supabase.auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      if (_isFavorited) {
+        await supabase
+            .from('favorites')
+            .delete()
+            .eq('client_id', currentUser.id)
+            .eq('provider_id', widget.providerId);
+        setState(() => _isFavorited = false);
+      } else {
+        await supabase.from('favorites').insert({
+          'client_id': currentUser.id,
+          'provider_id': widget.providerId,
+        });
+        setState(() => _isFavorited = true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -193,7 +234,21 @@ class _ProviderPublicProfileScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(name)),
+      appBar: AppBar(
+        title: Text(name),
+        actions: [
+          if (supabase.auth.currentUser != null &&
+              supabase.auth.currentUser!.id != widget.providerId)
+            IconButton(
+              icon: Icon(
+                _isFavorited ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorited ? Colors.red : null,
+              ),
+              tooltip: _isFavorited ? 'Remove from favorites' : 'Add to favorites',
+              onPressed: _toggleFavorite,
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(

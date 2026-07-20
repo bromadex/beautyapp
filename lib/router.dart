@@ -22,6 +22,7 @@ import 'supabase_client.dart';
 import 'screens/browse_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
+import 'screens/favorites_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -53,6 +54,7 @@ final appRouter = GoRouter(
     // Browse (Stage 11 placeholder)
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/browse', builder: (_, __) => const BrowseScreen()),
+    GoRoute(path: '/favorites', builder: (_, __) => const FavoritesScreen()),
     // ─────────────────────────────────────────────────────────────
     // Auth & Home
     // ─────────────────────────────────────────────────────────────
