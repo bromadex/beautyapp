@@ -6,13 +6,13 @@ import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class ProviderHomeScreen extends StatefulWidget {
+  const ProviderHomeScreen({super.key});
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<ProviderHomeScreen> createState() => _ProviderHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _verification;
   Map<String, dynamic>? _providerProfile;
@@ -172,150 +172,140 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     int unreadNotifs = 0;
     List<Map<String, dynamic>> recentActivity = [];
 
-    if (profile['user_type'] == 'provider') {
-      try {
-        providerProfile = await supabase
-            .from('provider_profiles').select()
-            .eq('provider_id', userId).single();
-      } catch (_) {}
+    try {
+      providerProfile = await supabase
+          .from('provider_profiles').select()
+          .eq('provider_id', userId).single();
+    } catch (_) {}
 
-      try {
-        subscription = await supabase
-            .from('subscriptions')
-            .select()
-            .eq('provider_id', userId)
-            .maybeSingle();
-      } catch (_) {}
+    try {
+      subscription = await supabase
+          .from('subscriptions')
+          .select()
+          .eq('provider_id', userId)
+          .maybeSingle();
+    } catch (_) {}
 
-      // Next upcoming booking
-      try {
-        final now = DateTime.now().toIso8601String();
-        nextBooking = await supabase
-            .from('bookings')
-            .select('*, services(service_name, duration_minutes), profiles!bookings_client_id_fkey(full_name)')
-            .eq('provider_id', userId)
-            .inFilter('status', ['confirmed', 'en_route', 'arrived', 'in_progress'])
-            .gte('booking_date', now.substring(0, 10))
-            .order('booking_date', ascending: true)
-            .order('booking_time', ascending: true)
-            .limit(1)
-            .maybeSingle();
-      } catch (_) {}
+    try {
+      final now = DateTime.now().toIso8601String();
+      nextBooking = await supabase
+          .from('bookings')
+          .select('*, services(service_name, duration_minutes), profiles!bookings_client_id_fkey(full_name)')
+          .eq('provider_id', userId)
+          .inFilter('status', ['confirmed', 'en_route', 'arrived', 'in_progress'])
+          .gte('booking_date', now.substring(0, 10))
+          .order('booking_date', ascending: true)
+          .order('booking_time', ascending: true)
+          .limit(1)
+          .maybeSingle();
+    } catch (_) {}
 
-      // Weekly earnings + previous week for trend
-      try {
-        final now = DateTime.now();
-        final weekAgo = now.subtract(const Duration(days: 7)).toIso8601String();
-        final twoWeeksAgo = now.subtract(const Duration(days: 14)).toIso8601String();
+    try {
+      final now = DateTime.now();
+      final weekAgo = now.subtract(const Duration(days: 7)).toIso8601String();
+      final twoWeeksAgo = now.subtract(const Duration(days: 14)).toIso8601String();
 
-        final payments = await supabase
-            .from('payments')
-            .select('amount, created_at')
-            .eq('provider_id', userId)
-            .eq('status', 'completed')
-            .gte('created_at', twoWeeksAgo);
+      final payments = await supabase
+          .from('payments')
+          .select('amount, created_at')
+          .eq('provider_id', userId)
+          .eq('status', 'completed')
+          .gte('created_at', twoWeeksAgo);
 
-        for (final p in (payments as List)) {
-          final amount = (p['amount'] as num).toDouble();
-          final createdAt = p['created_at'] as String;
-          if (createdAt.compareTo(weekAgo) >= 0) {
-            weeklyEarnings += amount;
-          } else {
-            prevWeekEarnings += amount;
-          }
+      for (final p in (payments as List)) {
+        final amount = (p['amount'] as num).toDouble();
+        final createdAt = p['created_at'] as String;
+        if (createdAt.compareTo(weekAgo) >= 0) {
+          weeklyEarnings += amount;
+        } else {
+          prevWeekEarnings += amount;
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
 
-      // Bookings counts
-      try {
-        final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
-        final bookings = await supabase
-            .from('bookings')
-            .select('id, status')
-            .eq('provider_id', userId)
-            .gte('created_at', weekAgo);
-        weeklyBookingsCount = (bookings as List).length;
-        pendingBookingsCount = bookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
-      } catch (_) {}
+    try {
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+      final bookings = await supabase
+          .from('bookings')
+          .select('id, status')
+          .eq('provider_id', userId)
+          .gte('created_at', weekAgo);
+      weeklyBookingsCount = (bookings as List).length;
+      pendingBookingsCount = bookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
+    } catch (_) {}
 
-      // Total bookings count
-      try {
-        final allBookings = await supabase
-            .from('bookings')
-            .select('id')
-            .eq('provider_id', userId);
-        totalBookingsCount = (allBookings as List).length;
-      } catch (_) {}
+    try {
+      final allBookings = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('provider_id', userId);
+      totalBookingsCount = (allBookings as List).length;
+    } catch (_) {}
 
-      // Reviews stats
-      try {
-        final reviews = await supabase
-            .from('reviews')
-            .select('rating')
-            .eq('provider_id', userId);
-        final list = reviews as List;
-        totalReviews = list.length;
-        if (list.isNotEmpty) {
-          double sum = 0;
-          for (final r in list) sum += (r['rating'] as num).toDouble();
-          avgRating = sum / list.length;
-        }
-      } catch (_) {}
+    try {
+      final reviews = await supabase
+          .from('reviews')
+          .select('rating')
+          .eq('provider_id', userId);
+      final list = reviews as List;
+      totalReviews = list.length;
+      if (list.isNotEmpty) {
+        double sum = 0;
+        for (final r in list) sum += (r['rating'] as num).toDouble();
+        avgRating = sum / list.length;
+      }
+    } catch (_) {}
 
-      // Unread messages
-      try {
-        final msgs = await supabase
-            .from('messages')
-            .select('id')
-            .eq('receiver_id', userId)
-            .eq('is_read', false);
-        unreadMessages = (msgs as List).length;
-      } catch (_) {}
+    try {
+      final msgs = await supabase
+          .from('messages')
+          .select('id')
+          .eq('receiver_id', userId)
+          .eq('is_read', false);
+      unreadMessages = (msgs as List).length;
+    } catch (_) {}
 
-      // Recent activity
-      try {
-        final recentReviews = await supabase
-            .from('reviews')
-            .select('id, rating, comment, created_at, profiles!reviews_client_id_fkey(full_name)')
-            .eq('provider_id', userId)
-            .order('created_at', ascending: false)
-            .limit(3);
-        for (final r in (recentReviews as List)) {
-          recentActivity.add({'type': 'review', 'data': r, 'created_at': r['created_at']});
-        }
-      } catch (_) {}
+    try {
+      final recentReviews = await supabase
+          .from('reviews')
+          .select('id, rating, comment, created_at, profiles!reviews_client_id_fkey(full_name)')
+          .eq('provider_id', userId)
+          .order('created_at', ascending: false)
+          .limit(3);
+      for (final r in (recentReviews as List)) {
+        recentActivity.add({'type': 'review', 'data': r, 'created_at': r['created_at']});
+      }
+    } catch (_) {}
 
-      try {
-        final recentPayments = await supabase
-            .from('payments')
-            .select('id, amount, created_at, bookings(services(service_name), profiles!bookings_client_id_fkey(full_name))')
-            .eq('provider_id', userId)
-            .eq('status', 'completed')
-            .order('created_at', ascending: false)
-            .limit(3);
-        for (final p in (recentPayments as List)) {
-          recentActivity.add({'type': 'payment', 'data': p, 'created_at': p['created_at']});
-        }
-      } catch (_) {}
+    try {
+      final recentPayments = await supabase
+          .from('payments')
+          .select('id, amount, created_at, bookings(services(service_name), profiles!bookings_client_id_fkey(full_name))')
+          .eq('provider_id', userId)
+          .eq('status', 'completed')
+          .order('created_at', ascending: false)
+          .limit(3);
+      for (final p in (recentPayments as List)) {
+        recentActivity.add({'type': 'payment', 'data': p, 'created_at': p['created_at']});
+      }
+    } catch (_) {}
 
-      try {
-        final recentBookings = await supabase
-            .from('bookings')
-            .select('id, status, booking_date, booking_time, created_at, services(service_name), profiles!bookings_client_id_fkey(full_name)')
-            .eq('provider_id', userId)
-            .order('created_at', ascending: false)
-            .limit(3);
-        for (final b in (recentBookings as List)) {
-          recentActivity.add({'type': 'booking', 'data': b, 'created_at': b['created_at']});
-        }
-      } catch (_) {}
+    try {
+      final recentBookings = await supabase
+          .from('bookings')
+          .select('id, status, booking_date, booking_time, created_at, services(service_name), profiles!bookings_client_id_fkey(full_name)')
+          .eq('provider_id', userId)
+          .order('created_at', ascending: false)
+          .limit(3);
+      for (final b in (recentBookings as List)) {
+        recentActivity.add({'type': 'booking', 'data': b, 'created_at': b['created_at']});
+      }
+    } catch (_) {}
 
-      recentActivity.sort((a, b) =>
-          (b['created_at'] as String).compareTo(a['created_at'] as String));
-      if (recentActivity.length > 5) recentActivity = recentActivity.sublist(0, 5);
-    }
+    recentActivity.sort((a, b) =>
+        (b['created_at'] as String).compareTo(a['created_at'] as String));
+    if (recentActivity.length > 5) recentActivity = recentActivity.sublist(0, 5);
 
-    // Unread notifications (for all users)
     try {
       unreadNotifs = await NotificationService.unreadCount(userId);
     } catch (_) {}
@@ -367,23 +357,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       );
     }
 
-    final name       = _profile?['full_name'] ?? 'User';
-    final userType   = _profile?['user_type'] ?? 'client';
-    final isProvider = userType == 'provider';
+    final name = _profile?['full_name'] ?? 'User';
     final isVerified = _profile?['is_verified'] == true;
-    final vStatus    = _verification?['status'];
+    final vStatus = _verification?['status'];
     final bool hasActiveSubscription = _subscription != null &&
         _subscription!['status'] == 'active';
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Compact gradient header
           SliverAppBar(
-            expandedHeight: isProvider ? 140 : 160,
+            expandedHeight: 140,
             pinned: true,
             backgroundColor: AppColors.primary,
             surfaceTintColor: Colors.transparent,
+            automaticallyImplyLeading: false,
             title: const Text(
               'Beauty Home Services',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
@@ -393,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 IconButton(
                   icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
                   tooltip: 'Admin Panel',
-                  onPressed: () => context.go('/admin/dashboard'),
+                  onPressed: () => context.push('/admin/dashboard'),
                 ),
               Stack(
                 children: [
@@ -451,29 +439,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             children: [
                               Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                               Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
-                              if (isProvider) ...[
-                                const SizedBox(height: 5),
-                                Row(children: [
-                                  if (_avgRating > 0) ...[
-                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                                    const SizedBox(width: 3),
-                                    Text(_avgRating.toStringAsFixed(1),
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                    const SizedBox(width: 12),
-                                  ],
-                                  Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
+                              const SizedBox(height: 5),
+                              Row(children: [
+                                if (_avgRating > 0) ...[
+                                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
                                   const SizedBox(width: 3),
-                                  Text('$_totalBookingsCount bookings',
-                                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
-                                ]),
-                              ] else ...[
-                                const SizedBox(height: 5),
-                                Row(children: [
-                                  _Badge(label: 'Client'),
-                                  const SizedBox(width: 6),
-                                  _Badge(label: isVerified ? 'Verified' : 'Unverified', isPositive: isVerified),
-                                ]),
-                              ],
+                                  Text(_avgRating.toStringAsFixed(1),
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                                  const SizedBox(width: 12),
+                                ],
+                                Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
+                                const SizedBox(width: 3),
+                                Text('$_totalBookingsCount bookings',
+                                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+                              ]),
                             ],
                           ),
                         ),
@@ -501,17 +480,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             status: vStatus,
                             onTap: () {
                               if (vStatus == null || vStatus == 'rejected') {
-                                context.go('/verify');
+                                context.push('/verify');
                               } else {
-                                context.go('/verify/pending');
+                                context.push('/verify/pending');
                               }
                             },
                           ),
                           const SizedBox(height: 14),
                         ],
 
-                        if (isProvider && isVerified) ...[
-                          // Availability toggle
+                        if (isVerified) ...[
                           if (_providerProfile != null) ...[
                             _AvailabilityToggle(
                               status: _providerProfile!['availability_status'],
@@ -530,12 +508,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           if (!hasActiveSubscription) ...[
                             _WarningBanner(
                               text: 'No active subscription — your profile is hidden.',
-                              onTap: () => context.go('/provider/subscription'),
+                              onTap: () => context.push('/provider/subscription'),
                             ),
                             const SizedBox(height: 14),
                           ],
 
-                          // Next Booking Card (or empty state)
                           if (_nextBooking != null)
                             _NextBookingCard(booking: _nextBooking!)
                           else
@@ -544,7 +521,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             ),
                           const SizedBox(height: 14),
 
-                          // Stats row with colored top borders
                           _StatsRow(
                             weeklyEarnings: _weeklyEarnings,
                             prevWeekEarnings: _prevWeekEarnings,
@@ -555,7 +531,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           const SizedBox(height: 20),
 
-                          // Quick Actions - two-tier
                           const Text('Quick Actions', style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
                           )),
@@ -566,7 +541,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           const SizedBox(height: 20),
 
-                          // Recent Activity
                           if (_recentActivity.isNotEmpty) ...[
                             Row(
                               children: [
@@ -588,14 +562,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             const SizedBox(height: 10),
                             _ActivityFeed(activities: _recentActivity),
                           ],
-                        ],
 
-                        if (isProvider && isVerified && _providerProfile == null) ...[
-                          const SizedBox(height: 8),
-                          _SetupCard(onTap: () => context.go('/provider/profile/edit')),
+                          if (_providerProfile == null) ...[
+                            const SizedBox(height: 8),
+                            _SetupCard(onTap: () => context.push('/provider/profile/edit')),
+                          ],
                         ],
-
-                        if (!isProvider && isVerified) _buildClientTiles(context),
                       ],
                     ),
                   ),
@@ -607,19 +579,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
   }
-
-  Widget _buildClientTiles(BuildContext context) {
-    final tiles = [
-      _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse'),
-      _TileData(Icons.auto_awesome_rounded, 'For You', AppColors.secondary, '/recommended'),
-      _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings'),
-      _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites'),
-    ];
-    return _TileGrid(tiles: tiles);
-  }
 }
-
-// --- Next Booking Card (dark gradient) ---
 
 class _NextBookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -632,7 +592,6 @@ class _NextBookingCard extends StatelessWidget {
     final durationMin = booking['services']?['duration_minutes'];
     final bookingDate = booking['booking_date'] ?? '';
     final bookingTime = booking['booking_time'] ?? '';
-    final status = booking['status'] ?? 'confirmed';
     final bookingId = booking['id'];
 
     String timeDisplay = bookingTime;
@@ -666,7 +625,6 @@ class _NextBookingCard extends StatelessWidget {
           dateDisplay = '${months[date.month - 1]} ${date.day}';
         }
 
-        // Countdown
         try {
           final timeParts = bookingTime.split(':');
           final bookingDt = DateTime(date.year, date.month, date.day,
@@ -767,7 +725,7 @@ class _NextBookingCard extends StatelessWidget {
                   child: SizedBox(
                     height: 40,
                     child: OutlinedButton.icon(
-                      onPressed: () => context.go('/tracking/$bookingId'),
+                      onPressed: () => context.push('/tracking/$bookingId'),
                       icon: const Icon(Icons.navigation_outlined, size: 16),
                       label: const Text('Navigate'),
                       style: OutlinedButton.styleFrom(
@@ -785,7 +743,7 @@ class _NextBookingCard extends StatelessWidget {
                   child: SizedBox(
                     height: 40,
                     child: FilledButton.icon(
-                      onPressed: () => context.go('/chat/$bookingId'),
+                      onPressed: () => context.push('/chat/$bookingId'),
                       icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
                       label: const Text('Message'),
                       style: FilledButton.styleFrom(
@@ -806,8 +764,6 @@ class _NextBookingCard extends StatelessWidget {
     );
   }
 }
-
-// --- No Booking Empty State ---
 
 class _NoBookingCard extends StatelessWidget {
   final VoidCallback onShare;
@@ -862,8 +818,6 @@ class _NoBookingCard extends StatelessWidget {
   }
 }
 
-// --- Stats Row with colored top borders ---
-
 class _StatsRow extends StatelessWidget {
   final double weeklyEarnings;
   final double prevWeekEarnings;
@@ -879,7 +833,6 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Earnings trend
     String? earningsTrend;
     bool earningsUp = false;
     if (prevWeekEarnings > 0) {
@@ -970,8 +923,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// --- Availability Toggle ---
-
 class _AvailabilityToggle extends StatelessWidget {
   final String status;
   final ValueChanged<String> onChanged;
@@ -1036,8 +987,6 @@ class _AvailabilityToggle extends StatelessWidget {
   }
 }
 
-// --- Provider Quick Actions (two-tier) ---
-
 class _ProviderQuickActions extends StatelessWidget {
   final int pendingBookings;
   final int unreadMessages;
@@ -1049,7 +998,6 @@ class _ProviderQuickActions extends StatelessWidget {
 
     return Column(
       children: [
-        // Top row: 3 primary actions (larger)
         Row(
           children: [
             Expanded(child: _PrimaryActionTile(
@@ -1077,25 +1025,24 @@ class _ProviderQuickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        // Bottom rows: secondary actions (3 per row)
         Row(
           children: [
             Expanded(child: _SecondaryActionTile(
               icon: Icons.person_outline,
               label: 'Profile',
-              onTap: () => context.go('/provider/profile/edit'),
+              onTap: () => context.push('/provider/profile/edit'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
               icon: Icons.content_cut_rounded,
               label: 'Services',
-              onTap: () => context.go('/provider/services'),
+              onTap: () => context.push('/provider/services'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
               icon: Icons.photo_library_outlined,
               label: 'Gallery',
-              onTap: () => context.go('/provider/gallery'),
+              onTap: () => context.push('/provider/gallery'),
             )),
           ],
         ),
@@ -1105,19 +1052,19 @@ class _ProviderQuickActions extends StatelessWidget {
             Expanded(child: _SecondaryActionTile(
               icon: Icons.workspace_premium_rounded,
               label: 'Subscription',
-              onTap: () => context.go('/provider/subscription'),
+              onTap: () => context.push('/provider/subscription'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
               icon: Icons.local_offer_outlined,
               label: 'Promos',
-              onTap: () => context.go('/provider/promotions'),
+              onTap: () => context.push('/provider/promotions'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
               icon: Icons.star_outline_rounded,
               label: 'Reviews',
-              onTap: () => context.go('/provider/$uid/reviews'),
+              onTap: () => context.push('/provider/$uid/reviews'),
             )),
           ],
         ),
@@ -1257,8 +1204,6 @@ class _SecondaryActionTileState extends State<_SecondaryActionTile> {
   }
 }
 
-// --- Activity Feed ---
-
 class _ActivityFeed extends StatelessWidget {
   final List<Map<String, dynamic>> activities;
   const _ActivityFeed({required this.activities});
@@ -1391,99 +1336,6 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-// --- Client Tile Components ---
-
-class _TileData {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final String route;
-  const _TileData(this.icon, this.label, this.color, this.route);
-}
-
-class _TileGrid extends StatelessWidget {
-  final List<_TileData> tiles;
-  const _TileGrid({required this.tiles});
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossCount = constraints.maxWidth > 450 ? 4 : 3;
-        final spacing = 10.0;
-        final tileWidth = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
-        return Wrap(
-          spacing: spacing, runSpacing: 12,
-          children: tiles.map((t) => SizedBox(
-            width: tileWidth,
-            child: _DashTile(icon: t.icon, label: t.label, color: t.color, onTap: () => context.go(t.route)),
-          )).toList(),
-        );
-      },
-    );
-  }
-}
-
-class _DashTile extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  const _DashTile({required this.icon, required this.label, required this.color, required this.onTap});
-  @override
-  State<_DashTile> createState() => _DashTileState();
-}
-
-class _DashTileState extends State<_DashTile> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: _hovering ? widget.color.withValues(alpha: 0.08) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200),
-            boxShadow: _hovering
-                ? [BoxShadow(color: widget.color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
-                : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: _hovering ? 48 : 44, height: _hovering ? 48 : 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [widget.color.withValues(alpha: _hovering ? 0.2 : 0.12), widget.color.withValues(alpha: _hovering ? 0.1 : 0.05)],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(widget.icon, color: widget.color, size: _hovering ? 24 : 22),
-              ),
-              const SizedBox(height: 8),
-              Text(widget.label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _hovering ? widget.color : AppColors.textPrimary, height: 1.2)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// --- Supporting Widgets ---
-
 class _WarningBanner extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
@@ -1578,23 +1430,6 @@ class _VerificationBanner extends StatelessWidget {
           Icon(Icons.chevron_right, color: bannerColor, size: 18),
         ]),
       ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final bool isPositive;
-  const _Badge({required this.label, this.isPositive = false});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: isPositive ? AppColors.success.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
     );
   }
 }
