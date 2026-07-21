@@ -789,7 +789,7 @@ class _StatsRow extends StatelessWidget {
         Expanded(child: _StatCard(
           topColor: AppColors.success,
           label: 'THIS WEEK',
-          value: 'R${weeklyEarnings.toStringAsFixed(0)}',
+          value: '\$${weeklyEarnings.toStringAsFixed(0)}',
           subtitle: earningsTrend,
           subtitleColor: earningsUp ? AppColors.success : AppColors.error,
         )),
@@ -1195,8 +1195,8 @@ class _ActivityItem extends StatelessWidget {
       final clientName = data['bookings']?['profiles']?['full_name'] ?? '';
       final serviceName = data['bookings']?['services']?['service_name'] ?? 'Service';
       title = 'Payment received';
-      subtitle = 'R${amount.toStringAsFixed(0)} for $serviceName${clientName.isNotEmpty ? ' from $clientName' : ''}';
-      trailing = Text('+R${amount.toStringAsFixed(0)}', style: TextStyle(
+      subtitle = '\$${amount.toStringAsFixed(0)} for $serviceName${clientName.isNotEmpty ? ' from $clientName' : ''}';
+      trailing = Text('+\$${amount.toStringAsFixed(0)}', style: TextStyle(
         fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.success,
       ));
     } else {

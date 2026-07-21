@@ -55662,7 +55662,7 @@ k=r?"\u2191":"\u2193"
 q=k+" "+B.e.a8(Math.abs(s),0)+"%"}else{q=l
 r=!1}k=B.e.a8(m.c,0)
 p=r?B.Q:B.N
-p=A.b6(new A.Cy(B.Q,"THIS WEEK","R"+k,q,p,l),1)
+p=A.b6(new A.Cy(B.Q,"THIS WEEK","$"+k,q,p,l),1)
 k=m.f
 k=k>0?""+k+" pending":l
 k=A.b6(new A.Cy(B.av,"BOOKINGS",""+m.e,k,B.a8,l),1)
@@ -55814,8 +55814,8 @@ h=a3}if(h==null)h="Service"
 a3=B.e.a8(j,0)
 a4=A.h(h)
 g=J.dn(i)?" from "+A.h(i):""
-m="R"+a3+" for "+a4+g
-a9=A.G("+R"+B.e.a8(j,0),d,d,d,d,d,A.bc(d,d,B.Q,d,d,d,d,d,d,d,d,14,d,d,B.ap,d,d,!0,d,d,d,d,d,d,d,d),d,d,d)
+m="$"+a3+" for "+a4+g
+a9=A.G("+$"+B.e.a8(j,0),d,d,d,d,d,A.bc(d,d,B.Q,d,d,d,d,d,d,d,d,14,d,d,B.ap,d,d,!0,d,d,d,d,d,d,d,d),d,d,d)
 l=B.OX
 k=B.Q
 o="Payment received"}else{f=a3.h(a6,"status")
