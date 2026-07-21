@@ -9,18 +9,26 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _verification;
   Map<String, dynamic>? _providerProfile;
   Map<String, dynamic>? _subscription;
   bool _isAdmin = false;
   bool _loading = true;
+  late AnimationController _animCtrl;
 
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -71,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _isAdmin = isAdmin;
         _loading = false;
       });
+      _animCtrl.forward();
     }
   }
 
@@ -82,7 +91,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 40, height: 40,
+                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary),
+              ),
+              const SizedBox(height: 16),
+              Text('Loading...', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+            ],
+          ),
+        ),
+      );
     }
 
     final name       = _profile?['full_name'] ?? 'User';
@@ -96,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Gradient app bar
           SliverAppBar(
             expandedHeight: 180,
             pinned: true,
@@ -127,8 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       children: [
                         Container(
-                          width: 52,
-                          height: 52,
+                          width: 52, height: 52,
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
@@ -165,127 +186,66 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Body
           SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Verification banner
-                      if (!isVerified) ...[
-                        _VerificationBanner(
-                          status: vStatus,
-                          onTap: () {
-                            if (vStatus == null || vStatus == 'rejected') {
-                              context.go('/verify');
-                            } else {
-                              context.go('/verify/pending');
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Provider dashboard
-                      if (isProvider && isVerified) ...[
-                        // Availability
-                        if (_providerProfile != null) ...[
-                          _AvailabilityCard(
-                            status: _providerProfile!['availability_status'],
-                            onChanged: (newStatus) async {
-                              await supabase
-                                  .from('provider_profiles')
-                                  .update({'availability_status': newStatus})
-                                  .eq('provider_id', supabase.auth.currentUser!.id);
-                              setState(() =>
-                                  _providerProfile!['availability_status'] = newStatus);
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isVerified) ...[
+                          _VerificationBanner(
+                            status: vStatus,
+                            onTap: () {
+                              if (vStatus == null || vStatus == 'rejected') {
+                                context.go('/verify');
+                              } else {
+                                context.go('/verify/pending');
+                              }
                             },
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                         ],
 
-                        // Subscription warning
-                        if (!hasActiveSubscription) ...[
-                          _WarningBanner(
-                            text: 'No active subscription — your profile is hidden.',
-                            onTap: () => context.go('/provider/subscription'),
-                          ),
-                          const SizedBox(height: 12),
+                        if (isProvider && isVerified) ...[
+                          if (_providerProfile != null) ...[
+                            _AvailabilityCard(
+                              status: _providerProfile!['availability_status'],
+                              onChanged: (newStatus) async {
+                                await supabase
+                                    .from('provider_profiles')
+                                    .update({'availability_status': newStatus})
+                                    .eq('provider_id', supabase.auth.currentUser!.id);
+                                setState(() =>
+                                    _providerProfile!['availability_status'] = newStatus);
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+
+                          if (!hasActiveSubscription) ...[
+                            _WarningBanner(
+                              text: 'No active subscription — your profile is hidden.',
+                              onTap: () => context.go('/provider/subscription'),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+
+                          _buildProviderTiles(context),
                         ],
 
-                        // Quick actions header
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, top: 4, bottom: 10),
-                          child: Text('Quick Actions',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
-                          ),
-                        ),
+                        if (isProvider && isVerified && _providerProfile == null) ...[
+                          const SizedBox(height: 8),
+                          _SetupCard(onTap: () => context.go('/provider/profile/edit')),
+                        ],
 
-                        // Dashboard tiles - 2 column grid
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            _DashTile(icon: Icons.person_outline, label: 'Edit Profile', color: AppColors.info, onTap: () => context.go('/provider/profile/edit')),
-                            _DashTile(icon: Icons.content_cut_rounded, label: 'My Services', color: AppColors.secondary, onTap: () => context.go('/provider/services')),
-                            _DashTile(icon: Icons.photo_library_outlined, label: 'Gallery', color: AppColors.accent, onTap: () => context.go('/provider/gallery')),
-                            _DashTile(icon: Icons.calendar_month_rounded, label: 'Bookings', color: AppColors.warning, onTap: () => context.go('/provider/bookings')),
-                            _DashTile(icon: Icons.workspace_premium_rounded, label: 'Subscription', color: AppColors.success, onTap: () => context.go('/provider/subscription')),
-                            _DashTile(icon: Icons.account_balance_wallet_rounded, label: 'Earnings', color: AppColors.success, onTap: () => context.go('/earnings')),
-                            _DashTile(icon: Icons.public_outlined, label: 'Public Profile', color: AppColors.info, onTap: () => context.go('/provider/${supabase.auth.currentUser!.id}')),
-                          ],
-                        ),
+                        if (!isProvider && isVerified) _buildClientTiles(context),
                       ],
-
-                      // Provider not yet set up
-                      if (isProvider && isVerified && _providerProfile == null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.info.withValues(alpha: 0.06),
-                            borderRadius: AppRadius.lgAll,
-                            border: Border.all(color: AppColors.info.withValues(alpha: 0.15)),
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              Icon(Icons.rocket_launch_rounded, size: 36, color: AppColors.info),
-                              const SizedBox(height: 10),
-                              const Text('Complete your provider profile to appear in search results.',
-                                  textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-                              const SizedBox(height: 12),
-                              FilledButton(
-                                onPressed: () => context.go('/provider/profile/edit'),
-                                child: const Text('Set Up Profile'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      // Client home
-                      if (!isProvider && isVerified) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 10),
-                          child: Text('What would you like to do?',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
-                          ),
-                        ),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            _DashTile(icon: Icons.search_rounded, label: 'Browse Stylists', color: AppColors.primary, onTap: () => context.go('/browse')),
-                            _DashTile(icon: Icons.calendar_today_outlined, label: 'My Bookings', color: AppColors.info, onTap: () => context.go('/client/bookings')),
-                            _DashTile(icon: Icons.favorite_rounded, label: 'Favourites', color: AppColors.error, onTap: () => context.go('/favorites')),
-                          ],
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -295,9 +255,72 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildProviderTiles(BuildContext context) {
+    final tiles = [
+      _TileData(Icons.person_outline, 'Edit Profile', AppColors.info, '/provider/profile/edit'),
+      _TileData(Icons.content_cut_rounded, 'My Services', AppColors.secondary, '/provider/services'),
+      _TileData(Icons.photo_library_outlined, 'Gallery', AppColors.accent, '/provider/gallery'),
+      _TileData(Icons.calendar_month_rounded, 'Bookings', AppColors.warning, '/provider/bookings'),
+      _TileData(Icons.workspace_premium_rounded, 'Subscription', AppColors.success, '/provider/subscription'),
+      _TileData(Icons.account_balance_wallet_rounded, 'Earnings', const Color(0xFF0EA5E9), '/earnings'),
+      _TileData(Icons.public_outlined, 'Public Profile', AppColors.primary, '/provider/${supabase.auth.currentUser!.id}'),
+      _TileData(Icons.star_rounded, 'Reviews', const Color(0xFFD97706), '/provider/${supabase.auth.currentUser!.id}/reviews'),
+    ];
+
+    return _TileGrid(tiles: tiles);
+  }
+
+  Widget _buildClientTiles(BuildContext context) {
+    final tiles = [
+      _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse'),
+      _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings'),
+      _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites'),
+    ];
+
+    return _TileGrid(tiles: tiles);
+  }
 }
 
-class _DashTile extends StatelessWidget {
+class _TileData {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String route;
+  const _TileData(this.icon, this.label, this.color, this.route);
+}
+
+class _TileGrid extends StatelessWidget {
+  final List<_TileData> tiles;
+  const _TileGrid({required this.tiles});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossCount = constraints.maxWidth > 450 ? 4 : 3;
+        final spacing = 10.0;
+        final tileWidth = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: 12,
+          children: tiles.map((t) => SizedBox(
+            width: tileWidth,
+            child: _DashTile(
+              icon: t.icon,
+              label: t.label,
+              color: t.color,
+              onTap: () => context.go(t.route),
+            ),
+          )).toList(),
+        );
+      },
+    );
+  }
+}
+
+class _DashTile extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -305,49 +328,70 @@ class _DashTile extends StatelessWidget {
   const _DashTile({required this.icon, required this.label, required this.color, required this.onTap});
 
   @override
+  State<_DashTile> createState() => _DashTileState();
+}
+
+class _DashTileState extends State<_DashTile> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - 10) / 2;
-        return SizedBox(
-          width: tileWidth,
-          height: 100,
-          child: Material(
-            color: Colors.white,
-            borderRadius: AppRadius.mdAll,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.mdAll,
-              child: Container(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: _hovering ? widget.color.withValues(alpha: 0.08) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200,
+            ),
+            boxShadow: _hovering
+                ? [BoxShadow(color: widget.color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
+                : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  borderRadius: AppRadius.mdAll,
-                  border: Border.all(color: Colors.grey.shade200),
+                  gradient: LinearGradient(
+                    colors: [
+                      widget.color.withValues(alpha: _hovering ? 0.2 : 0.12),
+                      widget.color.withValues(alpha: _hovering ? 0.1 : 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: AppRadius.smAll,
-                      ),
-                      child: Icon(icon, color: color, size: 20),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                    ),
-                  ],
+                child: Icon(widget.icon, color: widget.color, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: _hovering ? widget.color : AppColors.textPrimary,
+                  height: 1.2,
                 ),
               ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -380,10 +424,24 @@ class _AvailabilityCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Icon(statusIcon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 14)),
-          const Spacer(),
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(statusIcon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Your Status', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textTertiary, letterSpacing: 0.3)),
+                Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 14)),
+              ],
+            ),
+          ),
           PopupMenuButton<String>(
             onSelected: onChanged,
             shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
@@ -393,8 +451,11 @@ class _AvailabilityCard extends StatelessWidget {
               PopupMenuItem(value: 'offline', child: Row(children: [Icon(Icons.cancel_rounded, color: AppColors.offline, size: 18), const SizedBox(width: 8), const Text('Offline')])),
             ],
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: AppRadius.smAll),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -433,6 +494,33 @@ class _WarningBanner extends StatelessWidget {
           Expanded(child: Text(text, style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w500))),
           Icon(Icons.chevron_right, color: AppColors.error, size: 18),
         ]),
+      ),
+    );
+  }
+}
+
+class _SetupCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SetupCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: 0.06),
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.15)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Icon(Icons.rocket_launch_rounded, size: 36, color: AppColors.info),
+          const SizedBox(height: 10),
+          const Text('Complete your provider profile to appear in search results.',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: onTap, child: const Text('Set Up Profile')),
+        ],
       ),
     );
   }
