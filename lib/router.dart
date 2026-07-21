@@ -5,6 +5,10 @@ import 'screens/home_screen.dart';
 import 'screens/verification_upload_screen.dart';
 import 'screens/verification_pending_screen.dart';
 import 'screens/admin_verification_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_users_screen.dart';
+import 'screens/admin_bookings_screen.dart';
+import 'screens/admin_analytics_screen.dart';
 import 'screens/provider_profile_editor_screen.dart';
 import 'screens/service_management_screen.dart';
 import 'screens/gallery_management_screen.dart';
@@ -69,7 +73,11 @@ final appRouter = GoRouter(
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/verify', builder: (_, __) => const VerificationUploadScreen()),
     GoRoute(path: '/verify/pending', builder: (_, __) => const VerificationPendingScreen()),
-    GoRoute(path: '/admin/verify',   builder: (_, __) => const AdminVerificationScreen()),
+    GoRoute(path: '/admin/verify',     builder: (_, __) => const AdminVerificationScreen()),
+    GoRoute(path: '/admin/dashboard', builder: (_, __) => const AdminDashboardScreen()),
+    GoRoute(path: '/admin/users',     builder: (_, __) => const AdminUsersScreen()),
+    GoRoute(path: '/admin/bookings',  builder: (_, __) => const AdminBookingsScreen()),
+    GoRoute(path: '/admin/analytics', builder: (_, __) => const AdminAnalyticsScreen()),
 
     // ─────────────────────────────────────────────────────────────
     // Provider Management (Stage 3)

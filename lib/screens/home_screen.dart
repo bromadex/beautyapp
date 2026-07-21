@@ -393,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 IconButton(
                   icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
                   tooltip: 'Admin Panel',
-                  onPressed: () => context.go('/admin/verify'),
+                  onPressed: () => context.go('/admin/dashboard'),
                 ),
               Stack(
                 children: [
