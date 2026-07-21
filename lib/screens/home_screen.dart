@@ -336,6 +336,7 @@ class _DashTileState extends State<_DashTile> {
 
   @override
   Widget build(BuildContext context) {
+    final c = widget.color;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -344,51 +345,75 @@ class _DashTileState extends State<_DashTile> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: _hovering ? widget.color.withValues(alpha: 0.08) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200,
+              color: _hovering ? c.withValues(alpha: 0.4) : Colors.grey.shade200,
             ),
-            boxShadow: _hovering
-                ? [BoxShadow(color: widget.color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
-                : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      widget.color.withValues(alpha: _hovering ? 0.2 : 0.12),
-                      widget.color.withValues(alpha: _hovering ? 0.1 : 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(widget.icon, color: widget.color, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: _hovering ? widget.color : AppColors.textPrimary,
-                  height: 1.2,
-                ),
-              ),
+            boxShadow: [
+              if (_hovering)
+                BoxShadow(color: c.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 6))
+              else
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Stack(
+              children: [
+                // Colored accent bar at top
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: _hovering ? 4 : 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [c, c.withValues(alpha: 0.5)],
+                      ),
+                    ),
+                  ),
+                ),
+                // Content
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 18, 8, 14),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: _hovering ? 48 : 44,
+                        height: _hovering ? 48 : 44,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [c.withValues(alpha: 0.15), c.withValues(alpha: 0.06)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(color: c.withValues(alpha: 0.1)),
+                        ),
+                        child: Icon(widget.icon, color: c, size: _hovering ? 24 : 22),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.label,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _hovering ? c : AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
