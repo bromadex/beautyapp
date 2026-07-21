@@ -219,20 +219,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         // Quick actions header
                         Padding(
-                          padding: const EdgeInsets.only(left: 4, top: 4, bottom: 8),
+                          padding: const EdgeInsets.only(left: 4, top: 4, bottom: 10),
                           child: Text('Quick Actions',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
                           ),
                         ),
 
-                        // Dashboard list tiles
-                        _ActionTile(icon: Icons.person_outline, label: 'Edit Profile', subtitle: 'Update your bio and details', color: AppColors.info, onTap: () => context.go('/provider/profile/edit')),
-                        _ActionTile(icon: Icons.content_cut_rounded, label: 'My Services', subtitle: 'Manage your service offerings', color: AppColors.secondary, onTap: () => context.go('/provider/services')),
-                        _ActionTile(icon: Icons.photo_library_outlined, label: 'Gallery', subtitle: 'Showcase your work', color: AppColors.accent, onTap: () => context.go('/provider/gallery')),
-                        _ActionTile(icon: Icons.calendar_month_rounded, label: 'Bookings', subtitle: 'View and manage appointments', color: AppColors.warning, onTap: () => context.go('/provider/bookings')),
-                        _ActionTile(icon: Icons.workspace_premium_rounded, label: 'Subscription', subtitle: 'Manage your plan', color: AppColors.success, onTap: () => context.go('/provider/subscription')),
-                        _ActionTile(icon: Icons.account_balance_wallet_rounded, label: 'My Earnings', subtitle: 'Track your income', color: AppColors.success, onTap: () => context.go('/earnings')),
-                        _ActionTile(icon: Icons.public_outlined, label: 'My Public Profile', subtitle: 'See how clients view you', color: AppColors.info, onTap: () => context.go('/provider/${supabase.auth.currentUser!.id}')),
+                        // Dashboard tiles - 2 column grid
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _DashTile(icon: Icons.person_outline, label: 'Edit Profile', color: AppColors.info, onTap: () => context.go('/provider/profile/edit')),
+                            _DashTile(icon: Icons.content_cut_rounded, label: 'My Services', color: AppColors.secondary, onTap: () => context.go('/provider/services')),
+                            _DashTile(icon: Icons.photo_library_outlined, label: 'Gallery', color: AppColors.accent, onTap: () => context.go('/provider/gallery')),
+                            _DashTile(icon: Icons.calendar_month_rounded, label: 'Bookings', color: AppColors.warning, onTap: () => context.go('/provider/bookings')),
+                            _DashTile(icon: Icons.workspace_premium_rounded, label: 'Subscription', color: AppColors.success, onTap: () => context.go('/provider/subscription')),
+                            _DashTile(icon: Icons.account_balance_wallet_rounded, label: 'Earnings', color: AppColors.success, onTap: () => context.go('/earnings')),
+                            _DashTile(icon: Icons.public_outlined, label: 'Public Profile', color: AppColors.info, onTap: () => context.go('/provider/${supabase.auth.currentUser!.id}')),
+                          ],
+                        ),
                       ],
 
                       // Provider not yet set up
@@ -264,14 +270,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Client home
                       if (!isProvider && isVerified) ...[
                         Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 8),
+                          padding: const EdgeInsets.only(left: 4, bottom: 10),
                           child: Text('What would you like to do?',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5),
                           ),
                         ),
-                        _ActionTile(icon: Icons.search_rounded, label: 'Browse Stylists', subtitle: 'Find your perfect beauty professional', color: AppColors.primary, onTap: () => context.go('/browse')),
-                        _ActionTile(icon: Icons.calendar_today_outlined, label: 'My Bookings', subtitle: 'View upcoming and past appointments', color: AppColors.info, onTap: () => context.go('/client/bookings')),
-                        _ActionTile(icon: Icons.favorite_rounded, label: 'Favourite Stylists', subtitle: 'Quick access to saved professionals', color: AppColors.error, onTap: () => context.go('/favorites')),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _DashTile(icon: Icons.search_rounded, label: 'Browse Stylists', color: AppColors.primary, onTap: () => context.go('/browse')),
+                            _DashTile(icon: Icons.calendar_today_outlined, label: 'My Bookings', color: AppColors.info, onTap: () => context.go('/client/bookings')),
+                            _DashTile(icon: Icons.favorite_rounded, label: 'Favourites', color: AppColors.error, onTap: () => context.go('/favorites')),
+                          ],
+                        ),
                       ],
                     ],
                   ),
@@ -285,58 +297,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Compact list-style action tile
-class _ActionTile extends StatelessWidget {
+class _DashTile extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String subtitle;
   final Color color;
   final VoidCallback onTap;
-  const _ActionTile({required this.icon, required this.label, required this.subtitle, required this.color, required this.onTap});
+  const _DashTile({required this.icon, required this.label, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.white,
-        borderRadius: AppRadius.mdAll,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.mdAll,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - 10) / 2;
+        return SizedBox(
+          width: tileWidth,
+          height: 100,
+          child: Material(
+            color: Colors.white,
+            borderRadius: AppRadius.mdAll,
+            child: InkWell(
+              onTap: onTap,
               borderRadius: AppRadius.mdAll,
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: AppRadius.smAll,
-                  ),
-                  child: Icon(icon, color: color, size: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(color: Colors.grey.shade200),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: AppRadius.smAll,
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                  ],
                 ),
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
