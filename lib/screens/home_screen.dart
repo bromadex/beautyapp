@@ -360,8 +360,8 @@ class _DashTileState extends State<_DashTile> {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 44,
-                height: 44,
+                width: _hovering ? 48 : 44,
+                height: _hovering ? 48 : 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -373,7 +373,7 @@ class _DashTileState extends State<_DashTile> {
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(widget.icon, color: widget.color, size: 22),
+                child: Icon(widget.icon, color: widget.color, size: _hovering ? 24 : 22),
               ),
               const SizedBox(height: 8),
               Text(
