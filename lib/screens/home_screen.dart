@@ -611,6 +611,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildClientTiles(BuildContext context) {
     final tiles = [
       _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse'),
+      _TileData(Icons.auto_awesome_rounded, 'For You', AppColors.secondary, '/recommended'),
       _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings'),
       _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites'),
     ];
