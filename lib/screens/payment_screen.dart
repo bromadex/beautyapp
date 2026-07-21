@@ -65,7 +65,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  double get _amount => (_service?['price'] as num?)?.toDouble() ?? 0.0;
+  double get _amount =>
+      (_booking?['total_price'] as num?)?.toDouble() ??
+      (_service?['price'] as num?)?.toDouble() ??
+      0.0;
+  double get _originalPrice =>
+      (_service?['price'] as num?)?.toDouble() ?? 0.0;
+  double get _discountAmount =>
+      (_booking?['discount_amount'] as num?)?.toDouble() ?? 0.0;
   double get _fee => AppConfig.calculatePlatformFee(_amount);
   double get _providerEarnings => AppConfig.calculateProviderEarnings(_amount);
 
@@ -310,8 +317,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                   _SummaryRow(
                     label: 'Service Price',
-                    value: '\$${_amount.toStringAsFixed(2)}',
+                    value: '\$${_originalPrice.toStringAsFixed(2)}',
                   ),
+                  if (_discountAmount > 0)
+                    _SummaryRow(
+                      label: 'Discount${_booking?['promo_code'] != null ? ' (${_booking!['promo_code']})' : ''}',
+                      value: '-\$${_discountAmount.toStringAsFixed(2)}',
+                      valueColor: AppColors.success,
+                    ),
                   _SummaryRow(
                     label: 'Platform Fee (10%)',
                     value: '\$${_fee.toStringAsFixed(2)}',

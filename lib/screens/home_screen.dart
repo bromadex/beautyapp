@@ -1068,7 +1068,7 @@ class _ProviderQuickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        // Bottom row: secondary actions
+        // Bottom rows: secondary actions (3 per row)
         Row(
           children: [
             Expanded(child: _SecondaryActionTile(
@@ -1088,11 +1088,21 @@ class _ProviderQuickActions extends StatelessWidget {
               label: 'Gallery',
               onTap: () => context.go('/provider/gallery'),
             )),
-            const SizedBox(width: 8),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
             Expanded(child: _SecondaryActionTile(
               icon: Icons.workspace_premium_rounded,
               label: 'Subscription',
               onTap: () => context.go('/provider/subscription'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.local_offer_outlined,
+              label: 'Promos',
+              onTap: () => context.go('/provider/promotions'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
