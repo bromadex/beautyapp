@@ -51,19 +51,50 @@ class _BrowseScreenState extends State<BrowseScreen> {
   Future<void> _loadProviders() async {
     setState(() => _loading = true);
 
-    // Load providers with their profiles and services
-    final data = await supabase
-        .from('provider_profiles')
-        .select('*, profiles(full_name, location), '
-            'services(id, price, category_id, is_active), '
-            'subscriptions:subscriptions!subscriptions_provider_id_fkey(status)')
-        .eq('is_hidden', false);
+    try {
+      final data = await supabase
+          .from('provider_profiles')
+          .select('*, profiles(full_name, location)')
+          .eq('is_hidden', false);
 
-    if (mounted) {
-      setState(() {
-        _providers = List<Map<String, dynamic>>.from(data);
-        _loading = false;
-      });
+      final providers = List<Map<String, dynamic>>.from(data);
+
+      // Fetch services and subscriptions separately per provider
+      for (final p in providers) {
+        final pid = p['provider_id'];
+        try {
+          final services = await supabase
+              .from('services')
+              .select('id, price, category_id, is_active')
+              .eq('provider_id', pid);
+          p['services'] = services;
+        } catch (_) {
+          p['services'] = [];
+        }
+        try {
+          final subs = await supabase
+              .from('subscriptions')
+              .select('status')
+              .eq('provider_id', pid);
+          p['subscriptions'] = subs;
+        } catch (_) {
+          p['subscriptions'] = [];
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _providers = providers;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading providers: $e')),
+        );
+      }
     }
   }
 
