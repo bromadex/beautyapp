@@ -108,12 +108,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       final services = p['services'] as List? ?? [];
       final subs = p['subscriptions'];
 
-      // Hide providers without active subscription
-      bool hasActiveSub = false;
-      if (subs is List && subs.isNotEmpty) {
-        hasActiveSub = subs.any((s) => s['status'] == 'active');
-      }
-      if (!hasActiveSub) return false;
+      // Show all providers (subscription check removed for now)
 
       // Search by name or location
       if (query.isNotEmpty) {
