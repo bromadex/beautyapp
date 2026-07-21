@@ -24,8 +24,15 @@ class _BookingScreenState extends State<BookingScreen> {
 
   final _addressCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _promoCtrl = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+
+  // Promo code state
+  Map<String, dynamic>? _appliedPromo;
+  double _discountAmount = 0;
+  bool _applyingPromo = false;
+  String? _promoError;
 
   @override
   void initState() {
@@ -126,6 +133,93 @@ class _BookingScreenState extends State<BookingScreen> {
     return false;
   }
 
+  double get _servicePrice =>
+      (_service?['price'] as num?)?.toDouble() ?? 0;
+
+  double get _totalPrice => (_servicePrice - _discountAmount).clamp(0, double.infinity);
+
+  Future<void> _applyPromo() async {
+    final code = _promoCtrl.text.trim().toUpperCase();
+    if (code.isEmpty) return;
+
+    setState(() {
+      _applyingPromo = true;
+      _promoError = null;
+      _appliedPromo = null;
+      _discountAmount = 0;
+    });
+
+    try {
+      final results = await supabase
+          .from('promotions')
+          .select()
+          .eq('provider_id', widget.providerId)
+          .ilike('code', code)
+          .eq('is_active', true)
+          .limit(1);
+
+      if (results.isEmpty) {
+        setState(() => _promoError = 'Invalid promo code');
+        return;
+      }
+
+      final promo = results[0] as Map<String, dynamic>;
+
+      // Check expiry
+      if (promo['valid_until'] != null) {
+        final validUntil = DateTime.parse(promo['valid_until']);
+        if (validUntil.isBefore(DateTime.now())) {
+          setState(() => _promoError = 'This promo code has expired');
+          return;
+        }
+      }
+
+      // Check max uses
+      if (promo['max_uses'] != null &&
+          (promo['used_count'] ?? 0) >= promo['max_uses']) {
+        setState(() => _promoError = 'This promo code has reached its limit');
+        return;
+      }
+
+      // Check min order amount
+      final minOrder =
+          (promo['min_order_amount'] as num?)?.toDouble() ?? 0;
+      if (_servicePrice < minOrder) {
+        setState(() => _promoError =
+            'Min order \$${minOrder.toStringAsFixed(0)} required');
+        return;
+      }
+
+      // Calculate discount
+      double discount;
+      if (promo['discount_type'] == 'percentage') {
+        discount =
+            _servicePrice * (promo['discount_value'] as num).toDouble() / 100;
+      } else {
+        discount = (promo['discount_value'] as num).toDouble();
+      }
+      discount = discount.clamp(0, _servicePrice);
+
+      setState(() {
+        _appliedPromo = promo;
+        _discountAmount = discount;
+      });
+    } catch (e) {
+      setState(() => _promoError = 'Error applying promo code');
+    } finally {
+      if (mounted) setState(() => _applyingPromo = false);
+    }
+  }
+
+  void _removePromo() {
+    setState(() {
+      _appliedPromo = null;
+      _discountAmount = 0;
+      _promoCtrl.clear();
+      _promoError = null;
+    });
+  }
+
   Future<void> _confirmBooking() async {
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -199,10 +293,19 @@ class _BookingScreenState extends State<BookingScreen> {
         'booking_time': bookingDateTime.toIso8601String(),
         'address': _addressCtrl.text.trim(),
         'status': 'pending',
-        'total_price': _service!['price'],
+        'total_price': _totalPrice,
+        'discount_amount': _discountAmount,
+        'promo_code': _appliedPromo?['code'],
         'client_note':
             _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       });
+
+      // Increment promo used_count
+      if (_appliedPromo != null) {
+        await supabase.from('promotions').update({
+          'used_count': (_appliedPromo!['used_count'] ?? 0) + 1,
+        }).eq('id', _appliedPromo!['id']);
+      }
 
       if (mounted) {
         showDialog(
@@ -252,6 +355,7 @@ class _BookingScreenState extends State<BookingScreen> {
   void dispose() {
     _addressCtrl.dispose();
     _noteCtrl.dispose();
+    _promoCtrl.dispose();
     super.dispose();
   }
 
@@ -433,7 +537,100 @@ class _BookingScreenState extends State<BookingScreen> {
               maxLines: 3,
             ),
 
-            const SizedBox(height: AppSpacing.xxxl),
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Promo code section
+            Text('Promo Code', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            if (_appliedPromo != null)
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.05),
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: AppRadius.smAll,
+                      ),
+                      child: const Icon(Icons.check_circle_rounded,
+                          color: AppColors.success, size: 18),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _appliedPromo!['code'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          Text(
+                            '-\$${_discountAmount.toStringAsFixed(2)} discount applied',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.success),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _removePromo,
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: AppColors.textTertiary,
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _promoCtrl,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        hintText: 'Enter promo code',
+                        prefixIcon:
+                            const Icon(Icons.confirmation_number_outlined),
+                        errorText: _promoError,
+                        border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  SizedBox(
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: _applyingPromo ? null : _applyPromo,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.mdAll),
+                      ),
+                      child: _applyingPromo
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Apply'),
+                    ),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: AppSpacing.xxl),
 
             // Price summary card
             Container(
@@ -449,10 +646,35 @@ class _BookingScreenState extends State<BookingScreen> {
                   children: [
                     Text('Service',
                         style: Theme.of(context).textTheme.bodyMedium),
-                    Text('\$${_service!['price']}',
+                    Text('\$${_servicePrice.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.bodyLarge),
                   ],
                 ),
+                if (_discountAmount > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_offer_outlined,
+                              size: 14, color: AppColors.success),
+                          const SizedBox(width: 4),
+                          Text('Discount (${_appliedPromo!['code']})',
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppColors.success)),
+                        ],
+                      ),
+                      Text(
+                        '-\$${_discountAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 Divider(
                   height: AppSpacing.xxl,
                   color: Colors.grey.shade200,
@@ -462,13 +684,24 @@ class _BookingScreenState extends State<BookingScreen> {
                   children: [
                     Text('Total',
                         style: Theme.of(context).textTheme.titleMedium),
-                    Text('\$${_service!['price']}',
+                    Text('\$${_totalPrice.toStringAsFixed(2)}',
                         style: Theme.of(context)
                             .textTheme
                             .titleLarge
                             ?.copyWith(color: AppColors.primary)),
                   ],
                 ),
+                if (_discountAmount > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'You save \$${_discountAmount.toStringAsFixed(2)}!',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.xs),
                 Text('Payment collected at time of service',
                     style: Theme.of(context).textTheme.bodySmall),
