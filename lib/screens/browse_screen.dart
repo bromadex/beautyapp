@@ -55,7 +55,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       final data = await supabase
           .from('provider_profiles')
           .select('*, profiles(full_name, location)')
-          .eq('is_hidden', false);
+          .or('is_hidden.eq.false,is_hidden.is.null');
 
       final providers = List<Map<String, dynamic>>.from(data);
 
