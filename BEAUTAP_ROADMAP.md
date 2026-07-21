@@ -1,6 +1,7 @@
 # BeauTap — Development Roadmap
 
 > Agreed plan based on brainstorm review — July 2026
+> Tightened with Kimi review — July 2026
 > Stack: Flutter + Supabase | Target: Zimbabwe (mobile-first)
 
 ---
@@ -82,6 +83,11 @@ No Shell (full screen):
 - Sub-screens: `context.pop()` → returns to parent tab
 - After payment/review/booking: `context.go()` to relevant bookings tab
 - Login → home: `context.go('/home')` clears auth stack
+- Logout: `context.go('/login')` — clears shell and entire nav stack, no back navigation to authenticated screens
+
+**Root redirect (`/`):**
+- `/` redirects based on auth + role: not logged in → `/login`, provider → `/home` (ProviderShell), client → `/home` (ClientShell)
+- Fixes `GoException: no routes for /` crash
 
 **Files to create:**
 - `lib/screens/client_home_screen.dart`
@@ -99,6 +105,13 @@ No Shell (full screen):
 
 **Goal:** New identity across the entire app.
 
+**Important sequencing:** Do the rebrand AFTER the first debug APK works (Stage 18). If the APK build breaks, you'll know whether it's the rebrand or the mobile build itself. **Exception:** Change package name to `com.beautap.app` immediately in Stage 17a — this is irreversible once published to Play Store, so set it early.
+
+**Stage 17a (before APK):**
+- Change package name to `com.beautap.app` (Android `build.gradle` + manifest)
+
+**Stage 17b (after APK proven working):**
+
 **Color Palette:**
 | Role | Color | Hex |
 |------|-------|-----|
@@ -113,7 +126,6 @@ No Shell (full screen):
 **Changes:**
 - Update `lib/theme.dart` — new AppColors, gradients, AppTheme
 - Update app name everywhere: `pubspec.yaml`, `index.html`, Android `strings.xml`
-- Change package name to `com.beautap.app` (Android `build.gradle` + manifest)
 - Update all hardcoded "Beauty Home Services" strings to "BeauTap"
 - Add tagline: "Beauty at your fingertips"
 - Splash screen: Deep Rose background + white BeauTap text (using `flutter_native_splash`)
@@ -140,8 +152,10 @@ flutter_native_splash: ^2.x
 
 **Goal:** Working debug APK on a real Android phone.
 
+**Note:** Same Flutter codebase — this is a cross-platform project, not a separate mobile project. `flutter build apk` compiles from the same `lib/` source. Web-specific packages (e.g., `flutter_web_plugins`) are conditionally imported and don't break APK builds.
+
 **Pre-build checklist:**
-- Package name set to `com.beautap.app`
+- Package name set to `com.beautap.app` (done in Stage 17a)
 - App icon configured (placeholder OK)
 - Splash screen configured
 - Min SDK set to 21 (Android 5.0+)
@@ -151,6 +165,7 @@ flutter_native_splash: ^2.x
   - `CAMERA`
   - `READ_EXTERNAL_STORAGE`
   - `POST_NOTIFICATIONS`
+  - `FOREGROUND_SERVICE` (required for GPS tracking — "I'm On My Way" feature)
 
 **Build commands:**
 ```bash
@@ -162,10 +177,11 @@ flutter build apk --split-per-abi  # smaller APKs per architecture
 **Testing plan:**
 - Install on own phone
 - Complete full booking flow end-to-end
-- Test GPS/location on mobile
+- Test GPS/location on mobile (native GPS differs from browser geolocation — different accuracy and permission flows)
 - Test camera for verification
 - Test back button behavior on every screen
 - Test app kill + reopen (session persistence)
+- Test "I'm On My Way" button — browser geolocation vs native GPS may behave differently
 - Give APK to 1-2 friends, watch them use it
 - Fix all mobile-specific bugs found
 
@@ -243,8 +259,10 @@ ALTER TABLE payments
 
 **External dependencies:**
 - Paynow merchant account registration (paynow.co.zw)
-- Sandbox Integration ID + Key (available immediately)
+- Sandbox Integration ID + Key (available immediately — start sandbox integration early in this stage, don't wait for production credentials)
 - Production credentials (after merchant approval, 2-4 weeks)
+
+**Edge case:** Paynow USSD push requires the client's phone to be on the same network as their mobile money account. If the client is on WiFi with no SIM data, the USSD push may fail. Test this scenario and show a clear fallback message.
 
 **Files to modify:**
 - `lib/screens/payment_screen.dart` — replace simulation with real Paynow flow
@@ -274,6 +292,10 @@ ALTER TABLE payments
 | **Featured** | $25/mo | Top 3 search placement + promo tools (limited slots) |
 
 **Featured tier scarcity:** Max 3 Featured providers per area. If all slots taken, waitlist. This keeps "priority in search" genuinely valuable.
+
+**Featured tier "area" definition:** Uses the provider's set service radius from Stage 6B GPS Tracking. Already in the DB, user-configurable, matches how clients search. Dense areas (Harare CBD, 5km) have more competition for slots; sparse areas (rural, 50km) have less. If provider hasn't set a radius, default to 10km with a nudge: "Set your service area to unlock Featured placement."
+
+**Upgrade flow:** Provider upgrades from Active → Featured instantly if slots available. If all 3 slots in their area are taken, they join a waitlist and get notified when a slot opens (e.g., a Featured provider downgrades or moves area).
 
 **DB changes:**
 - Update `subscriptions` table to support new tier structure
@@ -306,9 +328,12 @@ ALTER TABLE payments
 DB event → Supabase Edge Function → FCM HTTP v1 API → Device
 ```
 
+**1-hour reminder requires `pg_cron`:** Triggers 1-4 are event-driven (DB insert/update fires Edge Function), but the 1-hour reminder needs a scheduled job. Use Supabase `pg_cron` extension to run a query every 15 minutes that finds bookings starting in 45-75 minutes and sends reminders via Edge Function. Mark bookings as reminded to avoid duplicates.
+
 **DB changes:**
 ```sql
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS fcm_token TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false;
 ```
 
 **Flutter packages:**
