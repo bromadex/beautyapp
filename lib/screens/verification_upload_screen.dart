@@ -26,9 +26,8 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
   }
 
   Future<void> _pick(bool isSelfie) async {
-    final source = isSelfie ? ImageSource.camera : ImageSource.gallery;
     final XFile? picked =
-        await _picker.pickImage(source: source, imageQuality: 80);
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked == null) return;
 
     final bytes = await picked.readAsBytes();
@@ -499,13 +498,8 @@ class _PhotoCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             OutlinedButton.icon(
               onPressed: onTap,
-              icon: Icon(
-                stepNumber == 1 ? Icons.camera_alt_rounded : Icons.upload_rounded,
-                size: 18,
-              ),
-              label: Text(
-                stepNumber == 1 ? 'Open Camera' : 'Choose Photo',
-              ),
+              icon: const Icon(Icons.upload_rounded, size: 18),
+              label: const Text('Choose Photo'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: isActive ? AppColors.primary : AppColors.textSecondary,
                 side: BorderSide(
