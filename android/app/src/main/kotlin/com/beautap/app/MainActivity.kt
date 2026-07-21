@@ -1,4 +1,4 @@
-package com.example.beauty_app
+package com.beautap.app
 
 import io.flutter.embedding.android.FlutterActivity
 
