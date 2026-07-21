@@ -973,7 +973,7 @@ class _ProviderQuickActions extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        // Bottom row: 4 secondary actions (smaller)
+        // Bottom row: secondary actions
         Row(
           children: [
             Expanded(child: _SecondaryActionTile(
@@ -992,6 +992,12 @@ class _ProviderQuickActions extends StatelessWidget {
               icon: Icons.photo_library_outlined,
               label: 'Gallery',
               onTap: () => context.go('/provider/gallery'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.workspace_premium_rounded,
+              label: 'Subscription',
+              onTap: () => context.go('/provider/subscription'),
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
