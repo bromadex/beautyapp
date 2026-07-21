@@ -212,6 +212,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                           const SizedBox(height: 14),
                         ],
 
+                        if (isVerified && _profile?['is_activated'] == false) ...[
+                          _ActivationBanner(onTap: () => context.push('/activation')),
+                          const SizedBox(height: 14),
+                        ],
+
                         if (isVerified) _buildClientTiles(),
                       ],
                     ),
@@ -320,6 +325,36 @@ class _DashTileState extends State<_DashTile> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ActivationBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ActivationBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: AppColors.heroGradient,
+          borderRadius: AppRadius.mdAll,
+        ),
+        child: Row(children: [
+          const Icon(Icons.lock_open_rounded, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Activate your account for \$1 — one time — to unlock unlimited bookings.',
+              style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+        ]),
       ),
     );
   }

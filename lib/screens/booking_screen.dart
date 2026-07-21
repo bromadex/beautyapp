@@ -253,6 +253,19 @@ class _BookingScreenState extends State<BookingScreen> {
     setState(() => _submitting = true);
 
     try {
+      // Stage 19: activation gate — unactivated clients pay the one-time $1 fee first.
+      // Null (column not yet migrated) is treated as activated so the app never bricks.
+      final me = await supabase
+          .from('profiles')
+          .select('is_activated')
+          .eq('id', supabase.auth.currentUser!.id)
+          .maybeSingle();
+      if (me != null && me['is_activated'] == false) {
+        setState(() => _submitting = false);
+        if (mounted) context.push('/activation');
+        return;
+      }
+
       final pp = await supabase
           .from('provider_profiles')
           .select('availability_status')
