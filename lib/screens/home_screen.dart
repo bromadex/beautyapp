@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -40,6 +42,99 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void dispose() {
     _animCtrl.dispose();
     super.dispose();
+  }
+
+  void _shareProfile(BuildContext context) {
+    final uid = supabase.auth.currentUser!.id;
+    final profileUrl = '${Uri.base.origin}/#/provider/$uid';
+    final name = _profile?['full_name'] ?? 'my';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            const Text('Share Your Profile', style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+            )),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: AppRadius.mdAll,
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      profileUrl,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 20),
+                    color: AppColors.primary,
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: profileUrl));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Link copied to clipboard!'),
+                          backgroundColor: AppColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  SharePlus.instance.share(
+                    ShareParams(
+                      title: 'Book $name on BeautyApp',
+                      uri: Uri.parse(profileUrl),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.share_rounded, size: 18),
+                label: const Text('Share to Apps'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadData() async {
@@ -437,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             _NextBookingCard(booking: _nextBooking!)
                           else
                             _NoBookingCard(
-                              onShare: () => context.go('/provider/${supabase.auth.currentUser!.id}'),
+                              onShare: () => _shareProfile(context),
                             ),
                           const SizedBox(height: 14),
 
