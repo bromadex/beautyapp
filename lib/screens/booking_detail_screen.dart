@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 
 class BookingDetailScreen extends StatefulWidget {
@@ -110,6 +111,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     await supabase.from('bookings').update({
       'provider_arrived_at': DateTime.now().toIso8601String(),
     }).eq('id', widget.bookingId);
+    final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+    NotificationService.send(
+      userId: _booking!['client_id'],
+      type: 'booking_status',
+      title: 'Stylist Arrived',
+      body: '$providerName has arrived at your location',
+      referenceId: widget.bookingId,
+    );
     _load();
   }
 
@@ -118,6 +127,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       'service_started_at': DateTime.now().toIso8601String(),
       'status':             'confirmed',
     }).eq('id', widget.bookingId);
+    final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+    NotificationService.send(
+      userId: _booking!['client_id'],
+      type: 'booking_status',
+      title: 'Service Started',
+      body: '$providerName has started your service',
+      referenceId: widget.bookingId,
+    );
     _load();
   }
 
@@ -147,6 +164,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         'status':               'completed',
         'service_completed_at': DateTime.now().toIso8601String(),
       }).eq('id', widget.bookingId);
+      final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+      final serviceName = _booking?['services']?['service_name'] ?? 'your service';
+      NotificationService.send(
+        userId: _booking!['client_id'],
+        type: 'booking_status',
+        title: 'Service Completed',
+        body: '$providerName completed $serviceName. Leave a review!',
+        referenceId: widget.bookingId,
+      );
       _load();
     }
   }

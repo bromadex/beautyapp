@@ -24,6 +24,7 @@ import 'screens/review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/promotion_management_screen.dart';
+import 'screens/notifications_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -86,6 +87,11 @@ final appRouter = GoRouter(
     // Promotions (Stage 12)
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/provider/promotions', builder: (_, __) => const PromotionManagementScreen()),
+
+    // ─────────────────────────────────────────────────────────────
+    // Notifications (Stage 13)
+    // ─────────────────────────────────────────────────────────────
+    GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
 
     // ─────────────────────────────────────────────────────────────
     // Bookings (Stage 5)

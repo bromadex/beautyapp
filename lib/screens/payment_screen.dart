@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../config/app_config.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/payment_method_card.dart';
 
@@ -125,6 +126,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
       await supabase.from('bookings').update({
         'payment_status': bookingPaymentStatus,
       }).eq('id', widget.bookingId);
+
+      // Notify provider
+      final serviceName = _service?['service_name'] ?? 'a service';
+      NotificationService.send(
+        userId: _booking!['provider_id'],
+        type: 'payment',
+        title: isCod ? 'Cash Payment Pending' : 'Payment Received',
+        body: isCod
+            ? 'Client chose cash on delivery for $serviceName (\$${_amount.toStringAsFixed(2)})'
+            : 'You received \$${_providerEarnings.toStringAsFixed(2)} for $serviceName',
+        referenceId: widget.bookingId,
+      );
 
       if (mounted) {
         _showSuccessDialog(isCod, ref);

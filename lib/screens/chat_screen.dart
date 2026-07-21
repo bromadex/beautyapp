@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/chat_bubble.dart';
 
@@ -165,6 +166,23 @@ class _ChatScreenState extends State<ChatScreen> {
         'is_read': false,
       });
       _messageCtrl.clear();
+
+      // Notify receiver
+      final senderName = (await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', _myId!)
+              .maybeSingle())?['full_name'] ??
+          'Someone';
+      NotificationService.send(
+        userId: _otherId!,
+        type: 'message',
+        title: 'New Message from $senderName',
+        body: imageUrl != null
+            ? '$senderName sent a photo'
+            : text?.trim() ?? 'New message',
+        referenceId: widget.bookingId,
+      );
       // Immediately fetch messages to show the sent message
       await _fetchMessages();
       _scrollToBottom();

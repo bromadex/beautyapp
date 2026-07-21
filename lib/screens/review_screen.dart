@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
 
@@ -130,6 +131,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
         'comment': _commentCtrl.text.trim(),
         'after_service_image_url': imageUrl,
       });
+
+      // Notify provider
+      final clientName = (await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', uid)
+              .maybeSingle())?['full_name'] ??
+          'A client';
+      final stars = '${'★' * _rating.round()}';
+      NotificationService.send(
+        userId: _booking!['provider_id'],
+        type: 'review',
+        title: 'New ${_rating.toStringAsFixed(0)}-Star Review $stars',
+        body: _commentCtrl.text.trim().isNotEmpty
+            ? '$clientName: "${_commentCtrl.text.trim()}"'
+            : '$clientName left a ${_rating.toStringAsFixed(0)}-star review',
+        referenceId: _booking!['provider_id'],
+      );
 
       if (mounted) {
         showDialog(
