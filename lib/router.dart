@@ -29,6 +29,7 @@ import 'screens/provider_reviews_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/promotion_management_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/smart_match_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -100,6 +101,7 @@ final appRouter = GoRouter(
     // Notifications (Stage 13)
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+    GoRoute(path: '/recommended',   builder: (_, __) => const SmartMatchScreen()),
 
     // ─────────────────────────────────────────────────────────────
     // Bookings (Stage 5)
