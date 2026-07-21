@@ -18,12 +18,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _loading = true;
   late AnimationController _animCtrl;
 
-  // New dashboard data
   Map<String, dynamic>? _nextBooking;
   double _weeklyEarnings = 0;
+  double _prevWeekEarnings = 0;
   int _weeklyBookingsCount = 0;
+  int _pendingBookingsCount = 0;
+  int _totalBookingsCount = 0;
   int _totalReviews = 0;
   double _avgRating = 0;
+  int _unreadMessages = 0;
   List<Map<String, dynamic>> _recentActivity = [];
 
   @override
@@ -62,9 +65,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Map<String, dynamic>? subscription;
     Map<String, dynamic>? nextBooking;
     double weeklyEarnings = 0;
+    double prevWeekEarnings = 0;
     int weeklyBookingsCount = 0;
+    int pendingBookingsCount = 0;
+    int totalBookingsCount = 0;
     int totalReviews = 0;
     double avgRating = 0;
+    int unreadMessages = 0;
     List<Map<String, dynamic>> recentActivity = [];
 
     if (profile['user_type'] == 'provider') {
@@ -75,12 +82,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       } catch (_) {}
 
       try {
-        final sub = await supabase
+        subscription = await supabase
             .from('subscriptions')
             .select()
             .eq('provider_id', userId)
             .maybeSingle();
-        subscription = sub;
       } catch (_) {}
 
       // Next upcoming booking
@@ -88,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final now = DateTime.now().toIso8601String();
         nextBooking = await supabase
             .from('bookings')
-            .select('*, services(service_name), profiles!bookings_client_id_fkey(full_name)')
+            .select('*, services(service_name, duration_minutes), profiles!bookings_client_id_fkey(full_name)')
             .eq('provider_id', userId)
             .inFilter('status', ['confirmed', 'en_route', 'arrived', 'in_progress'])
             .gte('booking_date', now.substring(0, 10))
@@ -98,29 +104,49 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             .maybeSingle();
       } catch (_) {}
 
-      // Weekly earnings
+      // Weekly earnings + previous week for trend
       try {
-        final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+        final now = DateTime.now();
+        final weekAgo = now.subtract(const Duration(days: 7)).toIso8601String();
+        final twoWeeksAgo = now.subtract(const Duration(days: 14)).toIso8601String();
+
         final payments = await supabase
             .from('payments')
-            .select('amount')
+            .select('amount, created_at')
             .eq('provider_id', userId)
             .eq('status', 'completed')
-            .gte('created_at', weekAgo);
+            .gte('created_at', twoWeeksAgo);
+
         for (final p in (payments as List)) {
-          weeklyEarnings += (p['amount'] as num).toDouble();
+          final amount = (p['amount'] as num).toDouble();
+          final createdAt = p['created_at'] as String;
+          if (createdAt.compareTo(weekAgo) >= 0) {
+            weeklyEarnings += amount;
+          } else {
+            prevWeekEarnings += amount;
+          }
         }
       } catch (_) {}
 
-      // Weekly bookings count
+      // Bookings counts
       try {
         final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
         final bookings = await supabase
             .from('bookings')
-            .select('id')
+            .select('id, status')
             .eq('provider_id', userId)
             .gte('created_at', weekAgo);
         weeklyBookingsCount = (bookings as List).length;
+        pendingBookingsCount = bookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
+      } catch (_) {}
+
+      // Total bookings count
+      try {
+        final allBookings = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('provider_id', userId);
+        totalBookingsCount = (allBookings as List).length;
       } catch (_) {}
 
       // Reviews stats
@@ -133,14 +159,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         totalReviews = list.length;
         if (list.isNotEmpty) {
           double sum = 0;
-          for (final r in list) {
-            sum += (r['rating'] as num).toDouble();
-          }
+          for (final r in list) sum += (r['rating'] as num).toDouble();
           avgRating = sum / list.length;
         }
       } catch (_) {}
 
-      // Recent activity (last 5 events: reviews, bookings, payments)
+      // Unread messages (approximate: count recent messages where provider is recipient)
+      try {
+        final msgs = await supabase
+            .from('messages')
+            .select('id')
+            .eq('receiver_id', userId)
+            .eq('is_read', false);
+        unreadMessages = (msgs as List).length;
+      } catch (_) {}
+
+      // Recent activity
       try {
         final recentReviews = await supabase
             .from('reviews')
@@ -149,11 +183,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             .order('created_at', ascending: false)
             .limit(3);
         for (final r in (recentReviews as List)) {
-          recentActivity.add({
-            'type': 'review',
-            'data': r,
-            'created_at': r['created_at'],
-          });
+          recentActivity.add({'type': 'review', 'data': r, 'created_at': r['created_at']});
+        }
+      } catch (_) {}
+
+      try {
+        final recentPayments = await supabase
+            .from('payments')
+            .select('id, amount, created_at, bookings(services(service_name), profiles!bookings_client_id_fkey(full_name))')
+            .eq('provider_id', userId)
+            .eq('status', 'completed')
+            .order('created_at', ascending: false)
+            .limit(3);
+        for (final p in (recentPayments as List)) {
+          recentActivity.add({'type': 'payment', 'data': p, 'created_at': p['created_at']});
         }
       } catch (_) {}
 
@@ -165,19 +208,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             .order('created_at', ascending: false)
             .limit(3);
         for (final b in (recentBookings as List)) {
-          recentActivity.add({
-            'type': 'booking',
-            'data': b,
-            'created_at': b['created_at'],
-          });
+          recentActivity.add({'type': 'booking', 'data': b, 'created_at': b['created_at']});
         }
       } catch (_) {}
 
       recentActivity.sort((a, b) =>
           (b['created_at'] as String).compareTo(a['created_at'] as String));
-      if (recentActivity.length > 5) {
-        recentActivity = recentActivity.sublist(0, 5);
-      }
+      if (recentActivity.length > 5) recentActivity = recentActivity.sublist(0, 5);
     }
 
     if (mounted) {
@@ -189,9 +226,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _isAdmin = isAdmin;
         _nextBooking = nextBooking;
         _weeklyEarnings = weeklyEarnings;
+        _prevWeekEarnings = prevWeekEarnings;
         _weeklyBookingsCount = weeklyBookingsCount;
+        _pendingBookingsCount = pendingBookingsCount;
+        _totalBookingsCount = totalBookingsCount;
         _totalReviews = totalReviews;
         _avgRating = avgRating;
+        _unreadMessages = unreadMessages;
         _recentActivity = recentActivity;
         _loading = false;
       });
@@ -212,10 +253,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 40, height: 40,
-                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary),
-              ),
+              SizedBox(width: 40, height: 40,
+                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary)),
               const SizedBox(height: 16),
               Text('Loading...', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
             ],
@@ -235,7 +274,113 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(name, isProvider, isVerified),
+          // Compact gradient header
+          SliverAppBar(
+            expandedHeight: isProvider ? 140 : 160,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            title: const Text(
+              'Beauty Home Services',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
+            ),
+            actions: [
+              if (_isAdmin)
+                IconButton(
+                  icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                  tooltip: 'Admin Panel',
+                  onPressed: () => context.go('/admin/verify'),
+                ),
+              if (isProvider)
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                      onPressed: () {},
+                    ),
+                    if (_unreadMessages > 0)
+                      Positioned(
+                        right: 8, top: 8,
+                        child: Container(
+                          width: 16, height: 16,
+                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                          child: Center(
+                            child: Text(
+                              _unreadMessages > 9 ? '9+' : '$_unreadMessages',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white70),
+                onPressed: _signOut,
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(gradient: AppColors.heroGradient),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50, height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white38, width: 2),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                              Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
+                              if (isProvider) ...[
+                                const SizedBox(height: 5),
+                                Row(children: [
+                                  if (_avgRating > 0) ...[
+                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                    const SizedBox(width: 3),
+                                    Text(_avgRating.toStringAsFixed(1),
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    const SizedBox(width: 12),
+                                  ],
+                                  Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
+                                  const SizedBox(width: 3),
+                                  Text('$_totalBookingsCount bookings',
+                                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+                                ]),
+                              ] else ...[
+                                const SizedBox(height: 5),
+                                Row(children: [
+                                  _Badge(label: 'Client'),
+                                  const SizedBox(width: 6),
+                                  _Badge(label: isVerified ? 'Verified' : 'Unverified', isPositive: isVerified),
+                                ]),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
 
           SliverToBoxAdapter(
             child: FadeTransition(
@@ -244,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -259,10 +404,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               }
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
                         ],
 
                         if (isProvider && isVerified) ...[
+                          // Availability toggle
                           if (_providerProfile != null) ...[
                             _AvailabilityToggle(
                               status: _providerProfile!['availability_status'],
@@ -275,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     _providerProfile!['availability_status'] = newStatus);
                               },
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                           ],
 
                           if (!hasActiveSubscription) ...[
@@ -283,43 +429,59 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               text: 'No active subscription — your profile is hidden.',
                               onTap: () => context.go('/provider/subscription'),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                           ],
 
-                          // Next Booking Card
-                          if (_nextBooking != null) ...[
-                            _NextBookingCard(booking: _nextBooking!),
-                            const SizedBox(height: 16),
-                          ],
+                          // Next Booking Card (or empty state)
+                          if (_nextBooking != null)
+                            _NextBookingCard(booking: _nextBooking!)
+                          else
+                            _NoBookingCard(
+                              onShare: () => context.go('/provider/${supabase.auth.currentUser!.id}'),
+                            ),
+                          const SizedBox(height: 14),
 
-                          // Weekly Stats
-                          _WeeklyStatsRow(
-                            earnings: _weeklyEarnings,
+                          // Stats row with colored top borders
+                          _StatsRow(
+                            weeklyEarnings: _weeklyEarnings,
+                            prevWeekEarnings: _prevWeekEarnings,
                             bookingsCount: _weeklyBookingsCount,
+                            pendingCount: _pendingBookingsCount,
                             avgRating: _avgRating,
                             totalReviews: _totalReviews,
                           ),
                           const SizedBox(height: 20),
 
-                          // Quick Actions (deprioritized)
-                          Text('Quick Actions', style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textTertiary,
-                            letterSpacing: 0.5,
+                          // Quick Actions - two-tier
+                          const Text('Quick Actions', style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
                           )),
                           const SizedBox(height: 10),
-                          _buildProviderTiles(context),
+                          _ProviderQuickActions(
+                            pendingBookings: _pendingBookingsCount,
+                            unreadMessages: _unreadMessages,
+                          ),
                           const SizedBox(height: 20),
 
                           // Recent Activity
                           if (_recentActivity.isNotEmpty) ...[
-                            Text('Recent Activity', style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textTertiary,
-                              letterSpacing: 0.5,
-                            )),
+                            Row(
+                              children: [
+                                const Text('Recent Activity', style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                                )),
+                                const Spacer(),
+                                TextButton(
+                                  onPressed: () => context.go('/provider/bookings'),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text('See all', style: TextStyle(fontSize: 13)),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 10),
                             _ActivityFeed(activities: _recentActivity),
                           ],
@@ -343,106 +505,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSliverAppBar(String name, bool isProvider, bool isVerified) {
-    return SliverAppBar(
-      expandedHeight: isProvider ? 200 : 180,
-      pinned: true,
-      backgroundColor: AppColors.primary,
-      surfaceTintColor: Colors.transparent,
-      title: const Text(
-        'Beauty Home Services',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
-      ),
-      actions: [
-        if (_isAdmin)
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-            tooltip: 'Admin Panel',
-            onPressed: () => context.go('/admin/verify'),
-          ),
-        IconButton(
-          icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-          onPressed: _signOut,
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white38, width: 2),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Welcome back,', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.8))),
-                        Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                        const SizedBox(height: 6),
-                        Row(children: [
-                          _Badge(label: isProvider ? 'Provider' : 'Client'),
-                          const SizedBox(width: 6),
-                          _Badge(label: isVerified ? 'Verified' : 'Unverified', isPositive: isVerified),
-                          if (isProvider && _avgRating > 0) ...[
-                            const SizedBox(width: 6),
-                            _Badge(label: '${_avgRating.toStringAsFixed(1)} ★', isPositive: true),
-                          ],
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProviderTiles(BuildContext context) {
-    final tiles = [
-      _TileData(Icons.person_outline, 'Edit Profile', AppColors.info, '/provider/profile/edit'),
-      _TileData(Icons.content_cut_rounded, 'My Services', AppColors.secondary, '/provider/services'),
-      _TileData(Icons.photo_library_outlined, 'Gallery', AppColors.accent, '/provider/gallery'),
-      _TileData(Icons.calendar_month_rounded, 'Bookings', AppColors.warning, '/provider/bookings'),
-      _TileData(Icons.workspace_premium_rounded, 'Subscription', AppColors.success, '/provider/subscription'),
-      _TileData(Icons.account_balance_wallet_rounded, 'Earnings', const Color(0xFF0EA5E9), '/earnings'),
-      _TileData(Icons.public_outlined, 'Public Profile', AppColors.primary, '/provider/${supabase.auth.currentUser!.id}'),
-      _TileData(Icons.star_rounded, 'Reviews', const Color(0xFFD97706), '/provider/${supabase.auth.currentUser!.id}/reviews'),
-    ];
-
-    return _TileGrid(tiles: tiles);
-  }
-
   Widget _buildClientTiles(BuildContext context) {
     final tiles = [
       _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse'),
       _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings'),
       _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites'),
     ];
-
     return _TileGrid(tiles: tiles);
   }
 }
 
-// --- Next Booking Card ---
+// --- Next Booking Card (dark gradient) ---
 
 class _NextBookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -452,6 +525,7 @@ class _NextBookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final clientName = booking['profiles']?['full_name'] ?? 'Client';
     final serviceName = booking['services']?['service_name'] ?? 'Service';
+    final durationMin = booking['services']?['duration_minutes'];
     final bookingDate = booking['booking_date'] ?? '';
     final bookingTime = booking['booking_time'] ?? '';
     final status = booking['status'] ?? 'confirmed';
@@ -470,13 +544,15 @@ class _NextBookingCard extends StatelessWidget {
     }
 
     String dateDisplay = bookingDate;
-    if (bookingDate.isNotEmpty) {
+    String? countdown;
+    if (bookingDate.isNotEmpty && bookingTime.isNotEmpty) {
       try {
         final date = DateTime.parse(bookingDate);
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final tomorrow = today.add(const Duration(days: 1));
         final bookDay = DateTime(date.year, date.month, date.day);
+
         if (bookDay == today) {
           dateDisplay = 'Today';
         } else if (bookDay == tomorrow) {
@@ -485,23 +561,38 @@ class _NextBookingCard extends StatelessWidget {
           final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
           dateDisplay = '${months[date.month - 1]} ${date.day}';
         }
+
+        // Countdown
+        try {
+          final timeParts = bookingTime.split(':');
+          final bookingDt = DateTime(date.year, date.month, date.day,
+              int.parse(timeParts[0]), int.parse(timeParts[1]));
+          final diff = bookingDt.difference(now);
+          if (diff.isNegative) {
+            countdown = 'Now';
+          } else if (diff.inMinutes < 60) {
+            countdown = 'In ${diff.inMinutes} min';
+          } else if (diff.inHours < 24) {
+            countdown = 'In ${diff.inHours} hours';
+          } else {
+            countdown = 'In ${diff.inDays} days';
+          }
+        } catch (_) {}
       } catch (_) {}
     }
+
+    final clientInitials = clientName.split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
 
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFE91E8C), Color(0xFFAB47BC)],
+          colors: [Color(0xFF1A1A2E), Color(0xFF2D2B55)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: AppRadius.lgAll,
         boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
+          BoxShadow(color: const Color(0xFF1A1A2E).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
         ],
       ),
       child: Padding(
@@ -511,63 +602,76 @@ class _NextBookingCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'NEXT BOOKING',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.9), letterSpacing: 1),
-                  ),
-                ),
+                Text('NEXT BOOKING', style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w700,
+                  color: Colors.white.withValues(alpha: 0.6), letterSpacing: 1.2,
+                )),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
+                if (countdown != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(countdown, style: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white,
+                    )),
                   ),
-                  child: Text(
-                    StatusColors.label(status),
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
-                  ),
-                ),
               ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '$dateDisplay, $timeDisplay',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
             ),
             const SizedBox(height: 14),
             Row(
               children: [
-                Icon(Icons.access_time_rounded, color: Colors.white.withValues(alpha: 0.9), size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  '$dateDisplay at $timeDisplay',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(clientInitials, style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white,
+                  )),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(clientName, style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white,
+                      )),
+                      Text(
+                        '$serviceName${durationMin != null ? ' · ${durationMin} min' : ''}',
+                        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              '$serviceName · $clientName',
-              style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85)),
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 36,
+                    height: 40,
                     child: OutlinedButton.icon(
-                      onPressed: () => context.go('/provider/bookings/$bookingId'),
-                      icon: const Icon(Icons.visibility_outlined, size: 16),
-                      label: const Text('View'),
+                      onPressed: () => context.go('/tracking/$bookingId'),
+                      icon: const Icon(Icons.navigation_outlined, size: 16),
+                      label: const Text('Navigate'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                         padding: EdgeInsets.zero,
-                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                       ),
                     ),
                   ),
@@ -575,17 +679,17 @@ class _NextBookingCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: SizedBox(
-                    height: 36,
+                    height: 40,
                     child: FilledButton.icon(
                       onPressed: () => context.go('/chat/$bookingId'),
                       icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                      label: const Text('Chat'),
+                      label: const Text('Message'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
                         padding: EdgeInsets.zero,
-                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                       ),
                     ),
                   ),
@@ -599,44 +703,111 @@ class _NextBookingCard extends StatelessWidget {
   }
 }
 
-// --- Weekly Stats Row ---
+// --- No Booking Empty State ---
 
-class _WeeklyStatsRow extends StatelessWidget {
-  final double earnings;
+class _NoBookingCard extends StatelessWidget {
+  final VoidCallback onShare;
+  const _NoBookingCard({required this.onShare});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.calendar_today_outlined, color: AppColors.info, size: 22),
+          ),
+          const SizedBox(height: 12),
+          const Text('No Upcoming Bookings', style: TextStyle(
+            fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+          )),
+          const SizedBox(height: 4),
+          Text(
+            'Share your profile to attract new clients',
+            style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 36,
+            child: OutlinedButton.icon(
+              onPressed: onShare,
+              icon: const Icon(Icons.share_outlined, size: 16),
+              label: const Text('Share Profile'),
+              style: OutlinedButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Stats Row with colored top borders ---
+
+class _StatsRow extends StatelessWidget {
+  final double weeklyEarnings;
+  final double prevWeekEarnings;
   final int bookingsCount;
+  final int pendingCount;
   final double avgRating;
   final int totalReviews;
-  const _WeeklyStatsRow({
-    required this.earnings,
-    required this.bookingsCount,
-    required this.avgRating,
-    required this.totalReviews,
+  const _StatsRow({
+    required this.weeklyEarnings, required this.prevWeekEarnings,
+    required this.bookingsCount, required this.pendingCount,
+    required this.avgRating, required this.totalReviews,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Earnings trend
+    String? earningsTrend;
+    bool earningsUp = false;
+    if (prevWeekEarnings > 0) {
+      final pctChange = ((weeklyEarnings - prevWeekEarnings) / prevWeekEarnings * 100);
+      earningsUp = pctChange >= 0;
+      earningsTrend = '${earningsUp ? '↑' : '↓'} ${pctChange.abs().toStringAsFixed(0)}%';
+    }
+
     return Row(
       children: [
         Expanded(child: _StatCard(
-          label: 'This Week',
-          value: 'R${earnings.toStringAsFixed(0)}',
-          icon: Icons.account_balance_wallet_rounded,
-          color: AppColors.success,
+          topColor: AppColors.success,
+          label: 'THIS WEEK',
+          value: 'R${weeklyEarnings.toStringAsFixed(0)}',
+          subtitle: earningsTrend,
+          subtitleColor: earningsUp ? AppColors.success : AppColors.error,
         )),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(child: _StatCard(
-          label: 'Bookings',
+          topColor: AppColors.info,
+          label: 'BOOKINGS',
           value: '$bookingsCount',
-          icon: Icons.calendar_month_rounded,
-          color: AppColors.info,
+          subtitle: pendingCount > 0 ? '$pendingCount pending' : null,
+          subtitleColor: AppColors.warning,
         )),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(child: _StatCard(
-          label: 'Rating',
+          topColor: const Color(0xFFD97706),
+          label: 'RATING',
           value: avgRating > 0 ? avgRating.toStringAsFixed(1) : '—',
-          icon: Icons.star_rounded,
-          color: const Color(0xFFD97706),
-          subtitle: totalReviews > 0 ? '$totalReviews reviews' : null,
+          subtitle: totalReviews > 0 ? '★ $totalReviews reviews' : null,
+          subtitleColor: const Color(0xFFD97706),
         )),
       ],
     );
@@ -644,47 +815,51 @@ class _WeeklyStatsRow extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
+  final Color topColor;
   final String label;
   final String value;
-  final IconData icon;
-  final Color color;
   final String? subtitle;
-  const _StatCard({required this.label, required this.value, required this.icon, required this.color, this.subtitle});
+  final Color? subtitleColor;
+  const _StatCard({
+    required this.topColor, required this.label, required this.value,
+    this.subtitle, this.subtitleColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: Colors.grey.shade200),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 30, height: 30,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+          Container(height: 3, color: topColor),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(label, style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600,
+                  color: AppColors.textTertiary, letterSpacing: 0.8,
+                )),
+                const SizedBox(height: 6),
+                Text(value, style: const TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                )),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(subtitle!, style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w600,
+                    color: subtitleColor ?? AppColors.textTertiary,
+                  )),
+                ],
+              ],
             ),
-            child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(fontSize: 11, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 1),
-            Text(subtitle!, style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-          ],
         ],
       ),
     );
@@ -709,7 +884,7 @@ class _AvailabilityToggle extends StatelessWidget {
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Container(
@@ -720,8 +895,7 @@ class _AvailabilityToggle extends StatelessWidget {
             ),
             child: Icon(
               isAvailable ? Icons.wifi_tethering_rounded : Icons.wifi_tethering_off_rounded,
-              color: color,
-              size: 22,
+              color: color, size: 22,
             ),
           ),
           const SizedBox(width: 12),
@@ -735,9 +909,7 @@ class _AvailabilityToggle extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isAvailable
-                      ? 'Clients can find and book you'
-                      : 'You won\'t appear in search results',
+                  isAvailable ? 'Clients can find and book you' : 'You won\'t appear in search results',
                   style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                 ),
               ],
@@ -760,6 +932,211 @@ class _AvailabilityToggle extends StatelessWidget {
   }
 }
 
+// --- Provider Quick Actions (two-tier) ---
+
+class _ProviderQuickActions extends StatelessWidget {
+  final int pendingBookings;
+  final int unreadMessages;
+  const _ProviderQuickActions({required this.pendingBookings, required this.unreadMessages});
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = supabase.auth.currentUser!.id;
+
+    return Column(
+      children: [
+        // Top row: 3 primary actions (larger)
+        Row(
+          children: [
+            Expanded(child: _PrimaryActionTile(
+              icon: Icons.calendar_month_rounded,
+              label: 'Bookings',
+              color: AppColors.info,
+              badge: pendingBookings > 0 ? '$pendingBookings' : null,
+              onTap: () => context.go('/provider/bookings'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: _PrimaryActionTile(
+              icon: Icons.account_balance_wallet_rounded,
+              label: 'Earnings',
+              color: AppColors.success,
+              onTap: () => context.go('/earnings'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: _PrimaryActionTile(
+              icon: Icons.chat_bubble_outline_rounded,
+              label: 'Messages',
+              color: AppColors.warning,
+              badge: unreadMessages > 0 ? '$unreadMessages' : null,
+              onTap: () => context.go('/provider/bookings'),
+            )),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Bottom row: 4 secondary actions (smaller)
+        Row(
+          children: [
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.person_outline,
+              label: 'Profile',
+              onTap: () => context.go('/provider/profile/edit'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.content_cut_rounded,
+              label: 'Services',
+              onTap: () => context.go('/provider/services'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.photo_library_outlined,
+              label: 'Gallery',
+              onTap: () => context.go('/provider/gallery'),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.star_outline_rounded,
+              label: 'Reviews',
+              onTap: () => context.go('/provider/$uid/reviews'),
+            )),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryActionTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String? badge;
+  final VoidCallback onTap;
+  const _PrimaryActionTile({required this.icon, required this.label, required this.color, this.badge, required this.onTap});
+
+  @override
+  State<_PrimaryActionTile> createState() => _PrimaryActionTileState();
+}
+
+class _PrimaryActionTileState extends State<_PrimaryActionTile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: _hovering ? widget.color.withValues(alpha: 0.06) : Colors.white,
+            borderRadius: AppRadius.lgAll,
+            border: Border.all(
+              color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200,
+            ),
+            boxShadow: _hovering
+                ? [BoxShadow(color: widget.color.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))]
+                : [],
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: _hovering ? 50 : 46,
+                      height: _hovering ? 50 : 46,
+                      decoration: BoxDecoration(
+                        color: widget.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(widget.icon, color: widget.color, size: _hovering ? 26 : 24),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(widget.label, style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600,
+                      color: _hovering ? widget.color : AppColors.textPrimary,
+                    )),
+                  ],
+                ),
+              ),
+              if (widget.badge != null)
+                Positioned(
+                  top: -4, right: 16,
+                  child: Container(
+                    width: 20, height: 20,
+                    decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                    child: Center(
+                      child: Text(widget.badge!, style: const TextStyle(
+                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700,
+                      )),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SecondaryActionTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _SecondaryActionTile({required this.icon, required this.label, required this.onTap});
+
+  @override
+  State<_SecondaryActionTile> createState() => _SecondaryActionTileState();
+}
+
+class _SecondaryActionTileState extends State<_SecondaryActionTile> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: _hovering ? Colors.grey.shade50 : Colors.white,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(widget.icon, color: AppColors.textSecondary, size: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(widget.label, style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w500,
+                color: _hovering ? AppColors.textPrimary : AppColors.textSecondary,
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // --- Activity Feed ---
 
 class _ActivityFeed extends StatelessWidget {
@@ -777,12 +1154,10 @@ class _ActivityFeed extends StatelessWidget {
       child: ListView.separated(
         physics: const NeverScrollableScrollPhysics(),
         shrinkWrap: true,
+        padding: EdgeInsets.zero,
         itemCount: activities.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
-        itemBuilder: (context, index) {
-          final activity = activities[index];
-          return _ActivityItem(activity: activity);
-        },
+        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100, indent: 60),
+        itemBuilder: (context, index) => _ActivityItem(activity: activities[index]),
       ),
     );
   }
@@ -802,23 +1177,34 @@ class _ActivityItem extends StatelessWidget {
     Color color;
     String title;
     String subtitle;
+    Widget? trailing;
 
     if (type == 'review') {
       icon = Icons.star_rounded;
       color = const Color(0xFFD97706);
-      final clientName = data['profiles']?['full_name'] ?? 'A client';
       final rating = data['rating'] ?? 0;
-      title = '$clientName left a $rating-star review';
+      title = 'New $rating-star review';
       final comment = data['comment'] as String? ?? '';
       subtitle = comment.isNotEmpty
-          ? (comment.length > 60 ? '${comment.substring(0, 60)}…' : comment)
+          ? '"${comment.length > 50 ? '${comment.substring(0, 50)}…' : comment}"'
           : 'No comment';
+    } else if (type == 'payment') {
+      icon = Icons.payments_outlined;
+      color = AppColors.success;
+      final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+      final clientName = data['bookings']?['profiles']?['full_name'] ?? '';
+      final serviceName = data['bookings']?['services']?['service_name'] ?? 'Service';
+      title = 'Payment received';
+      subtitle = 'R${amount.toStringAsFixed(0)} for $serviceName${clientName.isNotEmpty ? ' from $clientName' : ''}';
+      trailing = Text('+R${amount.toStringAsFixed(0)}', style: TextStyle(
+        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.success,
+      ));
     } else {
       final bookingStatus = data['status'] ?? 'pending';
       icon = _bookingIcon(bookingStatus);
       color = StatusColors.foreground(bookingStatus);
-      final clientName = data['profiles']?['full_name'] ?? 'A client';
-      final serviceName = data['services']?['service_name'] ?? 'service';
+      final clientName = data['profiles']?['full_name'] ?? 'Client';
+      final serviceName = data['services']?['service_name'] ?? 'Service';
       title = '$clientName — $serviceName';
       subtitle = StatusColors.label(bookingStatus);
     }
@@ -843,7 +1229,7 @@ class _ActivityItem extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 36, height: 36,
+            width: 38, height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
@@ -858,11 +1244,15 @@ class _ActivityItem extends StatelessWidget {
                 Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
                 Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (timeAgo.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(timeAgo, style: TextStyle(fontSize: 11, color: AppColors.textTertiary.withValues(alpha: 0.7))),
+                  ),
               ],
             ),
           ),
-          if (timeAgo.isNotEmpty)
-            Text(timeAgo, style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+          if (trailing != null) trailing!,
         ],
       ),
     );
@@ -881,7 +1271,7 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-// --- Tile Components (kept for Quick Actions + Client) ---
+// --- Client Tile Components ---
 
 class _TileData {
   final IconData icon;
@@ -902,18 +1292,11 @@ class _TileGrid extends StatelessWidget {
         final crossCount = constraints.maxWidth > 450 ? 4 : 3;
         final spacing = 10.0;
         final tileWidth = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
-
         return Wrap(
-          spacing: spacing,
-          runSpacing: 12,
+          spacing: spacing, runSpacing: 12,
           children: tiles.map((t) => SizedBox(
             width: tileWidth,
-            child: _DashTile(
-              icon: t.icon,
-              label: t.label,
-              color: t.color,
-              onTap: () => context.go(t.route),
-            ),
+            child: _DashTile(icon: t.icon, label: t.label, color: t.color, onTap: () => context.go(t.route)),
           )).toList(),
         );
       },
@@ -927,7 +1310,6 @@ class _DashTile extends StatefulWidget {
   final Color color;
   final VoidCallback onTap;
   const _DashTile({required this.icon, required this.label, required this.color, required this.onTap});
-
   @override
   State<_DashTile> createState() => _DashTileState();
 }
@@ -949,9 +1331,7 @@ class _DashTileState extends State<_DashTile> {
           decoration: BoxDecoration(
             color: _hovering ? widget.color.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200,
-            ),
+            border: Border.all(color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200),
             boxShadow: _hovering
                 ? [BoxShadow(color: widget.color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
                 : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
@@ -961,34 +1341,19 @@ class _DashTileState extends State<_DashTile> {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: _hovering ? 48 : 44,
-                height: _hovering ? 48 : 44,
+                width: _hovering ? 48 : 44, height: _hovering ? 48 : 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      widget.color.withValues(alpha: _hovering ? 0.2 : 0.12),
-                      widget.color.withValues(alpha: _hovering ? 0.1 : 0.05),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [widget.color.withValues(alpha: _hovering ? 0.2 : 0.12), widget.color.withValues(alpha: _hovering ? 0.1 : 0.05)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(widget.icon, color: widget.color, size: _hovering ? 24 : 22),
               ),
               const SizedBox(height: 8),
-              Text(
-                widget.label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: _hovering ? widget.color : AppColors.textPrimary,
-                  height: 1.2,
-                ),
-              ),
+              Text(widget.label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _hovering ? widget.color : AppColors.textPrimary, height: 1.2)),
             ],
           ),
         ),
