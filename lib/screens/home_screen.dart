@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _totalReviews = 0;
   double _avgRating = 0;
   int _unreadMessages = 0;
+  int _unreadNotifications = 0;
   List<Map<String, dynamic>> _recentActivity = [];
 
   @override
@@ -167,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     int totalReviews = 0;
     double avgRating = 0;
     int unreadMessages = 0;
+    int unreadNotifs = 0;
     List<Map<String, dynamic>> recentActivity = [];
 
     if (profile['user_type'] == 'provider') {
@@ -259,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         }
       } catch (_) {}
 
-      // Unread messages (approximate: count recent messages where provider is recipient)
+      // Unread messages
       try {
         final msgs = await supabase
             .from('messages')
@@ -312,6 +315,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       if (recentActivity.length > 5) recentActivity = recentActivity.sublist(0, 5);
     }
 
+    // Unread notifications (for all users)
+    try {
+      unreadNotifs = await NotificationService.unreadCount(userId);
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _profile = profile;
@@ -328,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _totalReviews = totalReviews;
         _avgRating = avgRating;
         _unreadMessages = unreadMessages;
+        _unreadNotifications = unreadNotifs;
         _recentActivity = recentActivity;
         _loading = false;
       });
@@ -386,29 +395,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   tooltip: 'Admin Panel',
                   onPressed: () => context.go('/admin/verify'),
                 ),
-              if (isProvider)
-                Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                      onPressed: () {},
-                    ),
-                    if (_unreadMessages > 0)
-                      Positioned(
-                        right: 8, top: 8,
-                        child: Container(
-                          width: 16, height: 16,
-                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                          child: Center(
-                            child: Text(
-                              _unreadMessages > 9 ? '9+' : '$_unreadMessages',
-                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                            ),
+              Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                  if (_unreadNotifications > 0)
+                    Positioned(
+                      right: 8, top: 8,
+                      child: Container(
+                        width: 16, height: 16,
+                        decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                        child: Center(
+                          child: Text(
+                            _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
+              ),
               IconButton(
                 icon: const Icon(Icons.logout_rounded, color: Colors.white70),
                 onPressed: _signOut,

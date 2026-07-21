@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../theme.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -306,6 +307,20 @@ class _BookingScreenState extends State<BookingScreen> {
           'used_count': (_appliedPromo!['used_count'] ?? 0) + 1,
         }).eq('id', _appliedPromo!['id']);
       }
+
+      // Notify provider
+      final clientName = (await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', supabase.auth.currentUser!.id)
+              .maybeSingle())?['full_name'] ??
+          'A client';
+      NotificationService.send(
+        userId: widget.providerId,
+        type: 'booking',
+        title: 'New Booking Request',
+        body: '$clientName booked ${_service!['service_name']}',
+      );
 
       if (mounted) {
         showDialog(
