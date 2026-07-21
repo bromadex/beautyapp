@@ -301,6 +301,17 @@ ALTER TABLE payments
 - Update `subscriptions` table to support new tier structure
 - Add `first_booking_used` boolean to `provider_profiles`
 - Subscription check: allow booking acceptance if `first_booking_used = false` OR `subscription.status = 'active'`
+- Add `featured_waitlist` table:
+```sql
+CREATE TABLE featured_waitlist (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  provider_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  requested_at TIMESTAMPTZ DEFAULT now(),
+  notified_at TIMESTAMPTZ,
+  status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'notified', 'expired', 'activated')),
+  UNIQUE(provider_id)
+);
+```
 
 **Files to modify:**
 - `lib/screens/subscription_screen.dart` — new tier UI
