@@ -10,6 +10,9 @@ class BookingCard extends StatelessWidget {
   final VoidCallback? onDecline;
   final VoidCallback? onComplete;
   final VoidCallback? onCancel;
+  final void Function(String bookingId, double counterPrice)? onCounterOffer;
+  final void Function(String bookingId)? onAcceptOffer;
+  final void Function(String bookingId)? onDeclineOffer;
 
   const BookingCard({
     super.key,
@@ -20,7 +23,235 @@ class BookingCard extends StatelessWidget {
     this.onDecline,
     this.onComplete,
     this.onCancel,
+    this.onCounterOffer,
+    this.onAcceptOffer,
+    this.onDeclineOffer,
   });
+
+  bool get _hasNegotiation {
+    final ns = booking['negotiation_status'] ?? 'none';
+    return ns != 'none';
+  }
+
+  Widget _buildNegotiationBanner(BuildContext context) {
+    final ns = booking['negotiation_status'] ?? 'none';
+    final offeredPrice = (booking['client_offered_price'] as num?)?.toDouble();
+    final counterPrice = (booking['provider_counter_price'] as num?)?.toDouble();
+    final agreedPrice = (booking['agreed_price'] as num?)?.toDouble();
+    final expiresAt = DateTime.tryParse(booking['offer_expires_at'] ?? '');
+    final isExpired = expiresAt != null && expiresAt.isBefore(DateTime.now());
+
+    Color bannerColor;
+    IconData bannerIcon;
+    String bannerTitle;
+    String bannerSubtitle;
+
+    switch (ns) {
+      case 'client_offered':
+        bannerColor = AppColors.info;
+        bannerIcon = Icons.local_offer_rounded;
+        bannerTitle = isClient
+            ? 'Your offer: \$${offeredPrice?.toStringAsFixed(0)}'
+            : 'Price offer: \$${offeredPrice?.toStringAsFixed(0)}';
+        bannerSubtitle = isExpired
+            ? 'Offer expired'
+            : isClient
+                ? 'Waiting for provider response'
+                : 'Listed: \$${booking['total_price']}';
+        break;
+      case 'provider_countered':
+        bannerColor = AppColors.warning;
+        bannerIcon = Icons.swap_horiz_rounded;
+        bannerTitle = isClient
+            ? 'Counter-offer: \$${counterPrice?.toStringAsFixed(0)}'
+            : 'You countered: \$${counterPrice?.toStringAsFixed(0)}';
+        bannerSubtitle = isClient
+            ? 'You offered \$${offeredPrice?.toStringAsFixed(0)}'
+            : 'Client offered \$${offeredPrice?.toStringAsFixed(0)}';
+        break;
+      case 'agreed':
+        bannerColor = AppColors.success;
+        bannerIcon = Icons.handshake_rounded;
+        bannerTitle = 'Agreed: \$${agreedPrice?.toStringAsFixed(0)}';
+        bannerSubtitle = 'Price accepted by both parties';
+        break;
+      case 'declined':
+        bannerColor = AppColors.error;
+        bannerIcon = Icons.block_rounded;
+        bannerTitle = 'Offer declined';
+        bannerSubtitle = 'Client offered \$${offeredPrice?.toStringAsFixed(0)}';
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: bannerColor.withValues(alpha: 0.08),
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: bannerColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(bannerIcon, size: 18, color: bannerColor),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(bannerTitle,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: bannerColor,
+                        )),
+                    Text(bannerSubtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: bannerColor.withValues(alpha: 0.8),
+                        )),
+                  ],
+                ),
+              ),
+              if (expiresAt != null && !isExpired && ns != 'agreed' && ns != 'declined')
+                Text(
+                  _timeRemaining(expiresAt),
+                  style: TextStyle(fontSize: 10, color: bannerColor),
+                ),
+            ],
+          ),
+          // Provider action buttons for client_offered
+          if (!isClient && ns == 'client_offered' && !isExpired) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => onDeclineOffer?.call(booking['id']),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Decline', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _showCounterDialog(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.warning,
+                      side: const BorderSide(color: AppColors.warning),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Counter', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => onAcceptOffer?.call(booking['id']),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: Text(
+                      'Accept \$${offeredPrice?.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          // Client action buttons for provider_countered
+          if (isClient && ns == 'provider_countered' && !isExpired) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => onDeclineOffer?.call(booking['id']),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Decline', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => onAcceptOffer?.call(booking['id']),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: Text(
+                      'Accept \$${counterPrice?.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showCounterDialog(BuildContext context) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Counter Offer'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            prefixText: '\$ ',
+            hintText: 'Your price',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final price = double.tryParse(ctrl.text.trim());
+              if (price != null && price > 0) {
+                Navigator.pop(ctx);
+                onCounterOffer?.call(booking['id'], price);
+              }
+            },
+            child: const Text('Send Counter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _timeRemaining(DateTime expiresAt) {
+    final diff = expiresAt.difference(DateTime.now());
+    if (diff.inHours > 0) return '${diff.inHours}h left';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m left';
+    return 'Expiring';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +386,12 @@ class BookingCard extends StatelessWidget {
                 ),
               ],
 
+              // -- Price negotiation banner --
+              if (_hasNegotiation) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _buildNegotiationBanner(context),
+              ],
+
               // -- Action buttons --
               if (onAccept != null ||
                   onDecline != null ||
@@ -219,6 +456,9 @@ class BookingList extends StatelessWidget {
   final void Function(String)? onDecline;
   final void Function(String)? onComplete;
   final void Function(String)? onCancel;
+  final void Function(String bookingId, double counterPrice)? onCounterOffer;
+  final void Function(String bookingId)? onAcceptOffer;
+  final void Function(String bookingId)? onDeclineOffer;
 
   const BookingList({
     super.key,
@@ -228,6 +468,9 @@ class BookingList extends StatelessWidget {
     this.onDecline,
     this.onComplete,
     this.onCancel,
+    this.onCounterOffer,
+    this.onAcceptOffer,
+    this.onDeclineOffer,
   });
 
   @override
@@ -247,7 +490,7 @@ class BookingList extends StatelessWidget {
       itemBuilder: (_, i) => BookingCard(
         booking: bookings[i],
         isClient: !isProvider,
-        unreadCount: 0, // TODO: Fetch actual unread count per booking
+        unreadCount: 0,
         onAccept: onAccept != null
             ? () => onAccept!(bookings[i]['id'])
             : null,
@@ -260,6 +503,9 @@ class BookingList extends StatelessWidget {
         onCancel: onCancel != null
             ? () => onCancel!(bookings[i]['id'])
             : null,
+        onCounterOffer: onCounterOffer,
+        onAcceptOffer: onAcceptOffer,
+        onDeclineOffer: onDeclineOffer,
       ),
     );
   }

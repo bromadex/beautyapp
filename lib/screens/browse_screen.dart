@@ -1,8 +1,11 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
-import '../widgets/star_rating_widget.dart';
+import '../widgets/location_picker_sheet.dart';
 
 class BrowseScreen extends StatefulWidget {
   const BrowseScreen({super.key});
@@ -16,16 +19,24 @@ class _BrowseScreenState extends State<BrowseScreen> {
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
 
+  // Location
+  String _selectedCity = 'All Zimbabwe';
+  double? _cityLat;
+  double? _cityLng;
+  int _radiusKm = 100;
+  static const List<int> _radiusOptions = [5, 10, 25, 50, 100];
+
   // Search & filters
   final _searchCtrl = TextEditingController();
-  String? _selectedCategoryId;
+  final Set<String> _selectedCategoryIds = {};
   double _minRating = 0;
   RangeValues _priceRange = const RangeValues(0, 500);
-  bool _filtersApplied = false;
+  String _sortBy = 'rating'; // rating | distance | price_low | newest
 
   @override
   void initState() {
     super.initState();
+    _loadSavedCity();
     _loadCategories();
     _loadProviders();
   }
@@ -36,16 +47,77 @@ class _BrowseScreenState extends State<BrowseScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCategories() async {
-    final data = await supabase
-        .from('service_categories')
-        .select()
-        .order('sort_order');
-    if (mounted) {
-      setState(() {
-        _categories = List<Map<String, dynamic>>.from(data);
-      });
+  Future<void> _loadSavedCity() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('selected_city');
+    if (saved != null && mounted) {
+      setState(() => _selectedCity = saved);
+
+      // Load city coordinates
+      if (saved != 'All Zimbabwe') {
+        try {
+          final city = await supabase
+              .from('cities')
+              .select('lat, lng')
+              .eq('name', saved)
+              .maybeSingle();
+          if (city != null && mounted) {
+            setState(() {
+              _cityLat = (city['lat'] as num?)?.toDouble();
+              _cityLng = (city['lng'] as num?)?.toDouble();
+            });
+          }
+        } catch (_) {}
+      }
     }
+    // Default: try to match user's profile location to a city
+    if (saved == null) {
+      try {
+        final uid = supabase.auth.currentUser?.id;
+        if (uid != null) {
+          final profile = await supabase
+              .from('profiles')
+              .select('location')
+              .eq('id', uid)
+              .maybeSingle();
+          final loc = (profile?['location'] ?? '').toString().toLowerCase();
+          if (loc.isNotEmpty) {
+            final cities = await supabase
+                .from('cities')
+                .select()
+                .eq('is_active', true);
+            for (final c in cities) {
+              if (loc.contains((c['name'] as String).toLowerCase())) {
+                if (mounted) {
+                  setState(() {
+                    _selectedCity = c['name'];
+                    _cityLat = (c['lat'] as num?)?.toDouble();
+                    _cityLng = (c['lng'] as num?)?.toDouble();
+                  });
+                  final prefs2 = await SharedPreferences.getInstance();
+                  await prefs2.setString('selected_city', c['name']);
+                }
+                break;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final data = await supabase
+          .from('service_categories')
+          .select()
+          .order('sort_order');
+      if (mounted) {
+        setState(() {
+          _categories = List<Map<String, dynamic>>.from(data);
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadProviders() async {
@@ -59,13 +131,12 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
       final providers = List<Map<String, dynamic>>.from(data);
 
-      // Fetch services and subscriptions separately per provider
       for (final p in providers) {
         final pid = p['provider_id'];
         try {
           final services = await supabase
               .from('services')
-              .select('id, price, category_id, is_active')
+              .select('id, name, price, category_id, is_active')
               .eq('provider_id', pid);
           p['services'] = services;
         } catch (_) {
@@ -98,61 +169,131 @@ class _BrowseScreenState extends State<BrowseScreen> {
     }
   }
 
+  double? _distanceToProvider(Map<String, dynamic> p) {
+    if (_cityLat == null || _cityLng == null) return null;
+    final pLat = (p['latitude'] as num?)?.toDouble();
+    final pLng = (p['longitude'] as num?)?.toDouble();
+    if (pLat == null || pLng == null) {
+      // Fallback: match by location string
+      return null;
+    }
+    return _haversine(_cityLat!, _cityLng!, pLat, pLng);
+  }
+
+  static double _haversine(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371.0;
+    final dLat = _toRad(lat2 - lat1);
+    final dLng = _toRad(lng2 - lng1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRad(lat1)) * cos(_toRad(lat2)) * sin(dLng / 2) * sin(dLng / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return r * c;
+  }
+
+  static double _toRad(double deg) => deg * pi / 180;
+
+  bool _matchesLocation(Map<String, dynamic> p) {
+    if (_selectedCity == 'All Zimbabwe') return true;
+    final loc =
+        (p['profiles']?['location'] ?? '').toString().toLowerCase();
+    final cityLower = _selectedCity.toLowerCase();
+    if (loc.contains(cityLower)) return true;
+    // Check distance if coords available
+    final dist = _distanceToProvider(p);
+    if (dist != null && dist <= _radiusKm) return true;
+    return false;
+  }
+
   List<Map<String, dynamic>> get _filteredProviders {
     final query = _searchCtrl.text.trim().toLowerCase();
 
-    return _providers.where((p) {
-      final name = (p['profiles']?['full_name'] ?? '').toString().toLowerCase();
-      final location = (p['profiles']?['location'] ?? '').toString().toLowerCase();
+    final filtered = _providers.where((p) {
+      final name =
+          (p['profiles']?['full_name'] ?? '').toString().toLowerCase();
+      final location =
+          (p['profiles']?['location'] ?? '').toString().toLowerCase();
       final rating = (p['average_rating'] as num?)?.toDouble() ?? 0.0;
       final services = p['services'] as List? ?? [];
-      final subs = p['subscriptions'];
 
-      // Show all providers (subscription check removed for now)
+      // Location filter
+      if (!_matchesLocation(p)) return false;
 
-      // Search by name or location
+      // Search by name, location, or service name
       if (query.isNotEmpty) {
-        if (!name.contains(query) && !location.contains(query)) return false;
+        final matchesName = name.contains(query);
+        final matchesLocation = location.contains(query);
+        final matchesService = services.any((s) =>
+            (s['name'] ?? '').toString().toLowerCase().contains(query));
+        if (!matchesName && !matchesLocation && !matchesService) return false;
       }
 
       // Minimum rating filter
       if (_minRating > 0 && rating < _minRating) return false;
 
-      // Category filter
-      if (_selectedCategoryId != null) {
+      // Category filter (multi-select)
+      if (_selectedCategoryIds.isNotEmpty) {
         final hasCategory = services.any((s) =>
-            s['category_id'] == _selectedCategoryId && s['is_active'] == true);
+            _selectedCategoryIds.contains(s['category_id']) &&
+            s['is_active'] == true);
         if (!hasCategory) return false;
       }
 
       // Price range filter
-      if (_filtersApplied) {
+      if (_priceRange.start > 0 || _priceRange.end < 500) {
         final activeServices =
             services.where((s) => s['is_active'] == true).toList();
         if (activeServices.isEmpty) return false;
-
         final prices = activeServices
             .map((s) => (s['price'] as num?)?.toDouble() ?? 0)
             .toList();
         final minPrice = prices.reduce((a, b) => a < b ? a : b);
         final maxPrice = prices.reduce((a, b) => a > b ? a : b);
-
         if (minPrice > _priceRange.end || maxPrice < _priceRange.start) {
           return false;
         }
       }
 
       return true;
-    }).toList()
-      ..sort((a, b) {
-        // Stage 21: Featured providers rank above everyone else
-        final featA = _isFeatured(a) ? 1 : 0;
-        final featB = _isFeatured(b) ? 1 : 0;
-        if (featA != featB) return featB.compareTo(featA);
-        final ratingA = (a['average_rating'] as num?)?.toDouble() ?? 0.0;
-        final ratingB = (b['average_rating'] as num?)?.toDouble() ?? 0.0;
-        return ratingB.compareTo(ratingA);
-      });
+    }).toList();
+
+    // Sort
+    filtered.sort((a, b) {
+      // Featured always first
+      final featA = _isFeatured(a) ? 1 : 0;
+      final featB = _isFeatured(b) ? 1 : 0;
+      if (featA != featB) return featB.compareTo(featA);
+
+      switch (_sortBy) {
+        case 'distance':
+          final dA = _distanceToProvider(a) ?? 9999;
+          final dB = _distanceToProvider(b) ?? 9999;
+          return dA.compareTo(dB);
+        case 'price_low':
+          final pA = _minServicePrice(a);
+          final pB = _minServicePrice(b);
+          return pA.compareTo(pB);
+        case 'newest':
+          final cA = a['created_at'] ?? '';
+          final cB = b['created_at'] ?? '';
+          return cB.compareTo(cA);
+        default: // rating
+          final rA = (a['average_rating'] as num?)?.toDouble() ?? 0.0;
+          final rB = (b['average_rating'] as num?)?.toDouble() ?? 0.0;
+          return rB.compareTo(rA);
+      }
+    });
+
+    return filtered;
+  }
+
+  double _minServicePrice(Map<String, dynamic> p) {
+    final services = (p['services'] as List? ?? [])
+        .where((s) => s['is_active'] == true)
+        .toList();
+    if (services.isEmpty) return 999;
+    return services
+        .map((s) => (s['price'] as num?)?.toDouble() ?? 999)
+        .reduce((a, b) => a < b ? a : b);
   }
 
   static bool _isFeatured(Map<String, dynamic> provider) {
@@ -166,10 +307,38 @@ class _BrowseScreenState extends State<BrowseScreen> {
     return false;
   }
 
+  int get _activeFilterCount {
+    int count = 0;
+    if (_minRating > 0) count++;
+    if (_selectedCategoryIds.isNotEmpty) count++;
+    if (_priceRange.start > 0 || _priceRange.end < 500) count++;
+    if (_selectedCity != 'All Zimbabwe') count++;
+    return count;
+  }
+
+  void _openLocationPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationPickerSheet(
+        currentCity: _selectedCity,
+        onCitySelected: (city, lat, lng) {
+          setState(() {
+            _selectedCity = city;
+            _cityLat = lat;
+            _cityLng = lng;
+          });
+        },
+      ),
+    );
+  }
+
   void _showFilterSheet() {
     double tempMinRating = _minRating;
-    String? tempCategoryId = _selectedCategoryId;
     RangeValues tempPriceRange = _priceRange;
+    String tempSort = _sortBy;
+    int tempRadius = _radiusKm;
 
     showModalBottomSheet(
       context: context,
@@ -188,73 +357,128 @@ class _BrowseScreenState extends State<BrowseScreen> {
             children: [
               Row(
                 children: [
-                  Text('Filters', style: Theme.of(context).textTheme.headlineSmall),
+                  Text('Filters',
+                      style: Theme.of(context).textTheme.headlineSmall),
                   const Spacer(),
                   TextButton(
                     onPressed: () {
                       setSheetState(() {
                         tempMinRating = 0;
-                        tempCategoryId = null;
                         tempPriceRange = const RangeValues(0, 500);
+                        tempSort = 'rating';
+                        tempRadius = 100;
                       });
                     },
                     child: const Text('Reset'),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Category filter
-              Text('Service Category', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: [
-                  _FilterChip(
-                    label: 'All',
-                    selected: tempCategoryId == null,
-                    onSelected: (_) => setSheetState(() => tempCategoryId = null),
-                  ),
-                  ..._categories.map((cat) => _FilterChip(
-                        label: '${cat['icon'] ?? ''} ${cat['name']}',
-                        selected: tempCategoryId == cat['id'],
-                        onSelected: (_) =>
-                            setSheetState(() => tempCategoryId = cat['id']),
-                      )),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-
-              // Rating filter
-              Text(
-                'Minimum Rating: ${tempMinRating == 0 ? 'Any' : '${tempMinRating.toStringAsFixed(0)}+ stars'}',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: AppColors.primary,
-                  thumbColor: AppColors.primary,
-                  inactiveTrackColor: AppColors.primary.withValues(alpha: 0.15),
-                  overlayColor: AppColors.primary.withValues(alpha: 0.1),
-                ),
-                child: Slider(
-                  value: tempMinRating,
-                  min: 0,
-                  max: 5,
-                  divisions: 5,
-                  label: tempMinRating == 0
-                      ? 'Any'
-                      : '${tempMinRating.toStringAsFixed(0)}+',
-                  onChanged: (v) => setSheetState(() => tempMinRating = v),
-                ),
-              ),
               const SizedBox(height: AppSpacing.lg),
 
-              // Price range filter
+              // Sort by
+              Text('Sort by', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  _SortChip('Best Rated', 'rating', tempSort,
+                      (v) => setSheetState(() => tempSort = v)),
+                  _SortChip('Closest', 'distance', tempSort,
+                      (v) => setSheetState(() => tempSort = v)),
+                  _SortChip('Price: Low', 'price_low', tempSort,
+                      (v) => setSheetState(() => tempSort = v)),
+                  _SortChip('Newest', 'newest', tempSort,
+                      (v) => setSheetState(() => tempSort = v)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // Radius
+              if (_selectedCity != 'All Zimbabwe') ...[
+                Text(
+                  'Radius: ${tempRadius}km from $_selectedCity',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  children: _radiusOptions.map((r) {
+                    final selected = tempRadius == r;
+                    return ChoiceChip(
+                      label: Text('${r}km'),
+                      selected: selected,
+                      onSelected: (_) =>
+                          setSheetState(() => tempRadius = r),
+                      selectedColor:
+                          AppColors.primary.withValues(alpha: 0.15),
+                      labelStyle: TextStyle(
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                      checkmarkColor: AppColors.primary,
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+
+              // Rating
               Text(
-                'Price Range: \$${tempPriceRange.start.toStringAsFixed(0)} - \$${tempPriceRange.end.toStringAsFixed(0)}',
+                'Minimum Rating: ${tempMinRating == 0 ? 'Any' : '${tempMinRating.toStringAsFixed(1)}+'}',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  for (int i = 1; i <= 5; i++)
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setSheetState(() =>
+                            tempMinRating =
+                                tempMinRating == i.toDouble() ? 0 : i.toDouble()),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: tempMinRating >= i
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : Colors.grey.shade100,
+                            borderRadius: AppRadius.smAll,
+                            border: Border.all(
+                              color: tempMinRating >= i
+                                  ? AppColors.primary.withValues(alpha: 0.3)
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.star_rounded,
+                                  size: 20,
+                                  color: tempMinRating >= i
+                                      ? AppColors.warning
+                                      : Colors.grey.shade400),
+                              Text('$i+',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: tempMinRating >= i
+                                          ? AppColors.primary
+                                          : AppColors.textTertiary)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // Price range
+              Text(
+                'Price: \$${tempPriceRange.start.toStringAsFixed(0)} - \$${tempPriceRange.end.toStringAsFixed(0)}',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -262,8 +486,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: AppColors.primary,
                   thumbColor: AppColors.primary,
-                  inactiveTrackColor: AppColors.primary.withValues(alpha: 0.15),
-                  overlayColor: AppColors.primary.withValues(alpha: 0.1),
+                  inactiveTrackColor:
+                      AppColors.primary.withValues(alpha: 0.15),
                 ),
                 child: RangeSlider(
                   values: tempPriceRange,
@@ -274,24 +498,21 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     '\$${tempPriceRange.start.toStringAsFixed(0)}',
                     '\$${tempPriceRange.end.toStringAsFixed(0)}',
                   ),
-                  onChanged: (v) => setSheetState(() => tempPriceRange = v),
+                  onChanged: (v) =>
+                      setSheetState(() => tempPriceRange = v),
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              // Apply button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
                     setState(() {
                       _minRating = tempMinRating;
-                      _selectedCategoryId = tempCategoryId;
                       _priceRange = tempPriceRange;
-                      _filtersApplied = tempMinRating > 0 ||
-                          tempCategoryId != null ||
-                          tempPriceRange.start > 0 ||
-                          tempPriceRange.end < 500;
+                      _sortBy = tempSort;
+                      _radiusKm = tempRadius;
                     });
                     Navigator.pop(context);
                   },
@@ -306,251 +527,380 @@ class _BrowseScreenState extends State<BrowseScreen> {
     );
   }
 
-  int get _activeFilterCount {
-    int count = 0;
-    if (_minRating > 0) count++;
-    if (_selectedCategoryId != null) count++;
-    if (_priceRange.start > 0 || _priceRange.end < 500) count++;
-    return count;
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredProviders;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Browse Stylists'),
-        actions: [
-          Badge(
-            isLabelVisible: _activeFilterCount > 0,
-            label: Text('$_activeFilterCount'),
-            backgroundColor: AppColors.primary,
-            child: IconButton(
-              icon: const Icon(Icons.tune_rounded),
-              tooltip: 'Filters',
-              onPressed: _showFilterSheet,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Premium search bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardLight,
-                borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top bar: Location pill + Search
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+              child: Row(
+                children: [
+                  // Location pill
+                  GestureDetector(
+                    onTap: _openLocationPicker,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: AppRadius.lgAll,
+                        border: Border.all(
+                            color:
+                                AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on_rounded,
+                              size: 16, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxWidth: 100),
+                            child: Text(
+                              _selectedCity,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 18, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  // Search bar
+                  Expanded(
+                    child: Container(
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: AppRadius.lgAll,
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Search name, service...',
+                          hintStyle: const TextStyle(fontSize: 13),
+                          prefixIcon: const Icon(Icons.search_rounded,
+                              size: 20, color: AppColors.textTertiary),
+                          suffixIcon: _searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded,
+                                      size: 18),
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        style: const TextStyle(fontSize: 14),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Filter button
+                  Badge(
+                    isLabelVisible: _activeFilterCount > 0,
+                    label: Text('$_activeFilterCount'),
+                    backgroundColor: AppColors.primary,
+                    child: IconButton(
+                      icon: const Icon(Icons.tune_rounded),
+                      onPressed: _showFilterSheet,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surfaceLight,
+                        side: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Search by name or location...',
-                  prefixIcon: Icon(Icons.search_rounded, color: AppColors.textTertiary),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear_rounded, color: AppColors.textTertiary),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() {});
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: AppRadius.lgAll,
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.lgAll,
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.lgAll,
-                    borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-          ),
-
-          // Active filter chips
-          if (_filtersApplied)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: SizedBox(
-                height: 38,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  children: [
-                    if (_selectedCategoryId != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: InputChip(
-                          label: Text(_categories
-                                  .where((c) => c['id'] == _selectedCategoryId)
-                                  .map((c) => c['name'])
-                                  .firstOrNull ??
-                              'Category'),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                          selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                          labelStyle: TextStyle(color: AppColors.primary, fontSize: 13),
-                          deleteIconColor: AppColors.primary,
-                          side: BorderSide.none,
-                          onDeleted: () =>
-                              setState(() => _selectedCategoryId = null),
-                        ),
-                      ),
-                    if (_minRating > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: InputChip(
-                          label: Text('${_minRating.toStringAsFixed(0)}+ stars'),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                          labelStyle: TextStyle(color: AppColors.primary, fontSize: 13),
-                          deleteIconColor: AppColors.primary,
-                          side: BorderSide.none,
-                          onDeleted: () => setState(() => _minRating = 0),
-                        ),
-                      ),
-                    if (_priceRange.start > 0 || _priceRange.end < 500)
-                      Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                        child: InputChip(
-                          label: Text(
-                              '\$${_priceRange.start.toStringAsFixed(0)} - \$${_priceRange.end.toStringAsFixed(0)}'),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                          labelStyle: TextStyle(color: AppColors.primary, fontSize: 13),
-                          deleteIconColor: AppColors.primary,
-                          side: BorderSide.none,
-                          onDeleted: () => setState(
-                              () => _priceRange = const RangeValues(0, 500)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ),
 
-          // Results
-          Expanded(
-            child: _loading
-                ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : RefreshIndicator(
-                    color: AppColors.primary,
-                    onRefresh: _loadProviders,
-                    child: filtered.isEmpty
-                        ? ListView(
-                            children: [
-                              SizedBox(
-                                height:
-                                    MediaQuery.of(context).size.height * 0.5,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.search_off_rounded,
-                                          size: 64,
-                                          color: AppColors.textTertiary),
-                                      const SizedBox(height: AppSpacing.lg),
-                                      Text(
-                                        'No stylists found',
-                                        style: Theme.of(context).textTheme.titleLarge,
-                                      ),
-                                      const SizedBox(height: AppSpacing.sm),
-                                      const Text(
-                                        'Try adjusting your search or filters.',
-                                        style: TextStyle(
-                                            color: AppColors.textSecondary, fontSize: 14),
-                                      ),
-                                      if (_filtersApplied) ...[
-                                        const SizedBox(height: AppSpacing.xl),
-                                        OutlinedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              _minRating = 0;
-                                              _selectedCategoryId = null;
-                                              _priceRange =
-                                                  const RangeValues(0, 500);
-                                              _filtersApplied = false;
-                                              _searchCtrl.clear();
-                                            });
-                                          },
-                                          child: const Text('Clear All Filters'),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.sm,
-                            ),
-                            itemCount: filtered.length,
-                            itemBuilder: (_, i) =>
-                                _ProviderCard(provider: filtered[i]),
+            // Category chips
+            if (_categories.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.md),
+                child: SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg),
+                    children: [
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(right: AppSpacing.sm),
+                        child: ChoiceChip(
+                          label: const Text('All'),
+                          selected: _selectedCategoryIds.isEmpty,
+                          onSelected: (_) =>
+                              setState(() => _selectedCategoryIds.clear()),
+                          selectedColor:
+                              AppColors.primary.withValues(alpha: 0.15),
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: _selectedCategoryIds.isEmpty
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                            fontWeight: _selectedCategoryIds.isEmpty
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
+                          checkmarkColor: AppColors.primary,
+                          side: BorderSide(
+                            color: _selectedCategoryIds.isEmpty
+                                ? AppColors.primary.withValues(alpha: 0.3)
+                                : Colors.grey.shade300,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      ..._categories.map((cat) {
+                        final id = cat['id'] as String;
+                        final selected =
+                            _selectedCategoryIds.contains(id);
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              right: AppSpacing.sm),
+                          child: ChoiceChip(
+                            label: Text(
+                                '${cat['icon'] ?? ''} ${cat['name']}'),
+                            selected: selected,
+                            onSelected: (_) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedCategoryIds.remove(id);
+                                } else {
+                                  _selectedCategoryIds.add(id);
+                                }
+                              });
+                            },
+                            selectedColor: AppColors.primary
+                                .withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              fontSize: 13,
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                            checkmarkColor: AppColors.primary,
+                            side: BorderSide(
+                              color: selected
+                                  ? AppColors.primary
+                                      .withValues(alpha: 0.3)
+                                  : Colors.grey.shade300,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        );
+                      }),
+                    ],
                   ),
-          ),
-        ],
+                ),
+              ),
+
+            const SizedBox(height: AppSpacing.sm),
+
+            // Results count
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg),
+              child: Row(
+                children: [
+                  Text(
+                    '${filtered.length} stylist${filtered.length == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (_selectedCity != 'All Zimbabwe') ...[
+                    const Text(' in ',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textTertiary)),
+                    Text(
+                      _selectedCity,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  // Sort indicator
+                  GestureDetector(
+                    onTap: _showFilterSheet,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.sort_rounded,
+                            size: 16, color: AppColors.textTertiary),
+                        const SizedBox(width: 4),
+                        Text(
+                          _sortLabel,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.sm),
+
+            // Results
+            Expanded(
+              child: _loading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary))
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _loadProviders,
+                      child: filtered.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.sm,
+                              ),
+                              itemCount: filtered.length,
+                              itemBuilder: (_, i) => _ProviderCard(
+                                provider: filtered[i],
+                                distance: _distanceToProvider(filtered[i]),
+                                isFeatured: _isFeatured(filtered[i]),
+                              ),
+                            ),
+                    ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  String get _sortLabel {
+    switch (_sortBy) {
+      case 'distance':
+        return 'Closest';
+      case 'price_low':
+        return 'Price';
+      case 'newest':
+        return 'Newest';
+      default:
+        return 'Top Rated';
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return ListView(
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.4,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.search_off_rounded,
+                    size: 64, color: AppColors.textTertiary),
+                const SizedBox(height: AppSpacing.lg),
+                Text('No stylists found',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _selectedCity != 'All Zimbabwe'
+                      ? 'Try expanding your search to All Zimbabwe'
+                      : 'Try adjusting your filters',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                if (_selectedCity != 'All Zimbabwe')
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _selectedCity = 'All Zimbabwe';
+                        _cityLat = null;
+                        _cityLng = null;
+                      });
+                    },
+                    icon: const Icon(Icons.public_rounded, size: 18),
+                    label: const Text('Search All Zimbabwe'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _SortChip extends StatelessWidget {
   final String label;
-  final bool selected;
-  final ValueChanged<bool> onSelected;
+  final String value;
+  final String current;
+  final ValueChanged<String> onSelected;
 
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
+  const _SortChip(this.label, this.value, this.current, this.onSelected);
 
   @override
   Widget build(BuildContext context) {
+    final selected = current == value;
     return ChoiceChip(
       label: Text(label),
       selected: selected,
-      onSelected: onSelected,
+      onSelected: (_) => onSelected(value),
       selectedColor: AppColors.primary.withValues(alpha: 0.15),
       labelStyle: TextStyle(
+        fontSize: 12,
         color: selected ? AppColors.primary : AppColors.textSecondary,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
       ),
       checkmarkColor: AppColors.primary,
-      backgroundColor: AppColors.surfaceLight,
-      side: BorderSide(
-        color: selected ? AppColors.primary.withValues(alpha: 0.3) : Colors.grey.shade300,
-      ),
+      visualDensity: VisualDensity.compact,
     );
   }
 }
 
 class _ProviderCard extends StatelessWidget {
   final Map<String, dynamic> provider;
-  const _ProviderCard({required this.provider});
+  final double? distance;
+  final bool isFeatured;
+
+  const _ProviderCard({
+    required this.provider,
+    this.distance,
+    required this.isFeatured,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -580,7 +930,6 @@ class _ProviderCard extends StatelessWidget {
         statusLabel = 'Offline';
     }
 
-    // Price range text
     String priceText = '';
     if (services.isNotEmpty) {
       final prices =
@@ -589,7 +938,14 @@ class _ProviderCard extends StatelessWidget {
       final maxPrice = prices.reduce((a, b) => a > b ? a : b);
       priceText = minPrice == maxPrice
           ? '\$${minPrice.toStringAsFixed(0)}'
-          : '\$${minPrice.toStringAsFixed(0)} - \$${maxPrice.toStringAsFixed(0)}';
+          : 'From \$${minPrice.toStringAsFixed(0)}';
+    }
+
+    String? distanceText;
+    if (distance != null) {
+      distanceText = distance! < 1
+          ? '${(distance! * 1000).toStringAsFixed(0)}m'
+          : '${distance!.toStringAsFixed(1)}km';
     }
 
     return Padding(
@@ -604,15 +960,19 @@ class _ProviderCard extends StatelessWidget {
             padding: AppSpacing.cardPadding,
             decoration: BoxDecoration(
               borderRadius: AppRadius.lgAll,
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(
+                color: isFeatured
+                    ? AppColors.secondary.withValues(alpha: 0.4)
+                    : Colors.grey.shade200,
+              ),
             ),
             child: Row(
               children: [
-                // Avatar with gradient background
+                // Avatar
                 Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
                     gradient: AppColors.primaryGradient,
                     shape: BoxShape.circle,
                   ),
@@ -620,7 +980,7 @@ class _ProviderCard extends StatelessWidget {
                     child: Text(
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -637,26 +997,30 @@ class _ProviderCard extends StatelessWidget {
                           Flexible(
                             child: Text(name,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleMedium),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium),
                           ),
-                          if (_BrowseScreenState._isFeatured(p)) ...[
+                          if (isFeatured) ...[
                             const SizedBox(width: AppSpacing.sm),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(alpha: 0.15),
+                                color: AppColors.secondary
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.star_rounded,
-                                      size: 12, color: Color(0xFFB07B0E)),
+                                      size: 10,
+                                      color: Color(0xFFB07B0E)),
                                   SizedBox(width: 2),
                                   Text('FEATURED',
                                       style: TextStyle(
-                                          fontSize: 9,
+                                          fontSize: 8,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.5,
                                           color: Color(0xFFB07B0E))),
@@ -666,64 +1030,89 @@ class _ProviderCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                      if (location.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on_outlined, size: 14, color: AppColors.textTertiary),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (location.isNotEmpty) ...[
+                            const Icon(Icons.location_on_outlined,
+                                size: 13, color: AppColors.textTertiary),
                             const SizedBox(width: 2),
-                            Expanded(
+                            Flexible(
                               child: Text(
                                 location,
-                                style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                                style: const TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 12),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                      const SizedBox(height: AppSpacing.sm),
+                          if (distanceText != null) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.info
+                                    .withValues(alpha: 0.1),
+                                borderRadius: AppRadius.smAll,
+                              ),
+                              child: Text(
+                                distanceText,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.info,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
                       Row(
                         children: [
-                          // Status dot
                           Container(
-                            width: 8,
-                            height: 8,
+                            width: 7,
+                            height: 7,
                             decoration: BoxDecoration(
                               color: statusColor,
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.xs + 2),
+                          const SizedBox(width: 4),
                           Text(statusLabel,
                               style: TextStyle(
                                   color: statusColor,
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600)),
                           if (totalReviews > 0) ...[
                             const SizedBox(width: AppSpacing.md),
-                            Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                            const Icon(Icons.star_rounded,
+                                size: 14, color: AppColors.warning),
                             const SizedBox(width: 2),
                             Text(
                               '${rating.toStringAsFixed(1)} ($totalReviews)',
                               style: const TextStyle(
-                                  fontSize: 12, color: AppColors.textSecondary),
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
                             ),
                           ],
+                          const Spacer(),
+                          if (priceText.isNotEmpty)
+                            Text(priceText,
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary)),
                         ],
                       ),
-                      if (priceText.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(priceText,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary)),
-                      ],
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+                const SizedBox(width: AppSpacing.sm),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textTertiary),
               ],
             ),
           ),

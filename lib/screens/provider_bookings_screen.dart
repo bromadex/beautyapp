@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../widgets/booking_card.dart';
 import '../theme.dart';
 
@@ -136,6 +137,71 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     _load();
   }
 
+  Future<void> _acceptOffer(String bookingId) async {
+    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
+    final offeredPrice = (booking['client_offered_price'] as num?)?.toDouble();
+    if (offeredPrice == null) return;
+
+    await supabase.from('bookings').update({
+      'negotiation_status': 'agreed',
+      'agreed_price': offeredPrice,
+      'total_price': offeredPrice,
+    }).eq('id', bookingId);
+
+    NotificationService.send(
+      userId: booking['client_id'],
+      type: 'booking',
+      title: 'Offer Accepted!',
+      body: 'Your offer of \$${offeredPrice.toStringAsFixed(0)} was accepted.',
+    );
+    _load();
+  }
+
+  Future<void> _declineOffer(String bookingId) async {
+    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
+    await supabase.from('bookings').update({
+      'negotiation_status': 'declined',
+    }).eq('id', bookingId);
+
+    NotificationService.send(
+      userId: booking['client_id'],
+      type: 'booking',
+      title: 'Offer Declined',
+      body: 'Your price offer was declined.',
+    );
+    _load();
+  }
+
+  Future<void> _counterOffer(String bookingId, double counterPrice) async {
+    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
+    final rounds = (booking['negotiation_rounds'] as int?) ?? 0;
+
+    if (rounds >= 3) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Maximum negotiation rounds reached')),
+        );
+      }
+      return;
+    }
+
+    await supabase.from('bookings').update({
+      'negotiation_status': 'provider_countered',
+      'provider_counter_price': counterPrice,
+      'negotiation_rounds': rounds + 1,
+      'offer_expires_at':
+          DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+    }).eq('id', bookingId);
+
+    NotificationService.send(
+      userId: booking['client_id'],
+      type: 'booking',
+      title: 'Counter Offer',
+      body: 'Provider countered with \$${counterPrice.toStringAsFixed(0)}.',
+    );
+    _load();
+  }
+
   Future<void> _markCompleted(String bookingId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -236,11 +302,17 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
               isProvider: true,
               onAccept: (id) => _respond(id, true),
               onDecline: (id) => _respond(id, false),
+              onAcceptOffer: _acceptOffer,
+              onDeclineOffer: _declineOffer,
+              onCounterOffer: _counterOffer,
             ),
             BookingList(
               bookings: confirmed,
               isProvider: true,
               onComplete: _markCompleted,
+              onAcceptOffer: _acceptOffer,
+              onDeclineOffer: _declineOffer,
+              onCounterOffer: _counterOffer,
             ),
             BookingList(bookings: past, isProvider: true),
           ],

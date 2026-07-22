@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+import '../services/notification_service.dart';
 import '../widgets/booking_card.dart';
 import '../theme.dart';
 
@@ -110,6 +111,43 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
     }
   }
 
+  Future<void> _acceptCounterOffer(String bookingId) async {
+    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
+    final counterPrice =
+        (booking['provider_counter_price'] as num?)?.toDouble();
+    if (counterPrice == null) return;
+
+    await supabase.from('bookings').update({
+      'negotiation_status': 'agreed',
+      'agreed_price': counterPrice,
+      'total_price': counterPrice,
+    }).eq('id', bookingId);
+
+    NotificationService.send(
+      userId: booking['provider_id'],
+      type: 'booking',
+      title: 'Offer Accepted!',
+      body:
+          'Client accepted your counter-offer of \$${counterPrice.toStringAsFixed(0)}.',
+    );
+    _load();
+  }
+
+  Future<void> _declineCounterOffer(String bookingId) async {
+    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
+    await supabase.from('bookings').update({
+      'negotiation_status': 'declined',
+    }).eq('id', bookingId);
+
+    NotificationService.send(
+      userId: booking['provider_id'],
+      type: 'booking',
+      title: 'Offer Declined',
+      body: 'Client declined your counter-offer.',
+    );
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -206,6 +244,8 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                   onCancel: b['status'] == 'pending'
                       ? () => _cancel(b['id'])
                       : null,
+                  onAcceptOffer: _acceptCounterOffer,
+                  onDeclineOffer: _declineCounterOffer,
                 );
               },
             ),

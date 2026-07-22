@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
+import '../widgets/price_offer_sheet.dart';
 
 class BookingScreen extends StatefulWidget {
   final String providerId;
@@ -28,6 +29,10 @@ class _BookingScreenState extends State<BookingScreen> {
   final _promoCtrl = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+
+  // Price negotiation
+  double? _offeredPrice;
+  bool _isNegotiated = false;
 
   // Promo code state
   Map<String, dynamic>? _appliedPromo;
@@ -137,7 +142,28 @@ class _BookingScreenState extends State<BookingScreen> {
   double get _servicePrice =>
       (_service?['price'] as num?)?.toDouble() ?? 0;
 
-  double get _totalPrice => (_servicePrice - _discountAmount).clamp(0, double.infinity);
+  double get _effectivePrice => _offeredPrice ?? _servicePrice;
+
+  double get _totalPrice => (_effectivePrice - _discountAmount).clamp(0, double.infinity);
+
+  Future<void> _openPriceOffer() async {
+    final result = await showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PriceOfferSheet(
+        listedPrice: _servicePrice,
+        serviceName: _service!['service_name'] ?? 'Service',
+        providerName: _provider!['full_name'] ?? 'Provider',
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _offeredPrice = result;
+        _isNegotiated = result != _servicePrice;
+      });
+    }
+  }
 
   Future<void> _applyPromo() async {
     final code = _promoCtrl.text.trim().toUpperCase();
@@ -343,6 +369,14 @@ class _BookingScreenState extends State<BookingScreen> {
         'promo_code': _appliedPromo?['code'],
         'client_note':
             _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        if (_isNegotiated) ...{
+          'client_offered_price': _offeredPrice,
+          'negotiation_status': 'client_offered',
+          'negotiation_rounds': 1,
+          'offer_expires_at': DateTime.now()
+              .add(const Duration(hours: 24))
+              .toIso8601String(),
+        },
       });
 
       // Increment promo used_count
@@ -362,8 +396,10 @@ class _BookingScreenState extends State<BookingScreen> {
       NotificationService.send(
         userId: widget.providerId,
         type: 'booking',
-        title: 'New Booking Request',
-        body: '$clientName booked ${_service!['service_name']}',
+        title: _isNegotiated ? 'New Price Offer' : 'New Booking Request',
+        body: _isNegotiated
+            ? '$clientName offered \$${_offeredPrice!.toStringAsFixed(0)} for ${_service!['service_name']} (listed \$${_servicePrice.toStringAsFixed(0)})'
+            : '$clientName booked ${_service!['service_name']}',
       );
 
       if (mounted) {
@@ -691,6 +727,90 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: AppSpacing.xxl),
 
+            // Offer your price
+            Container(
+              decoration: BoxDecoration(
+                color: _isNegotiated
+                    ? AppColors.success.withValues(alpha: 0.05)
+                    : AppColors.primary.withValues(alpha: 0.04),
+                borderRadius: AppRadius.lgAll,
+                border: Border.all(
+                  color: _isNegotiated
+                      ? AppColors.success.withValues(alpha: 0.3)
+                      : AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: AppRadius.lgAll,
+                child: InkWell(
+                  borderRadius: AppRadius.lgAll,
+                  onTap: _openPriceOffer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _isNegotiated
+                                ? AppColors.success.withValues(alpha: 0.1)
+                                : AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: AppRadius.mdAll,
+                          ),
+                          child: Icon(
+                            _isNegotiated
+                                ? Icons.check_circle_rounded
+                                : Icons.local_offer_outlined,
+                            color: _isNegotiated
+                                ? AppColors.success
+                                : AppColors.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isNegotiated
+                                    ? 'Your Offer: \$${_offeredPrice!.toStringAsFixed(0)}'
+                                    : 'Offer Your Price',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                  color: _isNegotiated
+                                      ? AppColors.success
+                                      : AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                _isNegotiated
+                                    ? 'Listed: \$${_servicePrice.toStringAsFixed(0)} — Tap to change'
+                                    : 'Suggest a price for this service',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textTertiary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+
             // Price summary card
             Container(
               padding: AppSpacing.cardPadding,
@@ -705,10 +825,46 @@ class _BookingScreenState extends State<BookingScreen> {
                   children: [
                     Text('Service',
                         style: Theme.of(context).textTheme.bodyMedium),
-                    Text('\$${_servicePrice.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.bodyLarge),
+                    Text(
+                      '\$${_servicePrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: _isNegotiated
+                            ? AppColors.textTertiary
+                            : AppColors.textPrimary,
+                        decoration: _isNegotiated
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
                   ],
                 ),
+                if (_isNegotiated) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_offer_outlined,
+                              size: 14, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          const Text('Your offer',
+                              style: TextStyle(
+                                  fontSize: 14, color: AppColors.primary)),
+                        ],
+                      ),
+                      Text(
+                        '\$${_offeredPrice!.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (_discountAmount > 0) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Row(
