@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Join Beauty Home Services to get started',
+                    'Join BeauTap to get started',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,

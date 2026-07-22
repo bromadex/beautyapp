@@ -104,7 +104,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
             title: const Text(
-              'Beauty Home Services',
+              'BeauTap',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
             ),
             actions: [
