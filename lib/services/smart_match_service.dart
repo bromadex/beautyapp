@@ -22,7 +22,7 @@ class SmartMatchService {
     final favorites = await supabase
         .from('favorites')
         .select('provider_id')
-        .eq('user_id', clientId);
+        .eq('client_id', clientId);
     final favIds = (favorites as List).map((f) => f['provider_id']).toSet();
 
     // Client's reviews (to find preferred providers)
@@ -149,6 +149,58 @@ class SmartMatchService {
     scored.sort((a, b) => ((b['_matchScore'] as double)).compareTo(a['_matchScore'] as double));
 
     return scored.take(limit).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getNearbyProviders({
+    required String clientLocation,
+    int limit = 10,
+  }) async {
+    if (clientLocation.isEmpty) return [];
+    final locationParts = clientLocation.toLowerCase().split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
+    final providers = await supabase
+        .from('provider_profiles')
+        .select('*, profiles(id, full_name, location)')
+        .or('is_hidden.eq.false,is_hidden.is.null');
+    final providerList = List<Map<String, dynamic>>.from(providers);
+
+    final matched = providerList.where((p) {
+      final loc = (p['profiles']?['location'] ?? '').toString().toLowerCase();
+      return locationParts.any((part) => loc.contains(part));
+    }).toList();
+
+    matched.sort((a, b) {
+      final rA = (a['average_rating'] as num?)?.toDouble() ?? 0;
+      final rB = (b['average_rating'] as num?)?.toDouble() ?? 0;
+      return rB.compareTo(rA);
+    });
+
+    return matched.take(limit).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getTopRated({
+    String? location,
+    int limit = 10,
+  }) async {
+    final providers = await supabase
+        .from('provider_profiles')
+        .select('*, profiles(id, full_name, location)')
+        .or('is_hidden.eq.false,is_hidden.is.null')
+        .gte('total_reviews', 1)
+        .order('average_rating', ascending: false)
+        .limit(limit);
+    var providerList = List<Map<String, dynamic>>.from(providers);
+
+    if (location != null && location.isNotEmpty) {
+      final parts = location.toLowerCase().split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+      final local = providerList.where((p) {
+        final loc = (p['profiles']?['location'] ?? '').toString().toLowerCase();
+        return parts.any((part) => loc.contains(part));
+      }).toList();
+      if (local.isNotEmpty) providerList = local;
+    }
+
+    return providerList.take(limit).toList();
   }
 
   static List<String> _buildMatchReasons({

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -55,6 +56,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _googleLoading = true);
     try {
       if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pending_user_type', _userType);
         await supabase.auth.signInWithOAuth(
           OAuthProvider.google,
           redirectTo: Uri.base.origin,
@@ -94,16 +97,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 .maybeSingle();
 
             if (existing == null) {
-              await supabase.from('profiles').insert({
+              await supabase.from('profiles').upsert({
                 'id': user.id,
                 'full_name': user.userMetadata?['full_name'] ??
                     user.userMetadata?['name'] ??
                     '',
-                'user_type': 'client',
-              });
+                'user_type': _userType,
+              }, onConflict: 'id');
+              if (_userType == 'provider') {
+                await supabase.from('provider_profiles').upsert({
+                  'provider_id': user.id,
+                  'bio': '',
+                }, onConflict: 'provider_id');
+              }
+            } else {
+              await supabase.from('profiles').update({
+                'user_type': _userType,
+              }).eq('id', user.id);
+              if (_userType == 'provider') {
+                await supabase.from('provider_profiles').upsert({
+                  'provider_id': user.id,
+                  'bio': '',
+                }, onConflict: 'provider_id');
+              }
             }
+            await supabase.auth.updateUser(UserAttributes(
+              data: {'user_type': _userType},
+            ));
           }
-          context.go('/home');
+          context.go(_userType == 'provider' ? '/provider/home' : '/home');
         }
       }
     } catch (e) {
@@ -174,7 +196,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on AuthException catch (e) {
       if (mounted) {
         String msg = e.message;
-        if (msg.contains('already registered') || msg.contains('already been registered')) {
+        if (e.statusCode == '422' ||
+            msg.contains('already registered') ||
+            msg.contains('already been registered') ||
+            msg.contains('already exists')) {
           msg = 'This email is already registered. Try signing in instead.';
         } else if (msg.contains('valid email')) {
           msg = 'Please enter a valid email address.';
