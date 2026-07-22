@@ -5,8 +5,7 @@
 //   bookingId?: string,          // required for purpose=booking
 //   method?: 'web' | 'ecocash' | 'onemoney' | 'telecash',
 //   phone?: string,              // required for mobile money methods
-//   tier?: 'active' | 'featured' // for purpose=subscription
-//   months?: number              // for purpose=subscription
+//   tier?: 'activation' | 'monthly' // for purpose=subscription
 // }
 //
 // Secrets required: PAYNOW_INTEGRATION_ID, PAYNOW_INTEGRATION_KEY
@@ -20,12 +19,13 @@ import {
   jsonResponse,
 } from "../_shared/paynow.ts";
 
-const SUBSCRIPTION_PRICES: Record<string, Record<number, number>> = {
-  active: { 1: 10, 3: 27, 6: 50 },
-  featured: { 1: 25, 3: 67, 6: 125 },
+// Provider subscription: $3 activation (includes first month), $5/month after.
+// No commission — providers keep 100% of booking payments.
+const SUBSCRIPTION_PRICES: Record<string, number> = {
+  activation: 3,
+  monthly: 5,
 };
-const ACTIVATION_FEE = 1.0;
-const PLATFORM_FEE_RATE = 0.10;
+const CLIENT_ACTIVATION_FEE = 1.0;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -87,16 +87,14 @@ Deno.serve(async (req) => {
     amount = Number(booking.total_price ?? booking.services?.price ?? 0);
     providerId = booking.provider_id;
   } else if (purpose === "activation") {
-    amount = ACTIVATION_FEE;
+    amount = CLIENT_ACTIVATION_FEE;
   } else if (purpose === "subscription") {
-    const tier = String(body.tier ?? "active");
-    const months = Number(body.months ?? 1);
-    const price = SUBSCRIPTION_PRICES[tier]?.[months];
-    if (!price) return jsonResponse({ error: "Invalid tier/months" }, 400);
+    const plan = String(body.tier ?? body.plan ?? "activation");
+    const price = SUBSCRIPTION_PRICES[plan];
+    if (!price) return jsonResponse({ error: "Invalid plan" }, 400);
     amount = price;
     providerId = user.id;
-    meta.tier = tier;
-    meta.months = months;
+    meta.plan = plan;
   } else {
     return jsonResponse({ error: "Invalid purpose" }, 400);
   }
@@ -138,10 +136,6 @@ Deno.serve(async (req) => {
       client_id: user.id,
       provider_id: providerId,
       amount,
-      platform_fee: purpose === "booking" ? amount * PLATFORM_FEE_RATE : 0,
-      provider_earnings: purpose === "booking"
-        ? amount * (1 - PLATFORM_FEE_RATE)
-        : 0,
       method: isExpress ? "mobile_money" : "card",
       status: "pending",
       transaction_ref: reference,

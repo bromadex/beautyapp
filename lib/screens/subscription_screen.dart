@@ -1,16 +1,17 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import '../config/app_config.dart';
 import '../services/paynow_service.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
-/// Stage 21: Subscription Revamp — First Booking Free.
+/// Provider subscription — flat pricing, zero commission.
 ///
-/// Tiers:
-///  - New (free): profile visible, messaging, accept 1st booking
-///  - Active ($10/mo): unlimited bookings + gallery + promos
-///  - Featured ($25/mo): top-3 search placement per area (limited slots)
+/// The model:
+///  - Create profile, get browsed & messaged → FREE
+///  - Accepting bookings requires activation: $3 (includes first month)
+///  - After month 1 → $5/month
+///  - Providers keep 100% of booking payments — no commission
+///  - Cancel anytime → profile hidden; reactivate later for $3
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
   @override
@@ -19,31 +20,9 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Map<String, dynamic>? _subscription;
-  Map<String, dynamic>? _providerProfile;
-  Map<String, dynamic>? _waitlistEntry;
-  int _featuredInArea = 0;
   bool _loading = true;
   bool _processing = false;
   String? _error;
-
-  static const int maxFeaturedPerArea = 3;
-
-  // tier -> months -> price
-  static const _pricing = {
-    'active': [
-      {'label': '1 Month', 'months': 1, 'price': 10.00},
-      {'label': '3 Months', 'months': 3, 'price': 27.00},
-      {'label': '6 Months', 'months': 6, 'price': 50.00},
-    ],
-    'featured': [
-      {'label': '1 Month', 'months': 1, 'price': 25.00},
-      {'label': '3 Months', 'months': 3, 'price': 67.00},
-      {'label': '6 Months', 'months': 6, 'price': 125.00},
-    ],
-  };
-
-  String _selectedTier = 'active';
-  int _selectedPlan = 0;
 
   @override
   void initState() {
@@ -56,55 +35,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       _loading = true;
       _error = null;
     });
-
     try {
-      final userId = supabase.auth.currentUser!.id;
-
-      final sub = await supabase
+      final data = await supabase
           .from('subscriptions')
           .select()
-          .eq('provider_id', userId)
+          .eq('provider_id', supabase.auth.currentUser!.id)
           .maybeSingle();
-
-      Map<String, dynamic>? profile;
-      try {
-        profile = await supabase
-            .from('provider_profiles')
-            .select('first_booking_used, latitude, longitude, service_radius_km')
-            .eq('provider_id', userId)
-            .maybeSingle();
-      } catch (_) {
-        // Migration not run yet — fall back to legacy columns
-        profile = await supabase
-            .from('provider_profiles')
-            .select('latitude, longitude')
-            .eq('provider_id', userId)
-            .maybeSingle();
-      }
-
-      Map<String, dynamic>? waitlist;
-      int featuredCount = 0;
-      try {
-        waitlist = await supabase
-            .from('featured_waitlist')
-            .select()
-            .eq('provider_id', userId)
-            .eq('status', 'waiting')
-            .maybeSingle();
-        featuredCount = await _countFeaturedInArea(profile);
-      } catch (_) {
-        // featured_waitlist / tier column not migrated yet
-      }
-
       if (mounted) {
         setState(() {
-          _subscription = sub;
-          _providerProfile = profile;
-          _waitlistEntry = waitlist;
-          _featuredInArea = featuredCount;
-          if (_isActive && _subscription!['tier'] == 'featured') {
-            _selectedTier = 'featured';
-          }
+          _subscription = data;
           _loading = false;
         });
       }
@@ -118,68 +57,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  /// Counts active Featured providers whose location falls inside my
-  /// service area (my radius, default 10km). Area = provider's service
-  /// radius per the roadmap.
-  Future<int> _countFeaturedInArea(Map<String, dynamic>? myProfile) async {
-    final myLat = (myProfile?['latitude'] as num?)?.toDouble();
-    final myLng = (myProfile?['longitude'] as num?)?.toDouble();
-    final myRadius =
-        (myProfile?['service_radius_km'] as num?)?.toDouble() ?? 10.0;
-
-    final userId = supabase.auth.currentUser!.id;
-    final subs = await supabase
-        .from('subscriptions')
-        .select('provider_id, status, end_date, tier')
-        .eq('tier', 'featured')
-        .eq('status', 'active');
-
-    final now = DateTime.now();
-    final featuredIds = <String>[];
-    for (final s in subs) {
-      if (s['provider_id'] == userId) continue;
-      final end = DateTime.tryParse(s['end_date'] ?? '');
-      if (end != null && end.isAfter(now)) {
-        featuredIds.add(s['provider_id'] as String);
-      }
-    }
-    if (featuredIds.isEmpty) return 0;
-    // Without my location, treat every featured provider as in-area (safe).
-    if (myLat == null || myLng == null) return featuredIds.length;
-
-    final profiles = await supabase
-        .from('provider_profiles')
-        .select('provider_id, latitude, longitude')
-        .inFilter('provider_id', featuredIds);
-
-    var count = 0;
-    for (final p in profiles) {
-      final lat = (p['latitude'] as num?)?.toDouble();
-      final lng = (p['longitude'] as num?)?.toDouble();
-      if (lat == null || lng == null) {
-        count++; // unknown location competes for the area slot
-        continue;
-      }
-      if (_haversineKm(myLat, myLng, lat, lng) <= myRadius) count++;
-    }
-    return count;
-  }
-
-  static double _haversineKm(
-      double lat1, double lng1, double lat2, double lng2) {
-    const r = 6371.0;
-    final dLat = _rad(lat2 - lat1);
-    final dLng = _rad(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_rad(lat1)) *
-            math.cos(_rad(lat2)) *
-            math.sin(dLng / 2) *
-            math.sin(dLng / 2);
-    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-  }
-
-  static double _rad(double deg) => deg * math.pi / 180;
-
   bool get _isActive {
     if (_subscription == null) return false;
     if (_subscription!['status'] != 'active') return false;
@@ -187,134 +64,73 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return end != null && end.isAfter(DateTime.now());
   }
 
-  String get _currentTier {
-    if (!_isActive) return 'new';
-    return (_subscription!['tier'] as String?) ?? 'active';
-  }
-
-  bool get _firstBookingUsed => _providerProfile?['first_booking_used'] == true;
-
-  bool get _featuredSlotsFull => _featuredInArea >= maxFeaturedPerArea;
+  /// True for lapsed or cancelled subscribers (reactivation costs $3 again).
+  bool get _isLapsed => _subscription != null && !_isActive;
 
   int get _daysRemaining {
-    if (_subscription == null) return 0;
-    final end = DateTime.tryParse(_subscription!['end_date'] ?? '');
+    final end = DateTime.tryParse(_subscription?['end_date'] ?? '');
     if (end == null) return 0;
     return end.difference(DateTime.now()).inDays.clamp(0, 9999);
   }
 
-  Future<void> _joinWaitlist() async {
-    setState(() => _processing = true);
-    try {
-      await supabase.from('featured_waitlist').upsert(
-        {
-          'provider_id': supabase.auth.currentUser!.id,
-          'status': 'waiting',
-          'requested_at': DateTime.now().toIso8601String(),
-        },
-        onConflict: 'provider_id',
-      );
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                "You're on the Featured waitlist. We'll notify you when a slot opens in your area."),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Could not join waitlist: $e'),
-              backgroundColor: AppColors.error),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _processing = false);
-    }
-  }
+  /// Activation ($3, first month) applies to new and lapsed providers.
+  /// Renewal ($5/month) applies while active.
+  bool get _payingActivation => !_isActive;
 
-  Future<void> _subscribe() async {
-    // Featured with all area slots taken → waitlist instead of payment
-    if (_selectedTier == 'featured' &&
-        _featuredSlotsFull &&
-        _currentTier != 'featured') {
-      await _joinWaitlist();
-      return;
-    }
+  double get _price => _payingActivation
+      ? AppConfig.providerActivationFee
+      : AppConfig.providerMonthlyFee;
 
+  Future<void> _pay() async {
     setState(() => _processing = true);
 
-    // Stage 20: real Paynow checkout when configured
+    // Real Paynow checkout when configured
     final outcome = await PaynowCheckout.run(
       context,
       purpose: 'subscription',
-      tier: _selectedTier,
-      months: _pricing[_selectedTier]![_selectedPlan]['months'] as int,
+      tier: _payingActivation ? 'activation' : 'monthly',
+      months: 1,
     );
     if (outcome != PaynowOutcome.unconfigured) {
       if (mounted) setState(() => _processing = false);
       if (outcome == PaynowOutcome.paid) {
-        // Webhook already wrote the subscription row
         await _load();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Subscription activated — payment received!'),
-              backgroundColor: AppColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-            ),
-          );
-        }
+        if (mounted) _snack('Payment received — you\'re live!', AppColors.success);
       } else if (mounted &&
-          (outcome == PaynowOutcome.failed ||
-              outcome == PaynowOutcome.timeout)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(outcome == PaynowOutcome.failed
+          (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
+        _snack(
+            outcome == PaynowOutcome.failed
                 ? 'Payment was not completed. Please try again.'
-                : 'Payment still pending — refresh this page in a few minutes.'),
-            backgroundColor: AppColors.warning,
-          ),
-        );
+                : 'Payment still pending — refresh this page in a few minutes.',
+            AppColors.warning);
       }
       return;
     }
 
+    // Simulated fallback until Paynow is configured
     try {
       final userId = supabase.auth.currentUser!.id;
-      final plan = _pricing[_selectedTier]![_selectedPlan];
-      final months = plan['months'] as int;
-      final price = plan['price'] as double;
+      final start = DateTime.now();
 
-      final startDate = DateTime.now();
-      final endDate =
-          DateTime(startDate.year, startDate.month + months, startDate.day);
+      // Renewals extend from the current end date, activations start today
+      DateTime base = start;
+      if (!_payingActivation) {
+        final end = DateTime.tryParse(_subscription?['end_date'] ?? '');
+        if (end != null && end.isAfter(start)) base = end;
+      }
+      final endDate = DateTime(base.year, base.month + 1, base.day);
 
       final payload = {
         'provider_id': userId,
-        'start_date': startDate.toIso8601String().split('T')[0],
+        'start_date': start.toIso8601String().split('T')[0],
         'end_date': endDate.toIso8601String().split('T')[0],
         'status': 'active',
-        'plan': '${months}_month',
-        'tier': _selectedTier,
-        'amount_paid': price,
+        'plan': _payingActivation ? 'activation' : 'monthly',
+        'amount_paid': _price,
         'payment_ref': 'SIM-${DateTime.now().millisecondsSinceEpoch}',
       };
 
-      final existing = await supabase
-          .from('subscriptions')
-          .select()
-          .eq('provider_id', userId)
-          .maybeSingle();
-
-      if (existing == null) {
+      if (_subscription == null) {
         await supabase.from('subscriptions').insert(payload);
       } else {
         await supabase
@@ -327,42 +143,81 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           .from('provider_profiles')
           .update({'is_hidden': false}).eq('provider_id', userId);
 
-      // Activating Featured clears any waitlist entry
-      if (_selectedTier == 'featured') {
-        try {
-          await supabase
-              .from('featured_waitlist')
-              .update({'status': 'activated'}).eq('provider_id', userId);
-        } catch (_) {}
-      }
-
       await _load();
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '${_selectedTier == 'featured' ? 'Featured' : 'Active'} subscription activated for $months month(s)'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
+        _snack(
+            _payingActivation
+                ? 'Account activated — your first month is live!'
+                : 'Renewed for another month!',
+            AppColors.success);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
+      if (mounted) _snack('Error: $e', AppColors.error);
     } finally {
       if (mounted) setState(() => _processing = false);
     }
+  }
+
+  Future<void> _cancel() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.pause_circle_outline_rounded,
+              color: AppColors.warning, size: 32),
+        ),
+        title: const Text('Cancel Subscription?'),
+        content: const Text(
+            'Your profile will be hidden from search and you won\'t be able to accept bookings. You can reactivate anytime for \$3.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep It')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Cancel Subscription'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _processing = true);
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      await supabase
+          .from('subscriptions')
+          .update({'status': 'cancelled'}).eq('provider_id', userId);
+      await supabase
+          .from('provider_profiles')
+          .update({'is_hidden': true}).eq('provider_id', userId);
+      await _load();
+      if (mounted) {
+        _snack('Subscription cancelled — reactivate anytime for \$3.',
+            AppColors.warning);
+      }
+    } catch (e) {
+      if (mounted) _snack('Error: $e', AppColors.error);
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  void _snack(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      ),
+    );
   }
 
   @override
@@ -416,51 +271,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 _buildStatusCard(),
                 const SizedBox(height: AppSpacing.xl),
-                if (_currentTier == 'new' && !_firstBookingUsed)
-                  _buildFirstBookingBanner(),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Choose Your Tier',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.2),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _buildTierCard(
-                  tier: 'active',
-                  title: 'Active',
-                  monthly: 10,
-                  icon: Icons.rocket_launch_rounded,
-                  color: AppColors.primary,
-                  features: const [
-                    'Unlimited bookings',
-                    'Gallery portfolio',
-                    'Run promotions',
-                    'Reviews & ratings',
-                  ],
-                ),
-                _buildTierCard(
-                  tier: 'featured',
-                  title: 'Featured',
-                  monthly: 25,
-                  icon: Icons.star_rounded,
-                  color: AppColors.secondary,
-                  features: const [
-                    'Everything in Active',
-                    'Top 3 placement in search',
-                    'Featured badge on profile',
-                    'Priority promo tools',
-                  ],
-                  slotsBanner: true,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _buildDurationSelector(),
+                _buildPricingCard(),
+                const SizedBox(height: AppSpacing.xl),
+                _buildBenefits(),
                 const SizedBox(height: AppSpacing.xl),
                 _buildInfoBox(),
                 const SizedBox(height: AppSpacing.xl),
-                _buildSubscribeButton(),
+                _buildPayButton(),
+                if (_isActive) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  TextButton(
+                    onPressed: _processing ? null : _cancel,
+                    child: const Text('Cancel subscription',
+                        style: TextStyle(color: AppColors.textTertiary)),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.xxl),
               ],
             ),
@@ -471,36 +296,35 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _buildStatusCard() {
-    final tier = _currentTier;
-    final expired = _subscription != null && !_isActive;
-
     late final List<Color> gradient;
     late final IconData icon;
     late final String title;
     late final String subtitle;
 
-    if (tier == 'featured') {
-      gradient = const [Color(0xFFF9A825), Color(0xFFF57F17)];
-      icon = Icons.star_rounded;
-      title = 'Featured Provider';
-      subtitle = '$_daysRemaining days remaining · top of search in your area';
-    } else if (tier == 'active') {
+    if (_isActive) {
       gradient = const [Color(0xFFC2185B), Color(0xFF880E4F)];
       icon = Icons.verified_rounded;
-      title = 'Active Subscription';
-      subtitle = '$_daysRemaining days remaining · unlimited bookings';
-    } else if (expired) {
+      title = 'Subscription Active';
+      subtitle =
+          '$_daysRemaining days remaining · you keep 100% of what you earn';
+    } else if (_subscription?['status'] == 'cancelled') {
+      gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
+      icon = Icons.pause_circle_outline_rounded;
+      title = 'Subscription Cancelled';
+      subtitle =
+          'Your profile is hidden. Reactivate for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to go live again.';
+    } else if (_isLapsed) {
       gradient = const [Color(0xFFDC2626), Color(0xFFEF4444)];
       icon = Icons.warning_rounded;
       title = 'Subscription Expired';
-      subtitle = 'Renew to keep accepting bookings';
+      subtitle =
+          'Reactivate for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to keep accepting bookings.';
     } else {
       gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
       icon = Icons.spa_rounded;
-      title = 'New Provider — Free';
-      subtitle = _firstBookingUsed
-          ? 'Free booking used. Subscribe to keep accepting bookings.'
-          : 'Your first booking is free — no subscription needed';
+      title = 'Not Activated Yet';
+      subtitle =
+          'Clients can find and message you for free. Activate to start accepting bookings.';
     }
 
     return Container(
@@ -546,214 +370,156 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildFirstBookingBanner() {
+  Widget _buildPricingCard() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.08),
-        borderRadius: AppRadius.mdAll,
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
+        color: Colors.white,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
-      child: const Row(
+      child: Column(
         children: [
-          Icon(Icons.card_giftcard_rounded, color: AppColors.success, size: 22),
-          SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'Your first booking is on us! Accept and complete your first booking free, then subscribe to keep going.',
-              style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary, height: 1.4),
+          const Text('Simple, Honest Pricing',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: _priceBlock(
+                  highlight: _payingActivation,
+                  amount: '\$3',
+                  label: 'First month',
+                  sub: 'One-time activation,\nmonth 1 included',
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded,
+                  color: AppColors.textTertiary, size: 20),
+              Expanded(
+                child: _priceBlock(
+                  highlight: !_payingActivation,
+                  amount: '\$5',
+                  label: 'Per month after',
+                  sub: 'Cancel anytime,\nno lock-in',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
             ),
+            child: const Text('NO HIDDEN FEES · NO COMMISSION',
+                style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: AppColors.success)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTierCard({
-    required String tier,
-    required String title,
-    required int monthly,
-    required IconData icon,
-    required Color color,
-    required List<String> features,
-    bool slotsBanner = false,
+  Widget _priceBlock({
+    required bool highlight,
+    required String amount,
+    required String label,
+    required String sub,
   }) {
-    final isSelected = _selectedTier == tier;
-    final slotsLeft = (maxFeaturedPerArea - _featuredInArea).clamp(0, maxFeaturedPerArea);
-
-    return GestureDetector(
-      onTap: () => setState(() {
-        _selectedTier = tier;
-        _selectedPlan = 0;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: AppSpacing.md),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.05) : Colors.white,
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade200,
-            width: isSelected ? 2 : 1,
-          ),
-          borderRadius: AppRadius.lgAll,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: AppRadius.smAll,
-                  ),
-                  child: Icon(icon, color: color, size: 22),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: AppColors.textPrimary)),
-                ),
-                Text('\$$monthly',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 22, color: color)),
-                const Text('/mo',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ...features.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_rounded, size: 15, color: color),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(f,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textPrimary)),
-                      ),
-                    ],
-                  ),
-                )),
-            if (slotsBanner) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: (_featuredSlotsFull ? AppColors.warning : AppColors.success)
-                      .withValues(alpha: 0.1),
-                  borderRadius: AppRadius.smAll,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _featuredSlotsFull
-                          ? Icons.hourglass_top_rounded
-                          : Icons.location_on_outlined,
-                      size: 15,
-                      color: _featuredSlotsFull
-                          ? AppColors.warning
-                          : AppColors.success,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        _waitlistEntry != null
-                            ? "You're on the waitlist for your area"
-                            : _featuredSlotsFull
-                                ? 'All $maxFeaturedPerArea Featured slots taken in your area — join the waitlist'
-                                : '$slotsLeft of $maxFeaturedPerArea Featured slots open in your area',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: _featuredSlotsFull
-                              ? AppColors.warning
-                              : AppColors.success,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.lg, horizontal: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: highlight
+            ? AppColors.primary.withValues(alpha: 0.06)
+            : Colors.transparent,
+        borderRadius: AppRadius.mdAll,
+        border: highlight
+            ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+            : null,
+      ),
+      child: Column(
+        children: [
+          Text(amount,
+              style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                  color: highlight ? AppColors.primary : AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.xs),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 2),
+          Text(sub,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 10.5, color: AppColors.textTertiary, height: 1.3)),
+        ],
       ),
     );
   }
 
-  Widget _buildDurationSelector() {
-    final plans = _pricing[_selectedTier]!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Billing Period',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: plans.asMap().entries.map((entry) {
-            final i = entry.key;
-            final plan = entry.value;
-            final selected = _selectedPlan == i;
-            final months = plan['months'] as int;
-            final price = plan['price'] as double;
-            final perMonth = (price / months).toStringAsFixed(2);
+  Widget _buildBenefits() {
+    const benefits = [
+      ('You keep 100% of what you earn', Icons.account_balance_wallet_rounded),
+      ('Unlimited bookings', Icons.all_inclusive_rounded),
+      ('Appear in client searches', Icons.search_rounded),
+      ('Gallery, promos, reviews & ratings', Icons.auto_awesome_rounded),
+      ('Cancel anytime — reactivate for \$3', Icons.lock_open_rounded),
+    ];
 
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedPlan = i),
-                child: Container(
-                  margin: EdgeInsets.only(right: i < plans.length - 1 ? AppSpacing.sm : 0),
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.primary.withValues(alpha: 0.06)
-                        : Colors.white,
-                    border: Border.all(
-                      color: selected ? AppColors.primary : Colors.grey.shade200,
-                      width: selected ? 2 : 1,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('What you get',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.md),
+          ...benefits.map((b) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          size: 13, color: AppColors.success),
                     ),
-                    borderRadius: AppRadius.mdAll,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(plan['label'] as String,
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: selected
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary)),
-                      const SizedBox(height: 2),
-                      Text('\$${price.toStringAsFixed(0)}',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: selected
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary)),
-                      Text('\$$perMonth/mo',
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(b.$1,
                           style: const TextStyle(
-                              fontSize: 10.5, color: AppColors.textTertiary)),
-                    ],
-                  ),
+                              fontSize: 14, color: AppColors.textPrimary)),
+                    ),
+                  ],
                 ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+              )),
+        ],
+      ),
     );
   }
 
@@ -771,8 +537,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              'Payments via EcoCash & card (Paynow) are coming soon. Subscriptions are currently activated instantly.',
-              style: TextStyle(fontSize: 12, color: AppColors.info),
+              'The \$3 activation keeps BeauTap free of fake profiles and bots — every stylist on the platform is real and invested. Payments via EcoCash & card (Paynow) coming soon.',
+              style: TextStyle(fontSize: 12, color: AppColors.info, height: 1.4),
             ),
           ),
         ],
@@ -780,32 +546,29 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildSubscribeButton() {
-    final waitlistMode = _selectedTier == 'featured' &&
-        _featuredSlotsFull &&
-        _currentTier != 'featured';
-    final alreadyWaitlisted = waitlistMode && _waitlistEntry != null;
-    final price =
-        (_pricing[_selectedTier]![_selectedPlan]['price'] as double)
-            .toStringAsFixed(2);
-
-    final label = alreadyWaitlisted
-        ? 'On Waitlist — We\'ll Notify You'
-        : waitlistMode
-            ? 'Join Featured Waitlist'
-            : _isActive
-                ? 'Renew / Change Tier — \$$price'
-                : 'Subscribe — \$$price';
+  Widget _buildPayButton() {
+    final label = _processing
+        ? 'Processing...'
+        : _payingActivation
+            ? (_isLapsed
+                ? 'Reactivate — \$${AppConfig.providerActivationFee.toStringAsFixed(0)}'
+                : 'Activate — \$${AppConfig.providerActivationFee.toStringAsFixed(0)} (first month included)')
+            : 'Renew — \$${AppConfig.providerMonthlyFee.toStringAsFixed(0)} for 1 month';
 
     return Container(
       decoration: BoxDecoration(
-        gradient: alreadyWaitlisted ? null : AppColors.primaryGradient,
-        color: alreadyWaitlisted ? Colors.grey.shade300 : null,
+        gradient: AppColors.primaryGradient,
         borderRadius: AppRadius.mdAll,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: FilledButton.icon(
-        onPressed:
-            (_processing || alreadyWaitlisted) ? null : _subscribe,
+        onPressed: _processing ? null : _pay,
         icon: _processing
             ? const SizedBox(
                 height: 18,
@@ -813,13 +576,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: Colors.white),
               )
-            : Icon(waitlistMode
-                ? Icons.hourglass_top_rounded
-                : Icons.diamond_outlined),
-        label: Text(
-          _processing ? 'Processing...' : label,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
+            : const Icon(Icons.rocket_launch_rounded),
+        label: Text(label,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         style: FilledButton.styleFrom(
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,

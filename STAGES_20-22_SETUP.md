@@ -10,9 +10,11 @@ external setup below. Nothing breaks in the meantime.
 
 Run these in the **Supabase Dashboard → SQL Editor** (project `suxohsmcgjzzllmyesgt`), in order:
 
-1. `stage21_migration.sql` — subscription tiers, first-booking-free, featured waitlist
+1. `stage21_migration.sql` — subscription columns, service radius, featured waitlist table
 2. `stage20_migration.sql` — payments table columns for Paynow
-3. `stage22_migration.sql` — fcm_token, reminder_sent, pg_cron reminder job
+3. `pricing_update_migration.sql` — **new pricing model**: drops commission columns
+   (platform_fee / provider_earnings), removes the first-booking-free trigger
+4. `stage22_migration.sql` — fcm_token, reminder_sent, pg_cron reminder job
    ⚠️ Before running, replace `YOUR_SERVICE_ROLE_KEY` and `YOUR_WEBHOOK_SECRET`
    in the file (Service role key: Dashboard → Settings → API. Webhook secret:
    any long random string — you'll reuse it in step 3).
@@ -102,9 +104,9 @@ On both webhooks add HTTP header: `x-webhook-secret: <your WEBHOOK_SECRET>`.
 
 ## What needs no action
 
-- **Stage 21** works fully after its SQL migration: New tier (first booking
-  free), Active $10/mo, Featured $25/mo with 3-slots-per-area + waitlist,
-  featured-first search with FEATURED badge, service-radius slider in the
-  profile editor, accept-gate with subscribe prompt.
+- **Provider pricing (locked model)** works fully after the SQL migrations:
+  $3 activation includes the first month, $5/month after, cancel anytime
+  (profile hidden) and reactivate for $3. Providers keep **100% of booking
+  payments** — zero commission. Accepting a booking requires activation.
 - Payments keep working in simulated mode until Paynow secrets exist.
 - Push code is dormant until `firebaseConfigured = true`.

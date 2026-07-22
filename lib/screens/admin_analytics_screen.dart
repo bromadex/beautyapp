@@ -15,7 +15,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
 
   // Revenue
   double _totalRevenue = 0;
-  double _platformFees = 0;
+  double _subscriptionRevenue = 0;
   double _thisMonthRevenue = 0;
   double _lastMonthRevenue = 0;
 
@@ -104,7 +104,14 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         serviceCounts[sName] = (serviceCounts[sName] ?? 0) + 1;
       }
 
-      _platformFees = _totalRevenue * 0.10;
+      // Platform revenue = provider subscriptions only (no commission)
+      _subscriptionRevenue = 0;
+      try {
+        final subs = await supabase.from('subscriptions').select('amount_paid');
+        for (final s in List<Map<String, dynamic>>.from(subs)) {
+          _subscriptionRevenue += (s['amount_paid'] as num?)?.toDouble() ?? 0;
+        }
+      } catch (_) {}
 
       // Monthly revenue sorted
       final sortedMonths = monthlyRev.entries.toList()
@@ -237,7 +244,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             children: [
               _miniStat('This Month', 'R${_thisMonthRevenue.toStringAsFixed(0)}'),
               const SizedBox(width: AppSpacing.xxl),
-              _miniStat('Platform Fees', 'R${_platformFees.toStringAsFixed(0)}'),
+              _miniStat('Subscriptions', 'R${_subscriptionRevenue.toStringAsFixed(0)}'),
               const SizedBox(width: AppSpacing.xxl),
               _miniStat(
                 'Growth',

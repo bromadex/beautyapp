@@ -77,18 +77,12 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     }
   }
 
-  /// Stage 21 gate: accepting is allowed while the free first booking is
-  /// unused, or with an active subscription. Declining is always allowed.
+  /// Accepting bookings requires an active subscription:
+  /// $3 activation (includes first month), then $5/month.
+  /// Declining is always allowed.
   Future<bool> _canAcceptBooking() async {
     final userId = supabase.auth.currentUser!.id;
     try {
-      final pp = await supabase
-          .from('provider_profiles')
-          .select('first_booking_used')
-          .eq('provider_id', userId)
-          .maybeSingle();
-      if (pp == null || pp['first_booking_used'] != true) return true;
-
       final sub = await supabase
           .from('subscriptions')
           .select('status, end_date')
@@ -98,7 +92,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       final end = DateTime.tryParse(sub['end_date'] ?? '');
       return end != null && end.isAfter(DateTime.now());
     } catch (_) {
-      // Migration not run yet — don't block providers
+      // Subscription table unreachable — don't block providers
       return true;
     }
   }
@@ -106,7 +100,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
   Future<void> _respond(String bookingId, bool accept) async {
     if (accept && !await _canAcceptBooking()) {
       if (!mounted) return;
-      final subscribe = await showDialog<bool>(
+      final activate = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           icon: Container(
@@ -115,23 +109,23 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.workspace_premium_rounded,
+            child: const Icon(Icons.rocket_launch_rounded,
                 color: AppColors.primary, size: 32),
           ),
-          title: const Text('Subscribe to Keep Accepting'),
+          title: const Text('Activate to Accept Bookings'),
           content: const Text(
-              'Your free first booking has been used. Subscribe to the Active tier (\$10/mo) to accept unlimited bookings.'),
+              'Activate your account for \$3 — that covers your whole first month, then it\'s just \$5/month. You keep 100% of what you earn, no commission.'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: const Text('Not now')),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('View Plans')),
+                child: const Text('Activate — \$3')),
           ],
         ),
       );
-      if (subscribe == true && mounted) context.push('/provider/subscription');
+      if (activate == true && mounted) context.push('/provider/subscription');
       return;
     }
 
