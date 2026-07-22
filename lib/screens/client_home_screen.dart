@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
+import '../services/push_service.dart';
 import '../theme.dart';
 
 class ClientHomeScreen extends StatefulWidget {
@@ -23,6 +24,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     super.initState();
     _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) PushService.maybeInit(context);
+    });
   }
 
   @override

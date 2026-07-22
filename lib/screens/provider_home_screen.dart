@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
+import '../services/push_service.dart';
 import '../theme.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
@@ -38,6 +39,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     super.initState();
     _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) PushService.maybeInit(context);
+    });
   }
 
   @override

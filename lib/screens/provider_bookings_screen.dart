@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../widgets/booking_card.dart';
@@ -76,7 +77,64 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     }
   }
 
+  /// Stage 21 gate: accepting is allowed while the free first booking is
+  /// unused, or with an active subscription. Declining is always allowed.
+  Future<bool> _canAcceptBooking() async {
+    final userId = supabase.auth.currentUser!.id;
+    try {
+      final pp = await supabase
+          .from('provider_profiles')
+          .select('first_booking_used')
+          .eq('provider_id', userId)
+          .maybeSingle();
+      if (pp == null || pp['first_booking_used'] != true) return true;
+
+      final sub = await supabase
+          .from('subscriptions')
+          .select('status, end_date')
+          .eq('provider_id', userId)
+          .maybeSingle();
+      if (sub == null || sub['status'] != 'active') return false;
+      final end = DateTime.tryParse(sub['end_date'] ?? '');
+      return end != null && end.isAfter(DateTime.now());
+    } catch (_) {
+      // Migration not run yet — don't block providers
+      return true;
+    }
+  }
+
   Future<void> _respond(String bookingId, bool accept) async {
+    if (accept && !await _canAcceptBooking()) {
+      if (!mounted) return;
+      final subscribe = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.workspace_premium_rounded,
+                color: AppColors.primary, size: 32),
+          ),
+          title: const Text('Subscribe to Keep Accepting'),
+          content: const Text(
+              'Your free first booking has been used. Subscribe to the Active tier (\$10/mo) to accept unlimited bookings.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Not now')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('View Plans')),
+          ],
+        ),
+      );
+      if (subscribe == true && mounted) context.push('/provider/subscription');
+      return;
+    }
+
     await supabase.from('bookings').update({
       'status': accept ? 'confirmed' : 'cancelled',
       if (!accept) 'cancel_reason': 'Declined by provider'
