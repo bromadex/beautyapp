@@ -111,6 +111,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
 
     return Scaffold(
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverAppBar(
             expandedHeight: 160,

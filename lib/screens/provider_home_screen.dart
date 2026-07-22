@@ -381,6 +381,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
     return Scaffold(
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverAppBar(
             expandedHeight: 140,
