@@ -52,13 +52,14 @@ export async function applyPaymentOutcome(opts: {
       .eq("id", payment.booking_id);
 
     if (payment.provider_id) {
+      // No commission — the provider receives the full amount
       await admin.from("notifications").insert({
         user_id: payment.provider_id,
         type: "payment",
         title: "Payment Received",
         body: `You received $${
-          Number(payment.provider_earnings ?? 0).toFixed(2)
-        } for a booking`,
+          Number(payment.amount ?? 0).toFixed(2)
+        } for a booking — 100% yours`,
         reference_id: payment.booking_id,
       });
     }
@@ -68,29 +69,35 @@ export async function applyPaymentOutcome(opts: {
       .update({ is_activated: true })
       .eq("id", payment.client_id);
   } else if (purpose === "subscription") {
-    const tier = payment.meta?.tier ?? "active";
-    const months = Number(payment.meta?.months ?? 1);
+    // $3 activation (includes first month) or $5 monthly renewal.
+    const plan = payment.meta?.plan ?? "activation";
     const start = new Date();
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + months);
     const dateOnly = (d: Date) => d.toISOString().split("T")[0];
+
+    const { data: existing } = await admin
+      .from("subscriptions")
+      .select("id, end_date, status")
+      .eq("provider_id", payment.client_id)
+      .maybeSingle();
+
+    // Renewals extend from the current end date; activations start today
+    let base = start;
+    if (plan === "monthly" && existing?.end_date) {
+      const currentEnd = new Date(existing.end_date);
+      if (currentEnd > start) base = currentEnd;
+    }
+    const end = new Date(base);
+    end.setMonth(end.getMonth() + 1);
 
     const payload = {
       provider_id: payment.client_id,
       start_date: dateOnly(start),
       end_date: dateOnly(end),
       status: "active",
-      plan: `${months}_month`,
-      tier,
+      plan,
       amount_paid: payment.amount,
       payment_ref: payment.transaction_ref,
     };
-
-    const { data: existing } = await admin
-      .from("subscriptions")
-      .select("id")
-      .eq("provider_id", payment.client_id)
-      .maybeSingle();
 
     if (existing) {
       await admin
@@ -105,12 +112,5 @@ export async function applyPaymentOutcome(opts: {
       .from("provider_profiles")
       .update({ is_hidden: false })
       .eq("provider_id", payment.client_id);
-
-    if (tier === "featured") {
-      await admin
-        .from("featured_waitlist")
-        .update({ status: "activated" })
-        .eq("provider_id", payment.client_id);
-    }
   }
 }

@@ -13,13 +13,14 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
   List<Map<String, dynamic>> _payments = [];
   bool _loading = true;
 
+  // Providers keep 100% of every booking payment — no commission
   double get _totalEarnings =>
       _payments.where((p) => p['status'] == 'paid').fold(
-          0.0, (sum, p) => sum + (p['provider_earnings'] as num).toDouble());
+          0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
 
   double get _pendingCod =>
       _payments.where((p) => p['status'] == 'pending').fold(
-          0.0, (sum, p) => sum + (p['provider_earnings'] as num).toDouble());
+          0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
 
   int get _totalTransactions => _payments.length;
 
@@ -109,6 +110,37 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
               ],
             ),
           ),
+
+          // No-commission banner
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.08),
+                borderRadius: AppRadius.mdAll,
+                border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.2)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified_rounded,
+                      color: AppColors.success, size: 18),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'You keep 100% of what you earn — no hidden fees, no commission.',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.success),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
 
           // Transactions count
           Padding(
@@ -223,15 +255,9 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                             Row(
                               children: [
                                 _PaymentDetail(
-                                  label: 'Total',
+                                  label: 'You Receive',
                                   value:
                                       '\$${(p['amount'] as num).toStringAsFixed(2)}',
-                                ),
-                                const SizedBox(width: AppSpacing.lg),
-                                _PaymentDetail(
-                                  label: 'Your Cut',
-                                  value:
-                                      '\$${(p['provider_earnings'] as num).toStringAsFixed(2)}',
                                   valueColor: AppColors.success,
                                   bold: true,
                                 ),

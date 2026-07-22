@@ -21,7 +21,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _completedBookings = 0;
   int _pendingVerifications = 0;
   double _totalRevenue = 0;
-  double _platformFees = 0;
+  double _subscriptionRevenue = 0;
   List<Map<String, dynamic>> _recentBookings = [];
   List<Map<String, dynamic>> _topProviders = [];
 
@@ -73,7 +73,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _totalRevenue += (b['total_price'] as num).toDouble();
         }
       }
-      _platformFees = _totalRevenue * 0.10;
+      // Platform revenue = provider subscriptions only (no commission)
+      _subscriptionRevenue = 0;
+      try {
+        final subs = await supabase.from('subscriptions').select('amount_paid');
+        for (final s in List<Map<String, dynamic>>.from(subs)) {
+          _subscriptionRevenue += (s['amount_paid'] as num?)?.toDouble() ?? 0;
+        }
+      } catch (_) {}
 
       final pendingV = await supabase
           .from('verifications')
@@ -214,9 +221,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         _StatCard(
           icon: Icons.attach_money_rounded,
-          label: 'Revenue',
+          label: 'Bookings Volume',
           value: 'R${_totalRevenue.toStringAsFixed(0)}',
-          subtitle: 'R${_platformFees.toStringAsFixed(0)} platform fees',
+          subtitle: 'R${_subscriptionRevenue.toStringAsFixed(0)} subscription revenue',
           color: AppColors.success,
         ),
         _StatCard(

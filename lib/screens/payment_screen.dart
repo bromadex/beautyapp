@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
-import '../config/app_config.dart';
 import '../services/notification_service.dart';
 import '../services/paynow_service.dart';
 import '../theme.dart';
@@ -75,8 +74,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
       (_service?['price'] as num?)?.toDouble() ?? 0.0;
   double get _discountAmount =>
       (_booking?['discount_amount'] as num?)?.toDouble() ?? 0.0;
-  double get _fee => AppConfig.calculatePlatformFee(_amount);
-  double get _providerEarnings => AppConfig.calculateProviderEarnings(_amount);
 
   String _generateRef() =>
       'TXN-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(9999)}';
@@ -159,14 +156,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
         await Future.delayed(const Duration(seconds: 2));
       }
 
-      // Insert payment record
+      // Insert payment record — provider keeps 100%, no commission
       await supabase.from('payments').insert({
         'booking_id': widget.bookingId,
         'client_id': uid,
         'provider_id': _booking!['provider_id'],
         'amount': _amount,
-        'platform_fee': _fee,
-        'provider_earnings': _providerEarnings,
         'method': _selectedMethod,
         'status': paymentStatus,
         'transaction_ref': ref,
@@ -186,7 +181,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         title: isCod ? 'Cash Payment Pending' : 'Payment Received',
         body: isCod
             ? 'Client chose cash on delivery for $serviceName (\$${_amount.toStringAsFixed(2)})'
-            : 'You received \$${_providerEarnings.toStringAsFixed(2)} for $serviceName',
+            : 'You received \$${_amount.toStringAsFixed(2)} for $serviceName',
         referenceId: widget.bookingId,
       );
 
@@ -389,10 +384,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       value: '-\$${_discountAmount.toStringAsFixed(2)}',
                       valueColor: AppColors.success,
                     ),
-                  _SummaryRow(
-                    label: 'Platform Fee (10%)',
-                    value: '\$${_fee.toStringAsFixed(2)}',
-                    valueColor: AppColors.textTertiary,
+                  const _SummaryRow(
+                    label: 'Platform Fee',
+                    value: 'None — stylist keeps 100%',
+                    valueColor: AppColors.success,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Container(

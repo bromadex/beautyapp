@@ -266,6 +266,37 @@ class _BookingScreenState extends State<BookingScreen> {
         return;
       }
 
+      // Provider activation gate: providers can be browsed and messaged for
+      // free, but can only RECEIVE bookings with an active subscription
+      // ($3 activation, then $5/month). No subscription row → not bookable.
+      try {
+        final sub = await supabase
+            .from('subscriptions')
+            .select('status, end_date')
+            .eq('provider_id', widget.providerId)
+            .maybeSingle();
+        final end = DateTime.tryParse(sub?['end_date'] ?? '');
+        final providerActive = sub != null &&
+            sub['status'] == 'active' &&
+            end != null &&
+            end.isAfter(DateTime.now());
+        if (!providerActive) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                    'This stylist isn\'t accepting bookings yet. You can still message them!'),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+          }
+          setState(() => _submitting = false);
+          return;
+        }
+      } catch (_) {
+        // Subscriptions table unreachable — don't block the client
+      }
+
       final pp = await supabase
           .from('provider_profiles')
           .select('availability_status')
