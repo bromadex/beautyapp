@@ -145,10 +145,21 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   }
 
   Future<void> _loadData() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) {
+      if (mounted) context.go('/login');
+      return;
+    }
 
-    final profile = await supabase
-        .from('profiles').select().eq('id', userId).single();
+    Map<String, dynamic> profile;
+    try {
+      profile = await supabase
+          .from('profiles').select().eq('id', userId).single();
+    } catch (_) {
+      await supabase.auth.signOut();
+      if (mounted) context.go('/login');
+      return;
+    }
 
     final adminRows = await supabase
         .from('admins').select().eq('user_id', userId);
