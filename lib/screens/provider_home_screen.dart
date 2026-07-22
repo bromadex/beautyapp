@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import '../config/app_config.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
@@ -52,7 +53,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
   void _shareProfile(BuildContext context) {
     final uid = supabase.auth.currentUser!.id;
-    final profileUrl = '${Uri.base.origin}/#/provider/$uid';
+    final profileUrl = '${AppConfig.webBaseUrl}/#/provider/$uid';
     final name = _profile?['full_name'] ?? 'my';
 
     showModalBottomSheet(
@@ -121,7 +122,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                   Navigator.pop(context);
                   SharePlus.instance.share(
                     ShareParams(
-                      title: 'Book $name on BeautyApp',
+                      title: 'Book $name on BeauTap',
                       uri: Uri.parse(profileUrl),
                     ),
                   );

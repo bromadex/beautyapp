@@ -430,7 +430,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
             PaymentMethodCard(
               title: 'Credit / Debit Card',
-              subtitle: 'Visa, Mastercard -- simulated for now',
+              subtitle: 'Visa, Mastercard via Paynow',
               icon: Icons.credit_card_rounded,
               value: 'card',
               selectedValue: _selectedMethod,
@@ -438,8 +438,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             PaymentMethodCard(
-              title: 'Mobile Money',
-              subtitle: 'EcoCash, OneMoney, Telecash',
+              title: 'EcoCash / Mobile Money',
+              subtitle: 'EcoCash, OneMoney, Telecash via Paynow',
               icon: Icons.phone_android_rounded,
               value: 'mobile_money',
               selectedValue: _selectedMethod,

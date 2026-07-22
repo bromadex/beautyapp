@@ -229,7 +229,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
-                  'Payments via EcoCash & card coming soon. Activation is currently instant.',
+                  'Pay securely via EcoCash, mobile money, or card through Paynow.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                 ),
