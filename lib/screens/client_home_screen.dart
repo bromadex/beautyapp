@@ -62,7 +62,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
           .from('verifications').select()
           .eq('user_id', userId)
           .order('submitted_at', ascending: false)
-          .limit(1).single();
+          .limit(1).maybeSingle();
     } catch (_) {}
 
     int unreadNotifs = 0;
@@ -235,7 +235,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                           const SizedBox(height: 14),
                         ],
 
-                        if (isVerified) _buildClientTiles(),
+                        if (!isVerified) ...[
+                          _GettingStartedCard(vStatus: vStatus),
+                          const SizedBox(height: 18),
+                        ],
+
+                        const Text('Quick Actions', style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                        )),
+                        const SizedBox(height: 10),
+                        _buildClientTiles(isVerified),
+
+                        if (!isVerified) ...[
+                          const SizedBox(height: 18),
+                          _WhyVerifyCard(),
+                        ],
 
                         const SizedBox(height: 20),
                         const Text('Account', style: TextStyle(
@@ -260,12 +274,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildClientTiles() {
+  Widget _buildClientTiles(bool isVerified) {
     final tiles = [
-      _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse'),
-      _TileData(Icons.auto_awesome_rounded, 'For You', AppColors.secondary, '/recommended'),
-      _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings'),
-      _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites'),
+      _TileData(Icons.search_rounded, 'Browse Stylists', AppColors.primary, '/browse', true),
+      _TileData(Icons.auto_awesome_rounded, 'For You', AppColors.secondary, '/recommended', isVerified),
+      _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings', isVerified),
+      _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites', isVerified),
     ];
     return _TileGrid(tiles: tiles);
   }
@@ -276,7 +290,8 @@ class _TileData {
   final String label;
   final Color color;
   final String route;
-  const _TileData(this.icon, this.label, this.color, this.route);
+  final bool enabled;
+  const _TileData(this.icon, this.label, this.color, this.route, this.enabled);
 }
 
 class _TileGrid extends StatelessWidget {
@@ -287,14 +302,33 @@ class _TileGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossCount = constraints.maxWidth > 450 ? 4 : 3;
+        final crossCount = constraints.maxWidth > 450 ? 4 : 2;
         final spacing = 10.0;
         final tileWidth = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
         return Wrap(
           spacing: spacing, runSpacing: 12,
           children: tiles.map((t) => SizedBox(
             width: tileWidth,
-            child: _DashTile(icon: t.icon, label: t.label, color: t.color, onTap: () => context.go(t.route)),
+            child: _DashTile(
+              icon: t.icon,
+              label: t.label,
+              color: t.color,
+              enabled: t.enabled,
+              onTap: () {
+                if (t.enabled) {
+                  context.go(t.route);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Verify your identity to unlock this feature.'),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                }
+              },
+            ),
           )).toList(),
         );
       },
@@ -306,8 +340,9 @@ class _DashTile extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final bool enabled;
   final VoidCallback onTap;
-  const _DashTile({required this.icon, required this.label, required this.color, required this.onTap});
+  const _DashTile({required this.icon, required this.label, required this.color, required this.onTap, this.enabled = true});
   @override
   State<_DashTile> createState() => _DashTileState();
 }
@@ -317,6 +352,7 @@ class _DashTileState extends State<_DashTile> {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = widget.enabled ? widget.color : Colors.grey.shade400;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
@@ -325,39 +361,227 @@ class _DashTileState extends State<_DashTile> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
           decoration: BoxDecoration(
-            color: _hovering ? widget.color.withValues(alpha: 0.08) : Colors.white,
+            color: _hovering && widget.enabled ? effectiveColor.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200),
-            boxShadow: _hovering
-                ? [BoxShadow(color: widget.color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
+            border: Border.all(color: _hovering && widget.enabled ? effectiveColor.withValues(alpha: 0.3) : Colors.grey.shade200),
+            boxShadow: _hovering && widget.enabled
+                ? [BoxShadow(color: effectiveColor.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))]
                 : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: _hovering ? 48 : 44, height: _hovering ? 48 : 44,
+                width: 44, height: 44,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [widget.color.withValues(alpha: _hovering ? 0.2 : 0.12), widget.color.withValues(alpha: _hovering ? 0.1 : 0.05)],
+                    colors: [effectiveColor.withValues(alpha: 0.15), effectiveColor.withValues(alpha: 0.06)],
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(widget.icon, color: widget.color, size: _hovering ? 24 : 22),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(widget.icon, color: effectiveColor, size: 22),
+                    if (!widget.enabled)
+                      Positioned(
+                        right: 2, bottom: 2,
+                        child: Container(
+                          width: 14, height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
+                          ),
+                          child: Icon(Icons.lock, size: 8, color: Colors.grey.shade500),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(widget.label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _hovering ? widget.color : AppColors.textPrimary, height: 1.2)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(widget.label, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600,
+                    color: _hovering && widget.enabled ? effectiveColor : AppColors.textPrimary,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey.shade400),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _GettingStartedCard extends StatelessWidget {
+  final String? vStatus;
+  const _GettingStartedCard({this.vStatus});
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = <_StepItem>[
+      _StepItem('Create your account', true),
+      _StepItem('Verify your identity', vStatus == 'approved'),
+      _StepItem('Activate & start booking', false),
+    ];
+
+    final completedCount = steps.where((s) => s.done).length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Getting Started', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('$completedCount of ${steps.length} steps complete', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: completedCount / steps.length,
+              minHeight: 6,
+              backgroundColor: Colors.grey.shade100,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...steps.map((s) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 22, height: 22,
+                  decoration: BoxDecoration(
+                    color: s.done ? AppColors.success : Colors.grey.shade200,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    s.done ? Icons.check_rounded : Icons.circle_outlined,
+                    size: 14,
+                    color: s.done ? Colors.white : Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  s.label,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    color: s.done ? AppColors.textTertiary : AppColors.textPrimary,
+                    decoration: s.done ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepItem {
+  final String label;
+  final bool done;
+  const _StepItem(this.label, this.done);
+}
+
+class _WhyVerifyCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _InfoItem(Icons.search_rounded, 'Discover', 'Find top-rated stylists near you'),
+      _InfoItem(Icons.calendar_month_rounded, 'Book', 'Schedule appointments in seconds'),
+      _InfoItem(Icons.home_rounded, 'Relax', 'Get beauty services at your doorstep'),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.04),
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Why verify?', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          Text(
+            'Verification keeps our community safe and unlocks the full BeauTap experience.',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(item.icon, color: AppColors.primary, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text(item.subtitle, style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoItem {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _InfoItem(this.icon, this.title, this.subtitle);
 }
 
 class _ActivationBanner extends StatelessWidget {
