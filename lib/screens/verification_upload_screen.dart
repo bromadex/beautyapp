@@ -19,11 +19,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
   bool _loading = false;
   final _picker = ImagePicker();
 
-  int get _currentStep {
-    if (_selfieBytes == null) return 0;
-    if (_idBytes == null) return 1;
-    return 2;
-  }
+  bool get _bothSelected => _selfieBytes != null && _idBytes != null;
 
   Future<void> _pick(bool isSelfie) async {
     final XFile? picked =
@@ -48,7 +44,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
   }
 
   Future<void> _submit() async {
-    if (_selfieBytes == null || _idBytes == null) {
+    if (!_bothSelected) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please provide both photos'),
@@ -94,231 +90,214 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Identity Verification')),
+      appBar: AppBar(
+        title: const Text('Verify Identity'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.pop(),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: AppSpacing.screenPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header card
-            Container(
-              padding: AppSpacing.cardPadding,
-              decoration: BoxDecoration(
-                gradient: AppColors.heroGradient,
-                borderRadius: AppRadius.lgAll,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: AppRadius.mdAll,
-                    ),
-                    child: const Icon(
-                      Icons.verified_user_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.heroGradient,
+                    borderRadius: AppRadius.lgAll,
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Verify Your Identity',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52, height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
                         ),
-                        SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Complete 2 simple steps to get verified and start using the platform.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
+                        child: const Icon(Icons.shield_rounded, color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Quick & Secure',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Upload a selfie and your ID to verify your identity. This usually takes under 24 hours.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Progress indicator
+                _ProgressBar(
+                  selfieUploaded: _selfieBytes != null,
+                  idUploaded: _idBytes != null,
+                ),
+
+                const SizedBox(height: 20),
+
+                // Selfie upload card
+                _UploadCard(
+                  title: 'Selfie Photo',
+                  subtitle: 'A clear photo of your face. Good lighting, no sunglasses.',
+                  icon: Icons.face_rounded,
+                  imageBytes: _selfieBytes,
+                  onTap: () => _pick(true),
+                  accentColor: AppColors.primary,
+                ),
+
+                const SizedBox(height: 14),
+
+                // ID upload card
+                _UploadCard(
+                  title: 'ID Document',
+                  subtitle: 'National ID, Passport, or Driver\'s Licence. All text must be readable.',
+                  icon: Icons.badge_rounded,
+                  imageBytes: _idBytes,
+                  onTap: () => _pick(false),
+                  accentColor: AppColors.info,
+                ),
+
+                const SizedBox(height: 10),
+
+                // Tips
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.06),
+                    borderRadius: AppRadius.mdAll,
+                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.lightbulb_outline_rounded, color: AppColors.warning, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Use good lighting and avoid blurry images. Your ID details must be clearly visible.',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Submit button
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  child: FilledButton(
+                    onPressed: _loading ? null : (_bothSelected ? _submit : null),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade200,
+                      disabledForegroundColor: Colors.grey.shade400,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                      elevation: _bothSelected ? 2 : 0,
+                      shadowColor: AppColors.primary.withValues(alpha: 0.3),
                     ),
+                    child: _loading
+                        ? const SizedBox(
+                            height: 20, width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(_bothSelected ? Icons.send_rounded : Icons.photo_camera_rounded, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                _bothSelected ? 'Submit for Review' : 'Upload Both Photos to Continue',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+
+                if (_bothSelected) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Your data is encrypted and only used for verification purposes.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                   ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Progress stepper
-            _ProgressStepper(currentStep: _currentStep),
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Step 1: Selfie
-            _PhotoCard(
-              stepNumber: 1,
-              title: 'Take a Selfie',
-              subtitle:
-                  'Use your front camera. Make sure your face is clearly visible.',
-              icon: Icons.camera_front_rounded,
-              imageBytes: _selfieBytes,
-              onTap: () => _pick(true),
-              isActive: _currentStep == 0,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Step 2: ID Document
-            _PhotoCard(
-              stepNumber: 2,
-              title: 'Upload ID / Passport',
-              subtitle:
-                  'National ID, Passport or Driver\'s Licence. All text must be readable.',
-              icon: Icons.credit_card_rounded,
-              imageBytes: _idBytes,
-              onTap: () => _pick(false),
-              isActive: _currentStep == 1,
-            ),
-            const SizedBox(height: AppSpacing.xxxl),
-
-            // Submit button
-            FilledButton.icon(
-              onPressed: _loading ? null : _submit,
-              icon: _loading
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.send_rounded),
-              label: Text(_loading ? 'Submitting...' : 'Submit for Review'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdAll,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Progress Stepper
-// ---------------------------------------------------------------------------
-class _ProgressStepper extends StatelessWidget {
-  final int currentStep;
-
-  const _ProgressStepper({required this.currentStep});
+class _ProgressBar extends StatelessWidget {
+  final bool selfieUploaded;
+  final bool idUploaded;
+  const _ProgressBar({required this.selfieUploaded, required this.idUploaded});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _StepDot(
-          label: 'Selfie',
-          stepIndex: 0,
-          currentStep: currentStep,
-        ),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: currentStep > 0
-                ? AppColors.success
-                : Colors.grey.shade300,
-          ),
-        ),
-        _StepDot(
-          label: 'ID Document',
-          stepIndex: 1,
-          currentStep: currentStep,
-        ),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: currentStep > 1
-                ? AppColors.success
-                : Colors.grey.shade300,
-          ),
-        ),
-        _StepDot(
-          label: 'Submit',
-          stepIndex: 2,
-          currentStep: currentStep,
-        ),
-      ],
-    );
-  }
-}
-
-class _StepDot extends StatelessWidget {
-  final String label;
-  final int stepIndex;
-  final int currentStep;
-
-  const _StepDot({
-    required this.label,
-    required this.stepIndex,
-    required this.currentStep,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isCompleted = currentStep > stepIndex;
-    final isActive = currentStep == stepIndex;
+    final progress = (selfieUploaded ? 1 : 0) + (idUploaded ? 1 : 0);
 
     return Column(
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isCompleted
-                ? AppColors.success
-                : isActive
-                    ? AppColors.primary
-                    : Colors.grey.shade200,
-            border: isActive
-                ? Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    width: 3,
-                  )
-                : null,
-          ),
-          child: Center(
-            child: isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                : Text(
-                    '${stepIndex + 1}',
-                    style: TextStyle(
-                      color: isActive ? Colors.white : AppColors.textTertiary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-          ),
+        Row(
+          children: [
+            Text(
+              '$progress of 2 photos uploaded',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: progress == 2 ? AppColors.success : AppColors.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            if (progress == 2)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
+                    const SizedBox(width: 4),
+                    Text('Ready', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
+                  ],
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-            color: isCompleted
-                ? AppColors.success
-                : isActive
-                    ? AppColors.primary
-                    : AppColors.textTertiary,
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress / 2,
+            minHeight: 6,
+            backgroundColor: Colors.grey.shade100,
+            valueColor: AlwaysStoppedAnimation(
+              progress == 2 ? AppColors.success : AppColors.primary,
+            ),
           ),
         ),
       ],
@@ -326,26 +305,21 @@ class _StepDot extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Photo Card with dashed border when empty
-// ---------------------------------------------------------------------------
-class _PhotoCard extends StatelessWidget {
-  final int stepNumber;
+class _UploadCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final Uint8List? imageBytes;
   final VoidCallback onTap;
-  final bool isActive;
+  final Color accentColor;
 
-  const _PhotoCard({
-    required this.stepNumber,
+  const _UploadCard({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.imageBytes,
     required this.onTap,
-    required this.isActive,
+    required this.accentColor,
   });
 
   @override
@@ -355,220 +329,131 @@ class _PhotoCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: hasImage
-              ? Colors.white
-              : isActive
-                  ? AppColors.primary.withValues(alpha: 0.03)
-                  : AppColors.surfaceLight,
+          color: Colors.white,
           borderRadius: AppRadius.lgAll,
-          border: hasImage
-              ? Border.all(color: AppColors.success, width: 2)
-              : null,
-          boxShadow: hasImage
-              ? [
-                  BoxShadow(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          border: Border.all(
+            color: hasImage ? AppColors.success : Colors.grey.shade200,
+            width: hasImage ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: hasImage
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.03),
+              blurRadius: hasImage ? 12 : 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: hasImage ? _buildImageView() : _buildEmptyView(context),
+        child: hasImage ? _buildWithImage() : _buildEmpty(),
       ),
     );
   }
 
-  Widget _buildImageView() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.lg - 1),
-      child: Stack(
-        children: [
-          SizedBox(
-            height: 200,
+  Widget _buildWithImage() {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+          child: SizedBox(
+            height: 160,
             width: double.infinity,
-            child: Image.memory(imageBytes!, fit: BoxFit.cover),
-          ),
-          // Success badge
-          Positioned(
-            top: AppSpacing.sm,
-            right: AppSpacing.sm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.success,
-                borderRadius: AppRadius.smAll,
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'Done',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(imageBytes!, fit: BoxFit.cover),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black.withValues(alpha: 0.4), Colors.transparent],
                     ),
                   ),
-                ],
-              ),
+                ),
+                Positioned(
+                  top: 10, right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                        SizedBox(width: 4),
+                        Text('Uploaded', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          // Tap to change
-          Positioned(
-            bottom: AppSpacing.sm,
-            right: AppSpacing.sm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
               ),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: AppRadius.smAll,
-              ),
-              child: const Text(
-                'Tap to retake',
-                style: TextStyle(color: Colors.white, fontSize: 11),
-              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
             ),
+            child: Icon(icon, color: accentColor, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 3),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary, height: 1.3)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.add_a_photo_rounded, color: accentColor, size: 20),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildEmptyView(BuildContext context) {
-    return CustomPaint(
-      painter: _DashedBorderPainter(
-        color: isActive ? AppColors.primary : Colors.grey.shade300,
-        borderRadius: AppRadius.lg,
-        strokeWidth: 1.5,
-        dashWidth: 8,
-        dashSpace: 5,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.xxl,
-          horizontal: AppSpacing.lg,
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Colors.grey.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 36,
-                color: isActive ? AppColors.primary : AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: isActive
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            OutlinedButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.upload_rounded, size: 18),
-              label: const Text('Choose Photo'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: isActive ? AppColors.primary : AppColors.textSecondary,
-                side: BorderSide(
-                  color: isActive ? AppColors.primary : Colors.grey.shade300,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.mdAll,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Dashed Border Painter
-// ---------------------------------------------------------------------------
-class _DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double borderRadius;
-  final double strokeWidth;
-  final double dashWidth;
-  final double dashSpace;
-
-  _DashedBorderPainter({
-    required this.color,
-    required this.borderRadius,
-    required this.strokeWidth,
-    required this.dashWidth,
-    required this.dashSpace,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Radius.circular(borderRadius),
-        ),
-      );
-
-    final dashPath = _createDashedPath(path);
-    canvas.drawPath(dashPath, paint);
-  }
-
-  Path _createDashedPath(Path source) {
-    final result = Path();
-    for (final metric in source.computeMetrics()) {
-      double distance = 0;
-      while (distance < metric.length) {
-        final end = (distance + dashWidth).clamp(0, metric.length).toDouble();
-        result.addPath(metric.extractPath(distance, end), Offset.zero);
-        distance += dashWidth + dashSpace;
-      }
-    }
-    return result;
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
-      color != oldDelegate.color ||
-      borderRadius != oldDelegate.borderRadius;
 }
