@@ -162,6 +162,12 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                 subtitle: 'View your profile as clients see it',
                 onTap: () => context.push('/provider/$uid'),
               ),
+              _HubTile(
+                icon: Icons.settings_outlined,
+                label: 'Account Settings',
+                subtitle: 'Deactivate or delete your account',
+                onTap: () => context.push('/account/settings'),
+              ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: _signOut,

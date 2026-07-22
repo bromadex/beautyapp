@@ -421,47 +421,50 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white38, width: 2),
+                    child: GestureDetector(
+                      onTap: () => context.push('/account/settings'),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50, height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white38, width: 2),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                              Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
-                              const SizedBox(height: 5),
-                              Row(children: [
-                                if (_avgRating > 0) ...[
-                                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                                Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
+                                const SizedBox(height: 5),
+                                Row(children: [
+                                  if (_avgRating > 0) ...[
+                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                                    const SizedBox(width: 3),
+                                    Text(_avgRating.toStringAsFixed(1),
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    const SizedBox(width: 12),
+                                  ],
+                                  Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
                                   const SizedBox(width: 3),
-                                  Text(_avgRating.toStringAsFixed(1),
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                  const SizedBox(width: 12),
-                                ],
-                                Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
-                                const SizedBox(width: 3),
-                                Text('$_totalBookingsCount bookings',
-                                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
-                              ]),
-                            ],
+                                  Text('$_totalBookingsCount bookings',
+                                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+                                ]),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

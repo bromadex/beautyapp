@@ -151,39 +151,42 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 50, height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white38, width: 2),
+                    child: GestureDetector(
+                      onTap: () => context.push('/account/settings'),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50, height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white38, width: 2),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                                Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
+                                const SizedBox(height: 5),
+                                Row(children: [
+                                  _Badge(label: 'Client'),
+                                  const SizedBox(width: 6),
+                                  _Badge(label: isVerified ? 'Verified' : 'Unverified', isPositive: isVerified),
+                                ]),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                              Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
-                              const SizedBox(height: 5),
-                              Row(children: [
-                                _Badge(label: 'Client'),
-                                const SizedBox(width: 6),
-                                _Badge(label: isVerified ? 'Verified' : 'Unverified', isPositive: isVerified),
-                              ]),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -222,6 +225,18 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                         ],
 
                         if (isVerified) _buildClientTiles(),
+
+                        const SizedBox(height: 20),
+                        const Text('Account', style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                        )),
+                        const SizedBox(height: 10),
+                        _AccountTile(
+                          icon: Icons.settings_outlined,
+                          label: 'Account Settings',
+                          subtitle: 'Manage, deactivate, or delete your account',
+                          onTap: () => context.push('/account/settings'),
+                        ),
                       ],
                     ),
                   ),
@@ -403,6 +418,54 @@ class _VerificationBanner extends StatelessWidget {
           Expanded(child: Text(message, style: TextStyle(fontSize: 13, color: bannerColor, fontWeight: FontWeight.w500))),
           Icon(Icons.chevron_right, color: bannerColor, size: 18),
         ]),
+      ),
+    );
+  }
+}
+
+class _AccountTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+  const _AccountTile({required this.icon, required this.label, required this.subtitle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.mdAll,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: AppColors.textSecondary, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+          ],
+        ),
       ),
     );
   }
