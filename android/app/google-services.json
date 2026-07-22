@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "549119684234",
+    "project_id": "beautap-6752c",
+    "storage_bucket": "beautap-6752c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549119684234:android:14bc982590154d4e9a0773",
+        "android_client_info": {
+          "package_name": "com.beautap.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASNCnhMtJH1Mrmk81iJ2506HPydEc_Dzg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

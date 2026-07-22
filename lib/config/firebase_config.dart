@@ -10,23 +10,25 @@ import 'package:firebase_core/firebase_core.dart';
 /// 4. Flip [firebaseConfigured] to true
 /// 5. For web push, also set [webVapidKey]
 ///    (Project Settings → Cloud Messaging → Web Push certificates)
-const bool firebaseConfigured = false;
+const bool firebaseConfigured = true;
 
-const String webVapidKey = 'REPLACE_WITH_VAPID_KEY';
+const String webVapidKey =
+    'BL96dmjaaCOhQABp0fO7_ETnV3WwXya9swzcMVI2p4Hy-4mUd0VMeyX37VQSqdma30PTXIgLqLCwiZH7-YhJr_g';
 
 const FirebaseOptions androidFirebaseOptions = FirebaseOptions(
-  apiKey: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME',
+  apiKey: 'AIzaSyASNCnhMtJH1Mrmk81iJ2506HPydEc_Dzg',
+  appId: '1:549119684234:android:14bc982590154d4e9a0773',
+  messagingSenderId: '549119684234',
+  projectId: 'beautap-6752c',
+  storageBucket: 'beautap-6752c.firebasestorage.app',
 );
 
 const FirebaseOptions webFirebaseOptions = FirebaseOptions(
-  apiKey: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME.firebaseapp.com',
-  storageBucket: 'REPLACE_ME',
+  apiKey: 'AIzaSyDrSu_-ZcWYyANafTUaOHdJUVnPp_QRIrI',
+  appId: '1:549119684234:web:2b9f1bc5bbed1e609a0773',
+  messagingSenderId: '549119684234',
+  projectId: 'beautap-6752c',
+  authDomain: 'beautap-6752c.firebaseapp.com',
+  storageBucket: 'beautap-6752c.firebasestorage.app',
+  measurementId: 'G-GYVQ9J3726',
 );
