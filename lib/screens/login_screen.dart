@@ -344,7 +344,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  const BrandTitle(fontSize: 30),
+                  const BrandTitle(fontSize: 34),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Beauty at your fingertips',

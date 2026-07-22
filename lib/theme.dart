@@ -235,33 +235,97 @@ class AppTheme {
 
 class BrandTitle extends StatelessWidget {
   final double fontSize;
-  const BrandTitle({super.key, this.fontSize = 22});
+  const BrandTitle({super.key, this.fontSize = 26});
 
   @override
   Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(children: [
-        TextSpan(
-          text: 'Beau',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: fontSize,
-            letterSpacing: -0.3,
+    final dotSize = fontSize * 0.22;
+    final ripple1 = fontSize * 0.32;
+    final ripple2 = fontSize * 0.42;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text.rich(
+          TextSpan(children: [
+            TextSpan(
+              text: 'Beau',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: fontSize,
+                letterSpacing: -0.5,
+                height: 1.0,
+              ),
+            ),
+            TextSpan(
+              text: 'Tap',
+              style: TextStyle(
+                color: AppColors.secondary,
+                fontWeight: FontWeight.w900,
+                fontSize: fontSize,
+                letterSpacing: -0.5,
+                height: 1.0,
+              ),
+            ),
+          ]),
+        ),
+        SizedBox(width: fontSize * 0.12),
+        SizedBox(
+          width: ripple2 * 2 + 2,
+          height: ripple2 * 2 + 2,
+          child: CustomPaint(
+            painter: _DotRipplePainter(
+              dotRadius: dotSize,
+              ripple1Radius: ripple1,
+              ripple2Radius: ripple2,
+              color: AppColors.secondary,
+            ),
           ),
         ),
-        TextSpan(
-          text: 'Tạp',
-          style: TextStyle(
-            color: AppColors.secondary,
-            fontWeight: FontWeight.w800,
-            fontSize: fontSize,
-            letterSpacing: -0.3,
-          ),
-        ),
-      ]),
+      ],
     );
   }
+}
+
+class _DotRipplePainter extends CustomPainter {
+  final double dotRadius;
+  final double ripple1Radius;
+  final double ripple2Radius;
+  final Color color;
+
+  _DotRipplePainter({
+    required this.dotRadius,
+    required this.ripple1Radius,
+    required this.ripple2Radius,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final ripplePaint2 = Paint()
+      ..color = color.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(center, ripple2Radius, ripplePaint2);
+
+    final ripplePaint1 = Paint()
+      ..color = color.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(center, ripple1Radius, ripplePaint1);
+
+    final dotPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, dotRadius, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class StatusColors {

@@ -389,7 +389,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             backgroundColor: AppColors.primary,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            title: const BrandTitle(fontSize: 24),
+            title: const BrandTitle(),
             actions: [
               if (_isAdmin)
                 IconButton(

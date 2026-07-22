@@ -119,7 +119,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
             backgroundColor: AppColors.primary,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            title: const BrandTitle(fontSize: 24),
+            title: const BrandTitle(),
             actions: [
               if (_isAdmin)
                 IconButton(
