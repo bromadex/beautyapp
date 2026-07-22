@@ -12,7 +12,8 @@ import 'package:firebase_core/firebase_core.dart';
 ///    (Project Settings → Cloud Messaging → Web Push certificates)
 const bool firebaseConfigured = false;
 
-const String webVapidKey = 'REPLACE_WITH_VAPID_KEY';
+const String webVapidKey =
+    'BL96dmjaaCOhQABp0fO7_ETnV3WwXya9swzcMVI2p4Hy-4mUd0VMeyX37VQSqdma30PTXIgLqLCwiZH7-YhJr_g';
 
 const FirebaseOptions androidFirebaseOptions = FirebaseOptions(
   apiKey: 'AIzaSyASNCnhMtJH1Mrmk81iJ2506HPydEc_Dzg',
