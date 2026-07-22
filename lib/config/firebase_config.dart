@@ -23,10 +23,11 @@ const FirebaseOptions androidFirebaseOptions = FirebaseOptions(
 );
 
 const FirebaseOptions webFirebaseOptions = FirebaseOptions(
-  apiKey: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME.firebaseapp.com',
-  storageBucket: 'REPLACE_ME',
+  apiKey: 'AIzaSyDrSu_-ZcWYyANafTUaOHdJUVnPp_QRIrI',
+  appId: '1:549119684234:web:2b9f1bc5bbed1e609a0773',
+  messagingSenderId: '549119684234',
+  projectId: 'beautap-6752c',
+  authDomain: 'beautap-6752c.firebaseapp.com',
+  storageBucket: 'beautap-6752c.firebasestorage.app',
+  measurementId: 'G-GYVQ9J3726',
 );
