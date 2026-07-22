@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -22,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _userType = 'client';
   bool _loading = false;
+  bool _googleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
@@ -46,6 +49,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    setState(() => _googleLoading = true);
+    try {
+      if (kIsWeb) {
+        await supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: Uri.base.origin,
+        );
+      } else {
+        const webClientId =
+            '549119684234-placeholder.apps.googleusercontent.com';
+
+        final googleUser = await GoogleSignIn(
+          serverClientId: webClientId,
+        ).signIn();
+
+        if (googleUser == null) {
+          if (mounted) setState(() => _googleLoading = false);
+          return;
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final idToken = googleAuth.idToken;
+        final accessToken = googleAuth.accessToken;
+
+        if (idToken == null) throw Exception('No ID token from Google');
+
+        await supabase.auth.signInWithIdToken(
+          provider: OAuthProvider.google,
+          idToken: idToken,
+          accessToken: accessToken,
+        );
+
+        if (mounted) {
+          final user = supabase.auth.currentUser;
+          if (user != null) {
+            final existing = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            if (existing == null) {
+              await supabase.from('profiles').insert({
+                'id': user.id,
+                'full_name': user.userMetadata?['full_name'] ??
+                    user.userMetadata?['name'] ??
+                    '',
+                'user_type': 'client',
+              });
+            }
+          }
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Google sign-in is not configured yet.'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
+    }
   }
 
   Future<void> _register() async {
@@ -99,9 +173,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
       if (mounted) {
+        String msg = e.message;
+        if (msg.contains('already registered') || msg.contains('already been registered')) {
+          msg = 'This email is already registered. Try signing in instead.';
+        } else if (msg.contains('valid email')) {
+          msg = 'Please enter a valid email address.';
+        } else if (msg.contains('least 6')) {
+          msg = 'Password must be at least 6 characters.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.message),
+            content: Text(msg),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
@@ -238,6 +320,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               onTap: () => setState(() => _userType = 'provider'),
                             ),
                           ),
+                        ],
+                      ),
+
+                      const SizedBox(height: AppSpacing.xl),
+
+                      // --- Google Sign-Up ---
+                      OutlinedButton.icon(
+                        onPressed: _googleLoading ? null : _signUpWithGoogle,
+                        icon: _googleLoading
+                            ? SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.textSecondary,
+                                ),
+                              )
+                            : Image.network(
+                                'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                                width: 20,
+                                height: 20,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.g_mobiledata_rounded, size: 24),
+                              ),
+                        label: Text(
+                          _googleLoading ? 'Signing up...' : 'Sign up with Google',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: AppRadius.mdAll),
+                        ),
+                      ),
+
+                      const SizedBox(height: AppSpacing.xl),
+
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg),
+                            child: Text(
+                              'or register with email',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
                         ],
                       ),
 
