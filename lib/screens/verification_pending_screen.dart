@@ -22,7 +22,8 @@ class _VerificationPendingScreenState
   }
 
   Future<void> _load() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     try {
       final data = await supabase
           .from('verifications')

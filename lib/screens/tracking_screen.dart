@@ -36,13 +36,23 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   Future<void> _init() async {
-    final uid = supabase.auth.currentUser!.id;
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
 
-    final booking = await supabase
-        .from('bookings')
-        .select('*, services(service_name, duration_minutes)')
-        .eq('id', widget.bookingId)
-        .single();
+    Map<String, dynamic> booking;
+    try {
+      booking = await supabase
+          .from('bookings')
+          .select('*, services(service_name, duration_minutes)')
+          .eq('id', widget.bookingId)
+          .single();
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
 
     _booking = booking;
     _isProvider = booking['provider_id'] == uid;

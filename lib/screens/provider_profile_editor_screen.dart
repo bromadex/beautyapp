@@ -33,10 +33,15 @@ class _ProviderProfileEditorScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final uid = supabase.auth.currentUser?.id;
+      if (uid == null) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       final data = await supabase
           .from('provider_profiles')
           .select()
-          .eq('provider_id', supabase.auth.currentUser!.id)
+          .eq('provider_id', uid)
           .single();
       _bioCtrl.text     = data['bio']     ?? '';
       _addressCtrl.text = data['address'] ?? '';

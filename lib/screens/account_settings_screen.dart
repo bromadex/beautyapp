@@ -31,7 +31,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       if (mounted) {
         setState(() => _isDeactivated = profile['is_deactivated'] == true);
       }
-    } catch (_) {}
+    } catch (_) {
+      await supabase.auth.signOut();
+      if (mounted) context.go('/login');
+    }
   }
 
   Future<void> _toggleDeactivation() async {

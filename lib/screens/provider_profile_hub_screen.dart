@@ -21,8 +21,19 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
   }
 
   Future<void> _load() async {
-    final userId = supabase.auth.currentUser!.id;
-    final profile = await supabase.from('profiles').select().eq('id', userId).single();
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) {
+      if (mounted) context.go('/login');
+      return;
+    }
+    Map<String, dynamic> profile;
+    try {
+      profile = await supabase.from('profiles').select().eq('id', userId).single();
+    } catch (_) {
+      await supabase.auth.signOut();
+      if (mounted) context.go('/login');
+      return;
+    }
     Map<String, dynamic>? subscription;
     try {
       subscription = await supabase
