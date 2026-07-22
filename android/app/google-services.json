@@ -12,7 +12,20 @@
           "package_name": "com.beautap.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "549119684234-62b6988dhj14kpnt3mquporj396jsgi5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.beautap.app",
+            "certificate_hash": "3e461f6e1b01ea1b95e4fbf7b68dd8f376d2920c"
+          }
+        },
+        {
+          "client_id": "549119684234-bpgdfj7880f9g7gsba897hg8790im54o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASNCnhMtJH1Mrmk81iJ2506HPydEc_Dzg"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "549119684234-bpgdfj7880f9g7gsba897hg8790im54o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
