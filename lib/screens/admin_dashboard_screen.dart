@@ -211,6 +211,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           value: '$_totalUsers',
           subtitle: '$_totalProviders providers, $_totalClients clients',
           color: AppColors.info,
+          onTap: () => context.push('/admin/users'),
         ),
         _StatCard(
           icon: Icons.calendar_today_rounded,
@@ -218,13 +219,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           value: '$_totalBookings',
           subtitle: '$_completedBookings completed',
           color: AppColors.secondary,
+          onTap: () => context.push('/admin/bookings'),
         ),
         _StatCard(
           icon: Icons.attach_money_rounded,
           label: 'Bookings Volume',
-          value: 'R${_totalRevenue.toStringAsFixed(0)}',
-          subtitle: 'R${_subscriptionRevenue.toStringAsFixed(0)} subscription revenue',
+          value: '\$${_totalRevenue.toStringAsFixed(0)}',
+          subtitle: '\$${_subscriptionRevenue.toStringAsFixed(0)} subscription revenue',
           color: AppColors.success,
+          onTap: () => context.push('/admin/analytics'),
         ),
         _StatCard(
           icon: Icons.verified_user_rounded,
@@ -232,6 +235,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           value: '$_pendingVerifications',
           subtitle: 'pending review',
           color: _pendingVerifications > 0 ? AppColors.warning : AppColors.success,
+          onTap: () => context.push('/admin/verify'),
         ),
       ],
     );
@@ -470,6 +474,7 @@ class _StatCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.icon,
@@ -477,52 +482,58 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.subtitle,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: AppRadius.smAll,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.lgAll,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.lgAll,
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.smAll,
+                  ),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-          ),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+                const Spacer(),
+                Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textTertiary),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
