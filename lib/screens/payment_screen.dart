@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../config/app_config.dart';
 import '../services/notification_service.dart';
+import '../services/paynow_service.dart';
 import '../theme.dart';
 import '../widgets/payment_method_card.dart';
 
@@ -102,6 +103,56 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final isCod = _selectedMethod == 'cash_on_delivery';
       final paymentStatus = isCod ? 'pending' : 'paid';
       final bookingPaymentStatus = isCod ? 'cod_pending' : 'paid';
+
+      // Stage 20: try real Paynow checkout first (card + mobile money).
+      // Falls through to the simulated path only when Paynow isn't
+      // configured yet.
+      if (!isCod) {
+        final method = _selectedMethod == 'mobile_money'
+            ? _selectedNetwork.toLowerCase()
+            : 'web';
+        final outcome = await PaynowCheckout.run(
+          context,
+          purpose: 'booking',
+          bookingId: widget.bookingId,
+          method: method,
+          phone: _selectedMethod == 'mobile_money'
+              ? _mobileNumberCtrl.text.trim()
+              : null,
+        );
+
+        if (outcome != PaynowOutcome.unconfigured) {
+          if (mounted) setState(() => _processing = false);
+          if (!mounted) return;
+          switch (outcome) {
+            case PaynowOutcome.paid:
+              // Edge functions recorded the payment and notified the provider
+              _showSuccessDialog(false, 'Paynow');
+              break;
+            case PaynowOutcome.failed:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Payment was not completed. Please try again.'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+              break;
+            case PaynowOutcome.timeout:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Payment still pending — check My Bookings in a few minutes.'),
+                  backgroundColor: AppColors.warning,
+                ),
+              );
+              break;
+            case PaynowOutcome.cancelled:
+            case PaynowOutcome.unconfigured:
+              break;
+          }
+          return;
+        }
+      }
 
       // Simulate processing delay for card/mobile money
       if (!isCod) {

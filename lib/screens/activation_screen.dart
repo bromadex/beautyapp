@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/paynow_service.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -19,13 +20,37 @@ class _ActivationScreenState extends State<ActivationScreen> {
   Future<void> _activate() async {
     setState(() => _paying = true);
     try {
-      // Simulated payment — replaced by Paynow in Stage 20
-      await Future.delayed(const Duration(seconds: 2));
+      // Stage 20: real Paynow checkout when configured
+      final outcome =
+          await PaynowCheckout.run(context, purpose: 'activation');
 
-      await supabase
-          .from('profiles')
-          .update({'is_activated': true})
-          .eq('id', supabase.auth.currentUser!.id);
+      if (outcome == PaynowOutcome.paid) {
+        // Webhook already set is_activated = true
+      } else if (outcome != PaynowOutcome.unconfigured) {
+        if (mounted) {
+          setState(() => _paying = false);
+          if (outcome == PaynowOutcome.failed ||
+              outcome == PaynowOutcome.timeout) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(outcome == PaynowOutcome.failed
+                    ? 'Payment was not completed. Please try again.'
+                    : 'Payment still pending — try reopening this page shortly.'),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+          }
+        }
+        return;
+      } else {
+        // Simulated payment fallback (Paynow not configured yet)
+        await Future.delayed(const Duration(seconds: 2));
+
+        await supabase
+            .from('profiles')
+            .update({'is_activated': true})
+            .eq('id', supabase.auth.currentUser!.id);
+      }
 
       if (!mounted) return;
       showDialog(

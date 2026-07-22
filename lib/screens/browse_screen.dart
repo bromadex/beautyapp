@@ -74,7 +74,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
         try {
           final subs = await supabase
               .from('subscriptions')
-              .select('status')
+              .select('status, end_date, tier')
               .eq('provider_id', pid);
           p['subscriptions'] = subs;
         } catch (_) {
@@ -145,10 +145,25 @@ class _BrowseScreenState extends State<BrowseScreen> {
       return true;
     }).toList()
       ..sort((a, b) {
+        // Stage 21: Featured providers rank above everyone else
+        final featA = _isFeatured(a) ? 1 : 0;
+        final featB = _isFeatured(b) ? 1 : 0;
+        if (featA != featB) return featB.compareTo(featA);
         final ratingA = (a['average_rating'] as num?)?.toDouble() ?? 0.0;
         final ratingB = (b['average_rating'] as num?)?.toDouble() ?? 0.0;
         return ratingB.compareTo(ratingA);
       });
+  }
+
+  static bool _isFeatured(Map<String, dynamic> provider) {
+    final subs = provider['subscriptions'] as List? ?? [];
+    for (final s in subs) {
+      if (s['tier'] == 'featured' && s['status'] == 'active') {
+        final end = DateTime.tryParse(s['end_date'] ?? '');
+        if (end != null && end.isAfter(DateTime.now())) return true;
+      }
+    }
+    return false;
   }
 
   void _showFilterSheet() {
@@ -617,7 +632,40 @@ class _ProviderCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: Theme.of(context).textTheme.titleMedium),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(name,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium),
+                          ),
+                          if (_BrowseScreenState._isFeatured(p)) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.star_rounded,
+                                      size: 12, color: Color(0xFFB07B0E)),
+                                  SizedBox(width: 2),
+                                  Text('FEATURED',
+                                      style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                          color: Color(0xFFB07B0E))),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       if (location.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Row(

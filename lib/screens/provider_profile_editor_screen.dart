@@ -17,6 +17,8 @@ class _ProviderProfileEditorScreenState
   final _addressCtrl = TextEditingController();
   final _latCtrl     = TextEditingController();
   final _lngCtrl     = TextEditingController();
+  double _radiusKm = 10;
+  bool _radiusSupported = true;
   bool _loading = false;
   bool _saving  = false;
 
@@ -38,6 +40,11 @@ class _ProviderProfileEditorScreenState
       _addressCtrl.text = data['address'] ?? '';
       _latCtrl.text     = data['latitude']?.toString()  ?? '';
       _lngCtrl.text     = data['longitude']?.toString() ?? '';
+      if (data.containsKey('service_radius_km')) {
+        _radiusKm = (data['service_radius_km'] as num?)?.toDouble() ?? 10;
+      } else {
+        _radiusSupported = false; // Stage 21 migration not run yet
+      }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -53,6 +60,7 @@ class _ProviderProfileEditorScreenState
       'address':     _addressCtrl.text.trim(),
       'latitude':    double.tryParse(_latCtrl.text.trim()),
       'longitude':   double.tryParse(_lngCtrl.text.trim()),
+      if (_radiusSupported) 'service_radius_km': _radiusKm,
     };
 
     try {
@@ -249,6 +257,57 @@ class _ProviderProfileEditorScreenState
                   ],
                 ),
               ),
+
+              if (_radiusSupported) ...[
+                _buildSectionDivider(),
+
+                // -- Service Radius (Stage 21: defines your Featured "area") --
+                _buildSectionHeader('Service Radius', Icons.radar_rounded),
+                Container(
+                  padding: AppSpacing.cardPadding,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardLight,
+                    borderRadius: AppRadius.lgAll,
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'How far will you travel for bookings?',
+                              style: TextStyle(
+                                  fontSize: 14, color: AppColors.textPrimary),
+                            ),
+                          ),
+                          Text(
+                            '${_radiusKm.round()} km',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _radiusKm,
+                        min: 2,
+                        max: 50,
+                        divisions: 48,
+                        activeColor: AppColors.primary,
+                        onChanged: (v) => setState(() => _radiusKm = v),
+                      ),
+                      const Text(
+                        'This also defines your area for Featured tier placement.',
+                        style: TextStyle(
+                            fontSize: 11.5, color: AppColors.textTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: AppSpacing.xxxl),
 
