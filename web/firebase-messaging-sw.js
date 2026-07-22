@@ -5,7 +5,7 @@
  * rebuild/redeploy the web app.
  */
 /* eslint-disable no-undef */
-const FIREBASE_CONFIGURED = false;
+const FIREBASE_CONFIGURED = true;
 
 if (FIREBASE_CONFIGURED) {
   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');

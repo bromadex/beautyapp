@@ -10,7 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 /// 4. Flip [firebaseConfigured] to true
 /// 5. For web push, also set [webVapidKey]
 ///    (Project Settings → Cloud Messaging → Web Push certificates)
-const bool firebaseConfigured = false;
+const bool firebaseConfigured = true;
 
 const String webVapidKey =
     'BL96dmjaaCOhQABp0fO7_ETnV3WwXya9swzcMVI2p4Hy-4mUd0VMeyX37VQSqdma30PTXIgLqLCwiZH7-YhJr_g';
