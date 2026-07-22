@@ -23,25 +23,52 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
 
-    final userId = supabase.auth.currentUser!.id;
-    final data = await supabase
-        .from('favorites')
-        .select('*, profiles!favorites_provider_id_fkey(full_name, location), '
-            'provider_profiles!inner(availability_status, average_rating, total_reviews, is_hidden), '
-            'subscriptions:subscriptions!subscriptions_provider_id_fkey(status)')
-        .eq('client_id', userId)
-        .order('created_at', ascending: false);
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
 
-    if (mounted) {
-      setState(() {
-        _favorites = List<Map<String, dynamic>>.from(data);
-        _loading = false;
-      });
+    try {
+      final data = await supabase
+          .from('favorites')
+          .select('*, profiles!favorites_provider_id_fkey(full_name, location)')
+          .eq('client_id', userId)
+          .order('created_at', ascending: false);
+
+      final favorites = List<Map<String, dynamic>>.from(data);
+
+      for (final fav in favorites) {
+        final pid = fav['provider_id'] as String;
+        try {
+          final pp = await supabase
+              .from('provider_profiles')
+              .select('availability_status, average_rating, total_reviews, is_hidden')
+              .eq('provider_id', pid)
+              .maybeSingle();
+          fav['provider_profiles'] = pp;
+        } catch (_) {}
+        try {
+          final sub = await supabase
+              .from('subscriptions')
+              .select('status')
+              .eq('provider_id', pid)
+              .maybeSingle();
+          fav['subscription'] = sub;
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _favorites = favorites;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _removeFavorite(String providerId) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     await supabase
         .from('favorites')
         .delete()
@@ -118,12 +145,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         final totalReviews = pp?['total_reviews'] ?? 0;
                         final isHidden = pp?['is_hidden'] == true;
 
-                        // Check subscription
-                        final subs = fav['subscriptions'];
-                        bool subExpired = true;
-                        if (subs is List && subs.isNotEmpty) {
-                          subExpired = subs.first['status'] != 'active';
-                        }
+                        final sub = fav['subscription'] as Map<String, dynamic>?;
+                        final subExpired = sub == null || sub['status'] != 'active';
 
                         final bool canBook = !isHidden && !subExpired && status != 'offline';
 
