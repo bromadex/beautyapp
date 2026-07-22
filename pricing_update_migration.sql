@@ -14,9 +14,8 @@ DROP TRIGGER IF EXISTS trg_mark_first_booking_used ON bookings;
 DROP FUNCTION IF EXISTS mark_first_booking_used();
 
 -- 3) Subscription plans become 'activation' ($3, first month) and
---    'monthly' ($5). Relax any old plan CHECK constraint if one exists,
---    and widen the tier default (tier is no longer used by the app).
-ALTER TABLE subscriptions ALTER COLUMN tier SET DEFAULT 'active';
+--    'monthly' ($5). The old 'tier' concept is not used by the new model,
+--    so nothing is needed here even if the tier column never existed.
 
 -- 4) Allow 'cancelled' as a subscription status (cancel anytime →
 --    profile hidden, reactivate later for $3).
