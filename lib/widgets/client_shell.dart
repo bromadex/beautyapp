@@ -8,7 +8,14 @@ class ClientShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Back button funnels to Home before exiting: on any other tab, back
+    // returns to Home; only a second back from Home leaves the app.
+    return PopScope(
+      canPop: navigationShell.currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) navigationShell.goBranch(0);
+      },
+      child: Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
@@ -43,6 +50,7 @@ class ClientShell extends StatelessWidget {
             label: 'Favourites',
           ),
         ],
+      ),
       ),
     );
   }
