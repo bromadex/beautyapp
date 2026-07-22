@@ -15,11 +15,11 @@ const bool firebaseConfigured = false;
 const String webVapidKey = 'REPLACE_WITH_VAPID_KEY';
 
 const FirebaseOptions androidFirebaseOptions = FirebaseOptions(
-  apiKey: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME',
+  apiKey: 'AIzaSyASNCnhMtJH1Mrmk81iJ2506HPydEc_Dzg',
+  appId: '1:549119684234:android:14bc982590154d4e9a0773',
+  messagingSenderId: '549119684234',
+  projectId: 'beautap-6752c',
+  storageBucket: 'beautap-6752c.firebasestorage.app',
 );
 
 const FirebaseOptions webFirebaseOptions = FirebaseOptions(
