@@ -21,7 +21,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
     _checkAdminAndLoad();
   }
@@ -42,7 +42,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     try {
       final data = await supabase
           .from('profiles')
-          .select('id, full_name, email, phone, user_type, is_verified, is_banned, created_at, avatar_url')
+          .select('id, full_name, phone, user_type, is_verified, is_banned, is_deactivated, created_at')
           .order('created_at', ascending: false);
       if (mounted) {
         setState(() {
@@ -68,15 +68,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
       users = users.where((u) => u['user_type'] == 'provider').toList();
     } else if (tabIndex == 2) {
       users = users.where((u) => u['user_type'] == 'client').toList();
+    } else if (tabIndex == 3) {
+      users = users.where((u) =>
+        u['is_banned'] == true || u['is_deactivated'] == true).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       users = users.where((u) {
         final name = (u['full_name'] ?? '').toString().toLowerCase();
-        final email = (u['email'] ?? '').toString().toLowerCase();
         final phone = (u['phone'] ?? '').toString().toLowerCase();
-        return name.contains(q) || email.contains(q) || phone.contains(q);
+        return name.contains(q) || phone.contains(q);
       }).toList();
     }
 
@@ -85,80 +87,149 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
 
   Future<void> _toggleBan(Map<String, dynamic> user) async {
     final isBanned = user['is_banned'] == true;
-    final action = isBanned ? 'unban' : 'ban';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await _confirmDialog(
+      title: '${isBanned ? 'Unban' : 'Ban'} User?',
+      message: isBanned
+          ? 'This will restore access for ${user['full_name']}.'
+          : 'This will block ${user['full_name']} from using the app.',
+      confirmLabel: isBanned ? 'Unban' : 'Ban',
+      confirmColor: isBanned ? AppColors.success : AppColors.error,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await supabase.from('profiles').update({'is_banned': !isBanned}).eq('id', user['id']);
+      _showSnack('User ${isBanned ? 'unbanned' : 'banned'} successfully',
+          color: isBanned ? AppColors.success : AppColors.warning);
+      _loadUsers();
+    } catch (e) {
+      _showSnack('Error: $e', color: AppColors.error);
+    }
+  }
+
+  Future<void> _toggleFreeze(Map<String, dynamic> user) async {
+    final isDeactivated = user['is_deactivated'] == true;
+    final confirmed = await _confirmDialog(
+      title: '${isDeactivated ? 'Unfreeze' : 'Freeze'} Account?',
+      message: isDeactivated
+          ? 'This will reactivate ${user['full_name']}\'s account.'
+          : 'This will deactivate ${user['full_name']}\'s account. Their profile will be hidden from search.',
+      confirmLabel: isDeactivated ? 'Unfreeze' : 'Freeze',
+      confirmColor: isDeactivated ? AppColors.success : AppColors.info,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await supabase.from('profiles').update({'is_deactivated': !isDeactivated}).eq('id', user['id']);
+      _showSnack('Account ${isDeactivated ? 'unfrozen' : 'frozen'} successfully',
+          color: isDeactivated ? AppColors.success : AppColors.info);
+      _loadUsers();
+    } catch (e) {
+      _showSnack('Error: $e', color: AppColors.error);
+    }
+  }
+
+  Future<void> _deleteUser(Map<String, dynamic> user) async {
+    final confirmed = await _confirmDialog(
+      title: 'Delete Account?',
+      message: 'This will permanently delete ${user['full_name']}\'s account and ALL their data. This cannot be undone.',
+      confirmLabel: 'Delete Forever',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed != true) return;
+
+    // Second confirmation
+    final secondConfirm = await _confirmDialog(
+      title: 'Are you absolutely sure?',
+      message: 'Type the user\'s name to confirm: ${user['full_name']}',
+      confirmLabel: 'Delete',
+      confirmColor: AppColors.error,
+    );
+    if (secondConfirm != true) return;
+
+    try {
+      final uid = user['id'];
+      await supabase.rpc('admin_delete_user', params: {'target_user_id': uid});
+      _showSnack('Account deleted', color: AppColors.textSecondary);
+      _loadUsers();
+    } catch (e) {
+      _showSnack('Error: $e', color: AppColors.error);
+    }
+  }
+
+  Future<bool?> _confirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required Color confirmColor,
+  }) {
+    return showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-        title: Text('${isBanned ? 'Unban' : 'Ban'} User?'),
-        content: Text(
-          isBanned
-              ? 'This will restore access for ${user['full_name']}.'
-              : 'This will block ${user['full_name']} from using the app.',
-        ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+        title: Text(title),
+        content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: isBanned ? AppColors.success : AppColors.error,
-            ),
-            child: Text(isBanned ? 'Unban' : 'Ban'),
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            child: Text(confirmLabel),
           ),
         ],
       ),
     );
+  }
 
-    if (confirmed != true) return;
-
-    try {
-      await supabase
-          .from('profiles')
-          .update({'is_banned': !isBanned})
-          .eq('id', user['id']);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('User ${action}ned successfully'),
-          backgroundColor: isBanned ? AppColors.success : AppColors.warning,
-        ),
-      );
-      _loadUsers();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
+  void _showSnack(String msg, {Color? color}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      ),
+    );
   }
 
   void _showUserDetail(Map<String, dynamic> user) {
     final name = user['full_name'] ?? 'Unknown';
-    final email = user['email'] ?? '';
     final phone = user['phone'] ?? '';
     final type = user['user_type'] ?? '';
     final isVerified = user['is_verified'] == true;
     final isBanned = user['is_banned'] == true;
+    final isDeactivated = user['is_deactivated'] == true;
     final createdAt = DateTime.tryParse(user['created_at'] ?? '');
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.5,
-        maxChildSize: 0.8,
+        initialChildSize: 0.55,
+        maxChildSize: 0.85,
         builder: (_, scrollCtrl) => SingleChildScrollView(
           controller: scrollCtrl,
           padding: AppSpacing.screenPadding,
           child: Column(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 64, height: 64,
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   shape: BoxShape.circle,
@@ -173,58 +244,93 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
               const SizedBox(height: AppSpacing.md),
               Text(name, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                spacing: 6, runSpacing: 4,
+                alignment: WrapAlignment.center,
                 children: [
                   _badge(type == 'provider' ? 'Provider' : 'Client', AppColors.secondary),
-                  if (isVerified) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    _badge('Verified', AppColors.success),
-                  ],
-                  if (isBanned) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    _badge('Banned', AppColors.error),
-                  ],
+                  if (isVerified) _badge('Verified', AppColors.success),
+                  if (isBanned) _badge('Banned', AppColors.error),
+                  if (isDeactivated) _badge('Frozen', AppColors.info),
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
-              _detailRow(Icons.email_outlined, 'Email', email),
               _detailRow(Icons.phone_outlined, 'Phone', phone.isNotEmpty ? phone : 'Not set'),
               if (createdAt != null)
                 _detailRow(Icons.calendar_today_outlined, 'Joined', createdAt.toLocal().toString().substring(0, 10)),
+              _detailRow(Icons.shield_outlined, 'Status',
+                isBanned ? 'Banned' : isDeactivated ? 'Frozen' : 'Active'),
               const SizedBox(height: AppSpacing.xxl),
-              Row(
-                children: [
-                  if (type == 'provider')
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          context.push('/provider/${user['id']}');
-                        },
-                        icon: const Icon(Icons.person_outlined, size: 18),
-                        label: const Text('View Profile'),
-                      ),
-                    ),
-                  if (type == 'provider') const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _toggleBan(user);
-                      },
-                      icon: Icon(isBanned ? Icons.check_circle_outline : Icons.block_rounded, size: 18),
-                      label: Text(isBanned ? 'Unban' : 'Ban User'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: isBanned ? AppColors.success : AppColors.error,
-                      ),
-                    ),
-                  ),
-                ],
+
+              // Action buttons
+              if (type == 'provider')
+                _actionButton(
+                  icon: Icons.person_outlined,
+                  label: 'View Public Profile',
+                  color: AppColors.primary,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/provider/${user['id']}');
+                  },
+                ),
+              const SizedBox(height: 8),
+              _actionButton(
+                icon: isBanned ? Icons.check_circle_outline : Icons.block_rounded,
+                label: isBanned ? 'Unban User' : 'Ban User',
+                color: isBanned ? AppColors.success : AppColors.error,
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleBan(user);
+                },
+              ),
+              const SizedBox(height: 8),
+              _actionButton(
+                icon: isDeactivated ? Icons.play_circle_outline : Icons.pause_circle_outline,
+                label: isDeactivated ? 'Unfreeze Account' : 'Freeze Account',
+                color: AppColors.info,
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleFreeze(user);
+                },
+              ),
+              const SizedBox(height: 8),
+              _actionButton(
+                icon: Icons.delete_forever_rounded,
+                label: 'Delete Account',
+                color: AppColors.error,
+                isDanger: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteUser(user);
+                },
               ),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    bool isDanger = false,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color.withValues(alpha: 0.4)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          backgroundColor: isDanger ? color.withValues(alpha: 0.04) : null,
         ),
       ),
     );
@@ -273,16 +379,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
   @override
   Widget build(BuildContext context) {
     final users = _filteredUsers;
+    final flaggedCount = _allUsers.where((u) =>
+      u['is_banned'] == true || u['is_deactivated'] == true).length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Users'),
         bottom: TabBar(
           controller: _tabCtrl,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(text: 'All (${_allUsers.length})'),
             Tab(text: 'Providers (${_allUsers.where((u) => u['user_type'] == 'provider').length})'),
             Tab(text: 'Clients (${_allUsers.where((u) => u['user_type'] == 'client').length})'),
+            Tab(text: 'Flagged ($flaggedCount)'),
           ],
         ),
       ),
@@ -296,7 +407,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                     controller: _searchCtrl,
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
-                      hintText: 'Search by name, email or phone...',
+                      hintText: 'Search by name or phone...',
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
@@ -332,10 +443,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
 
   Widget _buildUserCard(Map<String, dynamic> user) {
     final name = user['full_name'] ?? 'Unknown';
-    final email = user['email'] ?? '';
+    final phone = user['phone'] ?? '';
     final type = user['user_type'] ?? '';
     final isVerified = user['is_verified'] == true;
     final isBanned = user['is_banned'] == true;
+    final isDeactivated = user['is_deactivated'] == true;
 
     return InkWell(
       onTap: () => _showUserDetail(user),
@@ -343,17 +455,24 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: isBanned ? AppColors.error.withValues(alpha: 0.03) : Colors.white,
+          color: isBanned
+              ? AppColors.error.withValues(alpha: 0.03)
+              : isDeactivated
+                  ? AppColors.info.withValues(alpha: 0.03)
+                  : Colors.white,
           borderRadius: AppRadius.lgAll,
           border: Border.all(
-            color: isBanned ? AppColors.error.withValues(alpha: 0.2) : Colors.grey.shade200,
+            color: isBanned
+                ? AppColors.error.withValues(alpha: 0.2)
+                : isDeactivated
+                    ? AppColors.info.withValues(alpha: 0.2)
+                    : Colors.grey.shade200,
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 40, height: 40,
               decoration: BoxDecoration(
                 gradient: isBanned ? null : AppColors.primaryGradient,
                 color: isBanned ? AppColors.error.withValues(alpha: 0.1) : null,
@@ -363,8 +482,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 child: Text(
                   name.isNotEmpty ? name[0].toUpperCase() : '?',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                    fontWeight: FontWeight.w700, fontSize: 16,
                     color: isBanned ? AppColors.error : Colors.white,
                   ),
                 ),
@@ -378,8 +496,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                   Row(
                     children: [
                       Flexible(
-                        child: Text(
-                          name,
+                        child: Text(name,
                           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -392,7 +509,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    email,
+                    phone.isNotEmpty ? phone : 'No phone',
                     style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -400,14 +517,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            _badge(
-              type == 'provider' ? 'Provider' : 'Client',
-              type == 'provider' ? AppColors.secondary : AppColors.info,
+            Wrap(
+              spacing: 4,
+              children: [
+                _badge(
+                  type == 'provider' ? 'Provider' : 'Client',
+                  type == 'provider' ? AppColors.secondary : AppColors.info,
+                ),
+                if (isBanned) _badge('Banned', AppColors.error),
+                if (isDeactivated && !isBanned) _badge('Frozen', AppColors.info),
+              ],
             ),
-            if (isBanned) ...[
-              const SizedBox(width: AppSpacing.xs),
-              _badge('Banned', AppColors.error),
-            ],
           ],
         ),
       ),

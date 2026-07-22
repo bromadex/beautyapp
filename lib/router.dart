@@ -33,6 +33,7 @@ import 'screens/promotion_management_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/smart_match_screen.dart';
 import 'screens/activation_screen.dart';
+import 'screens/account_settings_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
 import 'supabase_client.dart';
@@ -139,6 +140,13 @@ final appRouter = GoRouter(
       path: '/verify/pending',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const VerificationPendingScreen(),
+    ),
+
+    // Account Settings (deactivate / delete)
+    GoRoute(
+      path: '/account/settings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AccountSettingsScreen(),
     ),
 
     // Client Activation (Stage 19)

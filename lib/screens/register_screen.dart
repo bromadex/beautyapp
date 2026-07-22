@@ -61,7 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         const webClientId =
-            '549119684234-placeholder.apps.googleusercontent.com';
+            '549119684234-bpgdfj7880f9g7gsba897hg8790im54o.apps.googleusercontent.com';
 
         final googleUser = await GoogleSignIn(
           serverClientId: webClientId,
