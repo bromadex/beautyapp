@@ -389,10 +389,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             backgroundColor: AppColors.primary,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            title: const Text(
-              'BeauTap',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
-            ),
+            title: const BrandTitle(fontSize: 24),
             actions: [
               if (_isAdmin)
                 IconButton(
@@ -536,9 +533,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           if (_nextBooking != null)
                             _NextBookingCard(booking: _nextBooking!)
                           else
-                            _NoBookingCard(
-                              onShare: () => _shareProfile(context),
-                            ),
+                            _NoBookingCard(),
                           const SizedBox(height: 14),
 
                           _StatsRow(
@@ -558,6 +553,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           _ProviderQuickActions(
                             pendingBookings: _pendingBookingsCount,
                             unreadMessages: _unreadMessages,
+                            onShareProfile: () => _shareProfile(context),
                           ),
                           const SizedBox(height: 20),
 
@@ -786,14 +782,13 @@ class _NextBookingCard extends StatelessWidget {
 }
 
 class _NoBookingCard extends StatelessWidget {
-  final VoidCallback onShare;
-  const _NoBookingCard({required this.onShare});
+  const _NoBookingCard();
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
@@ -815,22 +810,9 @@ class _NoBookingCard extends StatelessWidget {
           )),
           const SizedBox(height: 4),
           Text(
-            'Share your profile to attract new clients',
+            'Your next booking will appear here',
             style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 36,
-            child: OutlinedButton.icon(
-              onPressed: onShare,
-              icon: const Icon(Icons.share_outlined, size: 16),
-              label: const Text('Share Profile'),
-              style: OutlinedButton.styleFrom(
-                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-              ),
-            ),
           ),
         ],
       ),
@@ -1010,7 +992,12 @@ class _AvailabilityToggle extends StatelessWidget {
 class _ProviderQuickActions extends StatelessWidget {
   final int pendingBookings;
   final int unreadMessages;
-  const _ProviderQuickActions({required this.pendingBookings, required this.unreadMessages});
+  final VoidCallback onShareProfile;
+  const _ProviderQuickActions({
+    required this.pendingBookings,
+    required this.unreadMessages,
+    required this.onShareProfile,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1076,9 +1063,9 @@ class _ProviderQuickActions extends StatelessWidget {
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
-              icon: Icons.local_offer_outlined,
-              label: 'Promos',
-              onTap: () => context.push('/provider/promotions'),
+              icon: Icons.share_rounded,
+              label: 'Share Profile',
+              onTap: onShareProfile,
             )),
             const SizedBox(width: 8),
             Expanded(child: _SecondaryActionTile(
@@ -1086,6 +1073,20 @@ class _ProviderQuickActions extends StatelessWidget {
               label: 'Reviews',
               onTap: () => context.push('/provider/$uid/reviews'),
             )),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.local_offer_outlined,
+              label: 'Promos',
+              onTap: () => context.push('/provider/promotions'),
+            )),
+            const SizedBox(width: 8),
+            const Expanded(child: SizedBox()),
+            const SizedBox(width: 8),
+            const Expanded(child: SizedBox()),
           ],
         ),
       ],

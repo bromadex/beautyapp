@@ -233,6 +233,37 @@ class AppTheme {
   }
 }
 
+class BrandTitle extends StatelessWidget {
+  final double fontSize;
+  const BrandTitle({super.key, this.fontSize = 22});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(children: [
+        TextSpan(
+          text: 'Beau',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: fontSize,
+            letterSpacing: -0.3,
+          ),
+        ),
+        TextSpan(
+          text: 'Tạp',
+          style: TextStyle(
+            color: AppColors.secondary,
+            fontWeight: FontWeight.w800,
+            fontSize: fontSize,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
 class StatusColors {
   static Color background(String status) {
     switch (status) {

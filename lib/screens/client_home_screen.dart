@@ -119,10 +119,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
             backgroundColor: AppColors.primary,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            title: const Text(
-              'BeauTap',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
-            ),
+            title: const BrandTitle(fontSize: 24),
             actions: [
               if (_isAdmin)
                 IconButton(

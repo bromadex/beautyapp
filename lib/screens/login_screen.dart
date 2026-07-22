@@ -344,15 +344,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  const Text(
-                    'BeauTap',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+                  const BrandTitle(fontSize: 30),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Beauty at your fingertips',
