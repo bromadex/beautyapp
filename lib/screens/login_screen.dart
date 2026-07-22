@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   const Text(
-                    'Beauty Home Services',
+                    'BeauTap',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Premium beauty, delivered to your door',
+                    'Beauty at your fingertips',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,

@@ -373,7 +373,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
             title: const Text(
-              'Beauty Home Services',
+              'BeauTap',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18),
             ),
             actions: [

@@ -1,11 +1,11 @@
 {
-    "name": "beauty_app",
-    "short_name": "beauty_app",
+    "name": "BeauTap",
+    "short_name": "BeauTap",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFF8F0",
+    "theme_color": "#C2185B",
+    "description": "Beauty at your fingertips — book trusted beauty professionals to your door.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

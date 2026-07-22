@@ -1,38 +1,39 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFFE91E8C);
-  static const Color primaryDark = Color(0xFFD81B7F);
-  static const Color secondary = Color(0xFF7C3AED);
-  static const Color accent = Color(0xFFFF6B9D);
+  // BeauTap brand palette (Stage 17b)
+  static const Color primary = Color(0xFFC2185B);   // Deep Rose
+  static const Color primaryDark = Color(0xFFA0134B);
+  static const Color secondary = Color(0xFFF9A825); // Warm Gold
+  static const Color accent = Color(0xFFE91E63);    // Bright Rose
 
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
+  static const Color success = Color(0xFF4CAF50);   // Mint
+  static const Color warning = Color(0xFFF9A825);   // Warm Gold
+  static const Color error = Color(0xFFE53935);     // Coral Red
   static const Color info = Color(0xFF3B82F6);
 
-  static const Color surfaceLight = Color(0xFFFAF5F7);
-  static const Color surfaceDark = Color(0xFF1A1A2E);
+  static const Color surfaceLight = Color(0xFFFFF8F0); // Soft Cream
+  static const Color surfaceDark = Color(0xFF1A1A1A);
 
   static const Color cardLight = Colors.white;
-  static const Color cardDark = Color(0xFF232340);
+  static const Color cardDark = Color(0xFF262626);
 
-  static const Color textPrimary = Color(0xFF1F2937);
+  static const Color textPrimary = Color(0xFF1A1A1A); // Rich Black
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textTertiary = Color(0xFF9CA3AF);
 
-  static const Color available = Color(0xFF10B981);
-  static const Color busy = Color(0xFFF59E0B);
+  static const Color available = Color(0xFF4CAF50);
+  static const Color busy = Color(0xFFF9A825);
   static const Color offline = Color(0xFF9CA3AF);
 
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFFE91E8C), Color(0xFFAB47BC)],
+    colors: [Color(0xFFC2185B), Color(0xFFE91E63)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFFE91E8C), Color(0xFF7C3AED)],
+    colors: [Color(0xFFC2185B), Color(0xFF880E4F)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -237,7 +238,7 @@ class StatusColors {
     switch (status) {
       case 'confirmed': return AppColors.info.withValues(alpha: 0.1);
       case 'en_route': return AppColors.warning.withValues(alpha: 0.1);
-      case 'arrived': case 'in_progress': return AppColors.secondary.withValues(alpha: 0.1);
+      case 'arrived': case 'in_progress': return AppColors.accent.withValues(alpha: 0.1);
       case 'completed': return AppColors.success.withValues(alpha: 0.1);
       case 'cancelled': return AppColors.error.withValues(alpha: 0.1);
       case 'pending': return AppColors.warning.withValues(alpha: 0.1);
@@ -249,7 +250,7 @@ class StatusColors {
     switch (status) {
       case 'confirmed': return AppColors.info;
       case 'en_route': return AppColors.warning;
-      case 'arrived': case 'in_progress': return AppColors.secondary;
+      case 'arrived': case 'in_progress': return AppColors.accent;
       case 'completed': return AppColors.success;
       case 'cancelled': return AppColors.error;
       case 'pending': return AppColors.warning;
