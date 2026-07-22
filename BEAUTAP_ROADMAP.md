@@ -15,7 +15,10 @@
 | Admin nav | Option B — button from home screen, no dedicated shell |
 | Launch categories | Hair only (add Makeup in month 2 after 50+ bookings) |
 | Client activation fee | $1 one-time — "Unlock unlimited bookings" |
-| Subscription model | First Booking Free → then $10/mo Active tier |
+| Provider pricing | $3 activation (includes first month) → $5/month after — **UPDATED July 2026** |
+| Platform commission | **NONE** — providers keep 100% of booking payments; revenue = subscriptions only |
+| Provider gating | Browse & message free; receiving/accepting bookings requires activation |
+| Cancel policy | Cancel anytime → profile hidden; reactivate for $3 |
 | Payment gateway | Paynow Zimbabwe (EcoCash, OneMoney, Telecash, Cards) |
 | Navigation | Bottom nav with ShellRoutes, separate client/provider shells |
 | Escrow | Deferred — build only after Paynow is live + 50 paid bookings |
@@ -26,7 +29,7 @@
 
 ## Phase 1: Ship Mobile (Weeks 1-3)
 
-### Stage 16: Navigation Overhaul
+### Stage 16: Navigation Overhaul ✅ DONE
 
 **Goal:** Fix routing crashes, add bottom nav, split home screen.
 
@@ -101,7 +104,7 @@ No Shell (full screen):
 
 ---
 
-### Stage 17: App Rebrand — BeauTap
+### Stage 17: App Rebrand — BeauTap ✅ DONE (17a package name + 17b visual rebrand)
 
 **Goal:** New identity across the entire app.
 
@@ -148,7 +151,7 @@ flutter_native_splash: ^2.x
 
 ---
 
-### Stage 18: APK Build
+### Stage 18: APK Build ✅ DONE (tested on device; rebuilds paused until requested)
 
 **Goal:** Working debug APK on a real Android phone.
 
@@ -189,7 +192,7 @@ flutter build apk --split-per-abi  # smaller APKs per architecture
 
 ## Phase 2: Real Money (Weeks 4-6)
 
-### Stage 19: Client Activation Fee ($1)
+### Stage 19: Client Activation Fee ($1) ✅ DONE
 
 **Goal:** One-time $1 payment gate after verification approval.
 
@@ -220,7 +223,7 @@ UPDATE profiles SET is_activated = true; -- grandfather existing accounts
 
 ---
 
-### Stage 20: Real Payments — Paynow Zimbabwe
+### Stage 20: Real Payments — Paynow Zimbabwe 🟡 CODE DONE — awaiting merchant account + deploy (see STAGES_20-22_SETUP.md)
 
 **Goal:** Replace simulated payments with real EcoCash/Card payments.
 
@@ -271,58 +274,62 @@ ALTER TABLE payments
 
 ---
 
-### Stage 21: Subscription Revamp — First Booking Free
+### Stage 21: Provider Pricing — $3 Start, $5/Month, Zero Commission ✅ DONE
 
-**Goal:** New subscription model tied to proven value.
+> **REVISED July 2026.** The original "First Booking Free + $10/$25 tiers" model
+> was replaced before launch with a simpler, locked model. Featured tier,
+> per-area slots, and the waitlist were scrapped.
+
+**Goal:** Simple, honest pricing that funds the platform through subscriptions
+instead of commission, and keeps fake accounts out.
 
 **Provider journey:**
 ```
 1. Create profile → FREE
 2. Clients can browse and message → FREE
-3. Accept first booking → FREE (no subscription needed)
-4. First booking completes → prompt: "Subscribe to keep accepting bookings"
-5. Subscribe to Active ($10/mo) → full access continues
+3. Accept first booking → requires $3 activation payment
+4. First month active → the $3 covers month 1
+5. Month 2 onward → $5/month renewal
+6. Cancel anytime → profile hidden from search; reactivate for $3
 ```
 
-**Tiers:**
-| Tier | Price | What You Get |
-|------|-------|-------------|
-| **New** | Free | Profile visible, messaging, accept 1st booking |
-| **Active** | $10/mo | Unlimited bookings + gallery + promos |
-| **Featured** | $25/mo | Top 3 search placement + promo tools (limited slots) |
+**Pricing:**
+| Payment | Amount | What It Covers |
+|---------|--------|----------------|
+| Activation | $3 one-time | Account activation + entire first month |
+| Renewal | $5/month | Unlimited bookings + gallery + promos |
+| Commission | **$0 — none** | Providers keep 100% of every booking payment |
 
-**Featured tier scarcity:** Max 3 Featured providers per area. If all slots taken, waitlist. This keeps "priority in search" genuinely valuable.
+**Why $3 (security):** prevents fake accounts and bot spam ($3 per fake adds
+up), verifies a real payment method is attached, gives providers skin in the
+game without being prohibitive — more effective than SMS verification alone.
 
-**Featured tier "area" definition:** Uses the provider's set service radius from Stage 6B GPS Tracking. Already in the DB, user-configurable, matches how clients search. Dense areas (Harare CBD, 5km) have more competition for slots; sparse areas (rural, 50km) have less. If provider hasn't set a radius, default to 10km with a nudge: "Set your service area to unlock Featured placement."
+**Key messaging:** "You keep 100% of what you earn" · "$3 to start, then
+$5/month" · "No hidden fees, no commission".
 
-**Upgrade flow:** Provider upgrades from Active → Featured instantly if slots available. If all 3 slots in their area are taken, they join a waitlist and get notified when a slot opens (e.g., a Featured provider downgrades or moves area).
+**Enforcement (both directions):**
+- Clients cannot create a booking with a provider who has no active
+  subscription ("This stylist isn't accepting bookings yet — you can still
+  message them!")
+- Providers without an active subscription get an "Activate — $3" prompt when
+  trying to accept
 
-**DB changes:**
-- Update `subscriptions` table to support new tier structure
-- Add `first_booking_used` boolean to `provider_profiles`
-- Subscription check: allow booking acceptance if `first_booking_used = false` OR `subscription.status = 'active'`
-- Add `featured_waitlist` table:
-```sql
-CREATE TABLE featured_waitlist (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  provider_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  requested_at TIMESTAMPTZ DEFAULT now(),
-  notified_at TIMESTAMPTZ,
-  status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'notified', 'expired', 'activated')),
-  UNIQUE(provider_id)
-);
-```
+**DB changes (implemented in `pricing_update_migration.sql`):**
+- `payments`: dropped `platform_fee` and `provider_earnings` — no commission split
+- Removed the first-booking-free trigger
+- `subscriptions.plan` values: `activation` | `monthly`; status may be `cancelled`
 
-**Files to modify:**
-- `lib/screens/subscription_screen.dart` — new tier UI
-- Booking acceptance logic — first-booking-free gate
-- Browse/search — Featured providers at top
+**Files modified:** ✅ `subscription_screen.dart` (full rewrite),
+`payment_screen.dart`, `provider_earnings_screen.dart`,
+`provider_bookings_screen.dart` (accept gate), `booking_screen.dart` (create
+gate), `app_config.dart`, admin dashboard/analytics (subscription revenue
+instead of commission), Paynow edge functions.
 
 ---
 
 ## Phase 3: Public Launch (Weeks 7-8)
 
-### Stage 22: Push Notifications — FCM (Basic)
+### Stage 22: Push Notifications — FCM (Basic) 🟡 CODE DONE — awaiting Firebase project + deploy (see STAGES_20-22_SETUP.md)
 
 **Goal:** 4 critical notification triggers via Firebase Cloud Messaging.
 
@@ -364,7 +371,7 @@ firebase_messaging: ^14.x
 
 ---
 
-### Stage 23: Play Store Submission
+### Stage 23: Play Store Submission ⬜ NEXT UP
 
 **Goal:** BeauTap on Google Play Store.
 
@@ -457,3 +464,27 @@ All original stages are built and deployed on Vercel:
 15. Smart Matching
 
 **Live at:** beautyapp-swart.vercel.app (will become beautap domain)
+
+---
+
+## Status Snapshot — July 2026
+
+| Stage | Status |
+|-------|--------|
+| 16 Navigation Overhaul | ✅ Done |
+| 17 Rebrand (package + visuals) | ✅ Done |
+| 18 APK Build | ✅ Done — tested on device; rebuilds paused until requested |
+| 19 Client Activation ($1) | ✅ Done — SQL migration run |
+| 20 Paynow | 🟡 Code done — needs merchant account, function deploy, secrets, `stage20_migration.sql` |
+| 21 Provider Pricing ($3/$5, 0% commission) | ✅ Done — run `pricing_update_migration.sql` |
+| 22 FCM Push | 🟡 Code done — needs Firebase project, config values, function deploy, `stage22_migration.sql` |
+| 23 Play Store | ⬜ Next — keystore, listing assets, privacy policy |
+
+**Pricing revision (July 2026):** the Stage 21 tier model ($10 Active / $25
+Featured, first booking free) was replaced pre-launch by the locked flat
+model: **$3 activation including first month → $5/month, zero commission,
+providers keep 100% of booking payments**. `stage21_migration.sql` is
+obsolete — do not run it; use `pricing_update_migration.sql` instead.
+
+**External setup guide:** see `STAGES_20-22_SETUP.md` for the exact Paynow /
+Firebase / webhook steps.
