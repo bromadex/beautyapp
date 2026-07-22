@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -21,6 +22,7 @@ class _ProviderProfileEditorScreenState
   bool _radiusSupported = true;
   bool _loading = false;
   bool _saving  = false;
+  bool _locating = false;
 
   @override
   void initState() {
@@ -47,6 +49,62 @@ class _ProviderProfileEditorScreenState
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() => _locating = true);
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                  'Location permission denied. Please enable it in Settings.'),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+            ),
+          );
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _latCtrl.text = pos.latitude.toStringAsFixed(6);
+        _lngCtrl.text = pos.longitude.toStringAsFixed(6);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Location detected!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Could not detect location. Please enter your address manually.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
   }
 
   Future<void> _save() async {
@@ -205,63 +263,62 @@ class _ProviderProfileEditorScreenState
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              Row(children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _latCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Latitude',
-                      hintText: '-17.8292',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _locating ? null : _detectLocation,
+                  icon: _locating
+                      ? SizedBox(
+                          height: 16, width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.primary,
+                          ),
+                        )
+                      : const Icon(Icons.my_location_rounded, size: 18),
+                  label: Text(_locating
+                      ? 'Detecting...'
+                      : _latCtrl.text.isNotEmpty
+                          ? 'Location set (${_latCtrl.text}, ${_lngCtrl.text})'
+                          : 'Use my current location'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: TextFormField(
-                    controller: _lngCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Longitude',
-                      hintText: '31.0522',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true, signed: true),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.info.withValues(alpha: 0.08),
-                  borderRadius: AppRadius.smAll,
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        size: 14, color: AppColors.info),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Find your coordinates on Google Maps -- right-click your location.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.info,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
+              if (_latCtrl.text.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.08),
+                    borderRadius: AppRadius.smAll,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded,
+                          size: 14, color: AppColors.success),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Coordinates saved — clients nearby will find you.',
+                          style: TextStyle(fontSize: 12, color: AppColors.success),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               if (_radiusSupported) ...[
                 _buildSectionDivider(),
 
-                // -- Service Radius (Stage 21: defines your Featured "area") --
+                // -- Service Radius --
                 _buildSectionHeader('Service Radius', Icons.radar_rounded),
                 Container(
                   padding: AppSpacing.cardPadding,
@@ -300,7 +357,7 @@ class _ProviderProfileEditorScreenState
                         onChanged: (v) => setState(() => _radiusKm = v),
                       ),
                       const Text(
-                        'This also defines your area for Featured tier placement.',
+                        'Clients within this radius will see you in their results.',
                         style: TextStyle(
                             fontSize: 11.5, color: AppColors.textTertiary),
                       ),
