@@ -107,7 +107,7 @@ class PushService {
   static Future<bool?> _showPermissionDialog(BuildContext context) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
         icon: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -125,11 +125,11 @@ class PushService {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Not now'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Enable Notifications'),
           ),
