@@ -139,7 +139,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
   void _shareProfile(BuildContext context) {
     final uid = supabase.auth.currentUser!.id;
-    final profileUrl = '${AppConfig.webBaseUrl}/#/provider/$uid';
+    final profileUrl = '${AppConfig.webBaseUrl}/provider/$uid';
     final name = _profile?['full_name'] ?? 'my';
 
     showModalBottomSheet(
