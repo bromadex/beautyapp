@@ -54,7 +54,15 @@ final appRouter = GoRouter(
     final loc = state.matchedLocation;
     final isAuthRoute = loc == '/login' || loc == '/register';
 
-    if (!isAuth) return isAuthRoute ? null : '/login';
+    final isPublicRoute = loc.startsWith('/provider/') &&
+        !loc.startsWith('/provider/home') &&
+        !loc.startsWith('/provider/bookings') &&
+        !loc.startsWith('/provider/profile') &&
+        !loc.startsWith('/provider/services') &&
+        !loc.startsWith('/provider/gallery') &&
+        !loc.startsWith('/provider/subscription') &&
+        !loc.startsWith('/provider/promotions');
+    if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
 
     // Authenticated: route away from auth screens and root to the right shell
     if (isAuthRoute || loc == '/') {
