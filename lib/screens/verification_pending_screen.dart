@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -14,11 +15,78 @@ class VerificationPendingScreen extends StatefulWidget {
 class _VerificationPendingScreenState
     extends State<VerificationPendingScreen> {
   Map<String, dynamic>? _verification;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _subscribeRealtime();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeRealtime() {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _channel = supabase
+        .channel('verification_status')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'verifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final newStatus = payload.newRecord['status'];
+            if (newStatus == 'approved' && mounted) {
+              _showVerifiedAndNavigate();
+            } else {
+              _load();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  void _showVerifiedAndNavigate() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        icon: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.verified_rounded,
+              color: AppColors.success, size: 48),
+        ),
+        title: const Text('Well Done!'),
+        content: const Text(
+          'You have been verified! You now have full access to all provider features.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.go('/provider/home');
+            },
+            child: const Text('Let\'s Go!'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -56,7 +124,6 @@ class _VerificationPendingScreenState
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Status icon with colored circle background
               Center(
                 child: Container(
                   width: 120,
@@ -84,7 +151,6 @@ class _VerificationPendingScreenState
               ),
               const SizedBox(height: AppSpacing.xxl),
 
-              // Status title
               Text(
                 isRejected ? 'Verification Rejected' : 'Under Review',
                 textAlign: TextAlign.center,
@@ -92,7 +158,6 @@ class _VerificationPendingScreenState
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Description
               Text(
                 isRejected
                     ? 'Your submission was not approved. Please re-submit with clearer photos.'
@@ -105,7 +170,6 @@ class _VerificationPendingScreenState
                 ),
               ),
 
-              // Admin note
               if (adminNote != null) ...[
                 const SizedBox(height: AppSpacing.xl),
                 Container(
@@ -156,7 +220,6 @@ class _VerificationPendingScreenState
               ],
               const SizedBox(height: AppSpacing.xxxl),
 
-              // Pending status indicator (only when not rejected)
               if (!isRejected)
                 Container(
                   padding: AppSpacing.cardPadding,
@@ -209,7 +272,6 @@ class _VerificationPendingScreenState
 
               if (!isRejected) const SizedBox(height: AppSpacing.xxl),
 
-              // Actions
               if (isRejected)
                 FilledButton.icon(
                   onPressed: () => context.go('/verify'),

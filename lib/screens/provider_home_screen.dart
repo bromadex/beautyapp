@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
@@ -14,7 +15,7 @@ class ProviderHomeScreen extends StatefulWidget {
   State<ProviderHomeScreen> createState() => _ProviderHomeScreenState();
 }
 
-class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTickerProviderStateMixin {
+class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _verification;
   Map<String, dynamic>? _providerProfile;
@@ -22,6 +23,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   bool _isAdmin = false;
   bool _loading = true;
   late AnimationController _animCtrl;
+  RealtimeChannel? _subChannel;
+  RealtimeChannel? _verifyChannel;
 
   Map<String, dynamic>? _nextBooking;
   double _weeklyEarnings = 0;
@@ -39,14 +42,97 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   void initState() {
     super.initState();
     _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
+    _subscribeRealtime();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) PushService.maybeInit(context);
     });
   }
 
+  void _subscribeRealtime() {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _subChannel = supabase
+        .channel('home_subscriptions')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'subscriptions',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'provider_id',
+            value: userId,
+          ),
+          callback: (_) => _loadData(),
+        )
+        .subscribe();
+
+    _verifyChannel = supabase
+        .channel('home_verifications')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'verifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            _loadData();
+            final newRecord = payload.newRecord;
+            if (newRecord['status'] == 'approved') {
+              _showVerifiedDialog();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  void _showVerifiedDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        icon: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.verified_rounded,
+              color: AppColors.success, size: 48),
+        ),
+        title: const Text('Well Done!'),
+        content: const Text(
+          'Your identity has been verified. You now have full access to all provider features.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Let\'s Go!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _loadData();
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _subChannel?.unsubscribe();
+    _verifyChannel?.unsubscribe();
     _animCtrl.dispose();
     super.dispose();
   }
