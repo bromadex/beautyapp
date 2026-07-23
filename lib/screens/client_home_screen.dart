@@ -314,7 +314,12 @@ class _TileGrid extends StatelessWidget {
               enabled: t.enabled,
               onTap: () {
                 if (t.enabled) {
-                  context.go(t.route);
+                  const shellRoutes = {'/home', '/browse', '/client/bookings', '/favorites'};
+                  if (shellRoutes.contains(t.route)) {
+                    context.go(t.route);
+                  } else {
+                    context.push(t.route);
+                  }
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
