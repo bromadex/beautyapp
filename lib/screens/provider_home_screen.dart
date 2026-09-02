@@ -1170,7 +1170,11 @@ class _ProviderQuickActions extends StatelessWidget {
               onTap: () => context.push('/provider/promotions'),
             )),
             const SizedBox(width: 8),
-            const Expanded(child: SizedBox()),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.schedule_rounded,
+              label: 'Schedule',
+              onTap: () => context.push('/provider/availability'),
+            )),
             const SizedBox(width: 8),
             const Expanded(child: SizedBox()),
           ],

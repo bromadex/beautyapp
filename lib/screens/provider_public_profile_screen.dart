@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/avatar_widget.dart';
 import '../widgets/star_rating_widget.dart';
 
 class ProviderPublicProfileScreen extends StatefulWidget {
@@ -410,24 +411,10 @@ class _ProviderPublicProfileScreenState
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
-                        ),
-                        child: Center(
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                      AvatarWidget(
+                        avatarUrl: _profile?['avatar_url'],
+                        fallbackName: name,
+                        size: 80,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(

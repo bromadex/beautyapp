@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/avatar_widget.dart';
 
 class ProviderProfileEditorScreen extends StatefulWidget {
   const ProviderProfileEditorScreen({super.key});
@@ -23,6 +24,8 @@ class _ProviderProfileEditorScreenState
   bool _loading = false;
   bool _saving  = false;
   bool _locating = false;
+  String? _avatarUrl;
+  String _fullName = '';
 
   @override
   void initState() {
@@ -38,6 +41,14 @@ class _ProviderProfileEditorScreenState
         if (mounted) Navigator.of(context).pop();
         return;
       }
+      final profile = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', uid)
+          .maybeSingle();
+      _fullName = profile?['full_name'] ?? '';
+      _avatarUrl = profile?['avatar_url'];
+
       final data = await supabase
           .from('provider_profiles')
           .select()
@@ -220,6 +231,33 @@ class _ProviderProfileEditorScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // -- Avatar Section --
+              Center(
+                child: AvatarWidget(
+                  avatarUrl: _avatarUrl,
+                  fallbackName: _fullName,
+                  size: 100,
+                  showEditButton: true,
+                  onEdit: () async {
+                    final url = await AvatarUploadHelper.pickAndUpload(context);
+                    if (url != null && mounted) {
+                      setState(() => _avatarUrl = url);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Center(
+                child: Text(
+                  'Tap to change photo',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+
               // -- Bio Section --
               _buildSectionHeader('About You', Icons.person_outline_rounded),
               Container(

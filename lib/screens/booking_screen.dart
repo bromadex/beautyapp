@@ -72,10 +72,13 @@ class _BookingScreenState extends State<BookingScreen> {
         return;
       }
 
+      final uid = supabase.auth.currentUser?.id;
+      if (uid == null) return;
+
       final clientProfile = await supabase
           .from('profiles')
           .select()
-          .eq('id', supabase.auth.currentUser!.id)
+          .eq('id', uid)
           .maybeSingle();
 
       if (mounted) {
@@ -186,7 +189,7 @@ class _BookingScreenState extends State<BookingScreen> {
           .limit(1);
 
       if (results.isEmpty) {
-        setState(() => _promoError = 'Invalid promo code');
+        if (mounted) setState(() => _promoError = 'Invalid promo code');
         return;
       }
 
@@ -196,7 +199,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (promo['valid_until'] != null) {
         final validUntil = DateTime.parse(promo['valid_until']);
         if (validUntil.isBefore(DateTime.now())) {
-          setState(() => _promoError = 'This promo code has expired');
+          if (mounted) setState(() => _promoError = 'This promo code has expired');
           return;
         }
       }
@@ -204,7 +207,7 @@ class _BookingScreenState extends State<BookingScreen> {
       // Check max uses
       if (promo['max_uses'] != null &&
           (promo['used_count'] ?? 0) >= promo['max_uses']) {
-        setState(() => _promoError = 'This promo code has reached its limit');
+        if (mounted) setState(() => _promoError = 'This promo code has reached its limit');
         return;
       }
 
@@ -212,7 +215,7 @@ class _BookingScreenState extends State<BookingScreen> {
       final minOrder =
           (promo['min_order_amount'] as num?)?.toDouble() ?? 0;
       if (_servicePrice < minOrder) {
-        setState(() => _promoError =
+        if (mounted) setState(() => _promoError =
             'Min order \$${minOrder.toStringAsFixed(0)} required');
         return;
       }
@@ -281,10 +284,13 @@ class _BookingScreenState extends State<BookingScreen> {
     try {
       // Stage 19: activation gate — unactivated clients pay the one-time $1 fee first.
       // Null (column not yet migrated) is treated as activated so the app never bricks.
+      final currentUid = supabase.auth.currentUser?.id;
+      if (currentUid == null) return;
+
       final me = await supabase
           .from('profiles')
           .select('is_activated')
-          .eq('id', supabase.auth.currentUser!.id)
+          .eq('id', currentUid)
           .maybeSingle();
       if (me != null && me['is_activated'] == false) {
         setState(() => _submitting = false);
@@ -358,7 +364,7 @@ class _BookingScreenState extends State<BookingScreen> {
       }
 
       await supabase.from('bookings').insert({
-        'client_id': supabase.auth.currentUser!.id,
+        'client_id': currentUid,
         'provider_id': widget.providerId,
         'service_id': widget.serviceId,
         'booking_time': bookingDateTime.toIso8601String(),
@@ -390,7 +396,7 @@ class _BookingScreenState extends State<BookingScreen> {
       final clientName = (await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', supabase.auth.currentUser!.id)
+              .eq('id', currentUid)
               .maybeSingle())?['full_name'] ??
           'A client';
       NotificationService.send(

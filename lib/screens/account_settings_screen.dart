@@ -32,8 +32,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         setState(() => _isDeactivated = profile['is_deactivated'] == true);
       }
     } catch (_) {
-      await supabase.auth.signOut();
-      if (mounted) context.go('/login');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load account status')),
+        );
+      }
     }
   }
 

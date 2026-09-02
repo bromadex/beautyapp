@@ -30,6 +30,7 @@ import 'screens/review_screen.dart';
 import 'screens/provider_reviews_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/promotion_management_screen.dart';
+import 'screens/availability_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/smart_match_screen.dart';
 import 'screens/activation_screen.dart';
@@ -61,7 +62,8 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/services') &&
         !loc.startsWith('/provider/gallery') &&
         !loc.startsWith('/provider/subscription') &&
-        !loc.startsWith('/provider/promotions');
+        !loc.startsWith('/provider/promotions') &&
+        !loc.startsWith('/provider/availability');
     if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
 
     // Authenticated: route away from auth screens and root to the right shell
@@ -220,6 +222,13 @@ final appRouter = GoRouter(
       path: '/provider/promotions',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const PromotionManagementScreen(),
+    ),
+
+    // Availability / Working Hours
+    GoRoute(
+      path: '/provider/availability',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AvailabilityScreen(),
     ),
 
     // Notifications (Stage 13) & Smart Match (Stage 15)

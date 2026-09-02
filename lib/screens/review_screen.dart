@@ -50,10 +50,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
         return;
       }
 
-      setState(() {
-        _booking = booking;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _booking = booking;
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +81,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<String?> _uploadPhoto() async {
     if (_imageBytes == null) return null;
-    final uid = supabase.auth.currentUser!.id;
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return null;
     final fileName = '${DateTime.now().millisecondsSinceEpoch}_$_imageFileName';
     final path = '$uid/$fileName';
 
@@ -104,7 +107,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() => _submitting = true);
 
     try {
-      final uid = supabase.auth.currentUser!.id;
+      final uid = supabase.auth.currentUser?.id;
+      if (uid == null) return;
       String? imageUrl;
 
       if (_imageBytes != null) {

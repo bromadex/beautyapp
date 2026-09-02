@@ -51,11 +51,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return;
       }
 
-      setState(() {
-        _booking = booking;
-        _service = booking['services'];
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _booking = booking;
+          _service = booking['services'];
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,7 +95,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _processing = true);
 
     try {
-      final uid = supabase.auth.currentUser!.id;
+      final uid = supabase.auth.currentUser?.id;
+      if (uid == null) return;
       final ref = _generateRef();
       final now = DateTime.now().toIso8601String();
 

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/avatar_widget.dart';
 import '../widgets/location_picker_sheet.dart';
 
 class BrowseScreen extends StatefulWidget {
@@ -126,7 +127,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     try {
       final data = await supabase
           .from('provider_profiles')
-          .select('*, profiles(full_name, location)')
+          .select('*, profiles(full_name, location, avatar_url)')
           .or('is_hidden.eq.false,is_hidden.is.null');
 
       final providers = List<Map<String, dynamic>>.from(data);
@@ -969,23 +970,10 @@ class _ProviderCard extends StatelessWidget {
             child: Row(
               children: [
                 // Avatar
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                AvatarWidget(
+                  avatarUrl: p['profiles']?['avatar_url'],
+                  fallbackName: name,
+                  size: 52,
                 ),
                 const SizedBox(width: AppSpacing.lg),
                 Expanded(

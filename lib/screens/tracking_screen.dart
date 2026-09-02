@@ -76,7 +76,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
         .stream(primaryKey: ['id'])
         .eq('id', widget.bookingId)
         .listen((rows) {
-          if (rows.isNotEmpty) {
+          if (rows.isNotEmpty && mounted) {
             final b = rows.first;
             setState(() {
               _travelMode = b['travel_mode'];
@@ -95,7 +95,8 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   void _onLocationUpdate(List<Map<String, dynamic>> rows) {
-    final uid = supabase.auth.currentUser!.id;
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
     for (final row in rows) {
       if (row['user_id'] == uid) {
         _myLocation = row;
@@ -128,10 +129,19 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   Future<void> _markEnRoute() async {
-    await supabase.from('bookings').update({
-      'en_route_at': DateTime.now().toIso8601String(),
-    }).eq('id', widget.bookingId);
-    await _locationService.startSharing(widget.bookingId);
+    try {
+      await supabase.from('bookings').update({
+        'en_route_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.bookingId);
+      await _locationService.startSharing(widget.bookingId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+      return;
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -145,9 +155,18 @@ class _TrackingScreenState extends State<TrackingScreen> {
   }
 
   Future<void> _markArrived() async {
-    await supabase.from('bookings').update({
-      'arrived_at': DateTime.now().toIso8601String(),
-    }).eq('id', widget.bookingId);
+    try {
+      await supabase.from('bookings').update({
+        'arrived_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.bookingId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+      return;
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

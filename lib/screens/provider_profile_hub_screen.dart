@@ -150,6 +150,12 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                 onTap: () => context.push('/provider/gallery'),
               ),
               _HubTile(
+                icon: Icons.schedule_rounded,
+                label: 'Working Hours',
+                subtitle: 'Set your schedule and blocked dates',
+                onTap: () => context.push('/provider/availability'),
+              ),
+              _HubTile(
                 icon: Icons.local_offer_outlined,
                 label: 'Promotions',
                 subtitle: 'Create discounts and offers',

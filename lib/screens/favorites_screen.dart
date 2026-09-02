@@ -69,12 +69,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Future<void> _removeFavorite(String providerId) async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
-    await supabase
-        .from('favorites')
-        .delete()
-        .eq('client_id', userId)
-        .eq('provider_id', providerId);
-    _load();
+    try {
+      await supabase
+          .from('favorites')
+          .delete()
+          .eq('client_id', userId)
+          .eq('provider_id', providerId);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   @override
