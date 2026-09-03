@@ -180,6 +180,18 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                 onTap: () => context.push('/provider/$uid'),
               ),
               _HubTile(
+                icon: Icons.tune_rounded,
+                label: 'Business Settings',
+                subtitle: 'Travel fees, cancellation, buffer time',
+                onTap: () => context.push('/provider/settings'),
+              ),
+              _HubTile(
+                icon: Icons.request_page_outlined,
+                label: 'Service Requests',
+                subtitle: 'Browse and quote on client requests',
+                onTap: () => context.push('/provider/service-requests'),
+              ),
+              _HubTile(
                 icon: Icons.settings_outlined,
                 label: 'Account Settings',
                 subtitle: 'Deactivate or delete your account',

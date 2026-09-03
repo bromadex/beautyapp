@@ -278,6 +278,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
       _TileData(Icons.auto_awesome_rounded, 'For You', AppColors.secondary, '/recommended', isVerified),
       _TileData(Icons.calendar_today_outlined, 'My Bookings', AppColors.info, '/client/bookings', isVerified),
       _TileData(Icons.favorite_rounded, 'Favourites', AppColors.error, '/favorites', isVerified),
+      _TileData(Icons.request_page_outlined, 'Request Service', AppColors.warning, '/service-requests', isVerified),
     ];
     return _TileGrid(tiles: tiles);
   }

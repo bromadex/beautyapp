@@ -53,6 +53,51 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     }
   }
 
+  Future<void> _showReplyDialog(Map<String, dynamic> review) async {
+    final ctrl = TextEditingController();
+    final reply = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reply to Review'),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 4,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Write your response...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Send Reply'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+
+    if (reply == null || reply.isEmpty) return;
+
+    try {
+      await supabase.from('reviews').update({
+        'provider_reply': reply,
+        'provider_reply_at': DateTime.now().toIso8601String(),
+      }).eq('id', review['id']);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   /// Build the star distribution bars (5 down to 1).
   Map<int, int> get _ratingDistribution {
     final dist = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
@@ -224,7 +269,41 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     itemCount: _reviews.length,
                     separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (_, i) => ReviewCard(review: _reviews[i]),
+                    itemBuilder: (_, i) {
+                      final review = _reviews[i];
+                      final isOwner = widget.providerId ==
+                          supabase.auth.currentUser?.id;
+                      final hasReply = review['provider_reply'] != null &&
+                          (review['provider_reply'] as String).isNotEmpty;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ReviewCard(review: review),
+                          if (isOwner && !hasReply)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  left: AppSpacing.md,
+                                  bottom: AppSpacing.md),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () =>
+                                      _showReplyDialog(review),
+                                  icon: const Icon(Icons.reply_rounded,
+                                      size: 16),
+                                  label: const Text('Reply'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    textStyle:
+                                        const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
           ),
         ],

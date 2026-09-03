@@ -1176,6 +1176,24 @@ class _ProviderQuickActions extends StatelessWidget {
               onTap: () => context.push('/provider/availability'),
             )),
             const SizedBox(width: 8),
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.request_page_outlined,
+              label: 'Requests',
+              onTap: () => context.push('/provider/service-requests'),
+            )),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _SecondaryActionTile(
+              icon: Icons.tune_rounded,
+              label: 'Settings',
+              onTap: () => context.push('/provider/settings'),
+            )),
+            const SizedBox(width: 8),
+            const Expanded(child: SizedBox()),
+            const SizedBox(width: 8),
             const Expanded(child: SizedBox()),
           ],
         ),

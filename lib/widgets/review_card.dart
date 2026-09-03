@@ -85,9 +85,70 @@ class ReviewCard extends StatelessWidget {
                 ),
               ),
             ],
+
+            // -- Provider reply --
+            if (review['provider_reply'] != null &&
+                (review['provider_reply'] as String).isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.04),
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.12)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.reply_rounded,
+                            size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Provider Reply',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        if (review['provider_reply_at'] != null) ...[
+                          const Spacer(),
+                          Text(
+                            _formatReplyDate(review['provider_reply_at']),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      review['provider_reply'],
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium!
+                          .copyWith(height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  String _formatReplyDate(String? iso) {
+    if (iso == null) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

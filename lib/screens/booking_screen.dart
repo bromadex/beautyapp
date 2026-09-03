@@ -40,6 +40,20 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _applyingPromo = false;
   String? _promoError;
 
+  // Add-ons
+  List<Map<String, dynamic>> _addons = [];
+  final Set<String> _selectedAddonIds = {};
+
+  // Payment method
+  String _paymentMethod = 'cash';
+
+  // Travel fee
+  double _travelFee = 0;
+  Map<String, dynamic>? _providerProfile;
+
+  // Cancellation policy
+  Map<String, dynamic>? _cancelPolicy;
+
   @override
   void initState() {
     super.initState();
@@ -81,11 +95,45 @@ class _BookingScreenState extends State<BookingScreen> {
           .eq('id', uid)
           .maybeSingle();
 
+      // Load add-ons for this service
+      List<Map<String, dynamic>> addons = [];
+      try {
+        addons = await supabase
+            .from('service_addons')
+            .select()
+            .eq('service_id', widget.serviceId)
+            .eq('is_active', true)
+            .order('sort_order');
+      } catch (_) {}
+
+      // Load provider profile for travel fee info
+      Map<String, dynamic>? pp;
+      try {
+        pp = await supabase
+            .from('provider_profiles')
+            .select()
+            .eq('provider_id', widget.providerId)
+            .maybeSingle();
+      } catch (_) {}
+
+      // Load cancellation policy
+      Map<String, dynamic>? policy;
+      try {
+        policy = await supabase
+            .from('cancellation_policies')
+            .select()
+            .eq('provider_id', widget.providerId)
+            .maybeSingle();
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _provider = provider;
           _service = service;
           _addressCtrl.text = clientProfile?['location'] ?? '';
+          _addons = List<Map<String, dynamic>>.from(addons);
+          _providerProfile = pp;
+          _cancelPolicy = policy;
           _loading = false;
         });
       }
@@ -145,9 +193,31 @@ class _BookingScreenState extends State<BookingScreen> {
   double get _servicePrice =>
       (_service?['price'] as num?)?.toDouble() ?? 0;
 
+  double get _addonsTotal {
+    double total = 0;
+    for (final addon in _addons) {
+      if (_selectedAddonIds.contains(addon['id'])) {
+        total += (addon['price'] as num?)?.toDouble() ?? 0;
+      }
+    }
+    return total;
+  }
+
+  int get _addonsDuration {
+    int total = 0;
+    for (final addon in _addons) {
+      if (_selectedAddonIds.contains(addon['id'])) {
+        total += (addon['duration_minutes'] as int?) ?? 0;
+      }
+    }
+    return total;
+  }
+
   double get _effectivePrice => _offeredPrice ?? _servicePrice;
 
-  double get _totalPrice => (_effectivePrice - _discountAmount).clamp(0, double.infinity);
+  double get _totalPrice =>
+      (_effectivePrice + _addonsTotal + _travelFee - _discountAmount)
+          .clamp(0, double.infinity);
 
   Future<void> _openPriceOffer() async {
     final result = await showModalBottomSheet<double>(
@@ -363,7 +433,7 @@ class _BookingScreenState extends State<BookingScreen> {
         return;
       }
 
-      await supabase.from('bookings').insert({
+      final bookingData = {
         'client_id': currentUid,
         'provider_id': widget.providerId,
         'service_id': widget.serviceId,
@@ -373,6 +443,9 @@ class _BookingScreenState extends State<BookingScreen> {
         'total_price': _totalPrice,
         'discount_amount': _discountAmount,
         'promo_code': _appliedPromo?['code'],
+        'payment_method': _paymentMethod,
+        'addons_total': _addonsTotal,
+        'travel_fee': _travelFee,
         'client_note':
             _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
         if (_isNegotiated) ...{
@@ -383,7 +456,31 @@ class _BookingScreenState extends State<BookingScreen> {
               .add(const Duration(hours: 24))
               .toIso8601String(),
         },
-      });
+      };
+
+      final insertedRows = await supabase
+          .from('bookings')
+          .insert(bookingData)
+          .select('id')
+          .single();
+      final bookingId = insertedRows['id'] as String;
+
+      // Insert selected add-ons
+      if (_selectedAddonIds.isNotEmpty) {
+        final addonRows = _addons
+            .where((a) => _selectedAddonIds.contains(a['id']))
+            .map((a) => ({
+                  'booking_id': bookingId,
+                  'addon_id': a['id'],
+                  'addon_name': a['name'],
+                  'addon_price': a['price'],
+                  'addon_duration': a['duration_minutes'] ?? 0,
+                }))
+            .toList();
+        try {
+          await supabase.from('booking_addons').insert(addonRows);
+        } catch (_) {}
+      }
 
       // Increment promo used_count
       if (_appliedPromo != null) {
@@ -638,6 +735,127 @@ class _BookingScreenState extends State<BookingScreen> {
               maxLines: 3,
             ),
 
+            // Add-ons section
+            if (_addons.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              Text('Add-ons (Optional)',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cardLight,
+                  borderRadius: AppRadius.lgAll,
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: _addons.map((addon) {
+                    final selected = _selectedAddonIds.contains(addon['id']);
+                    final price = (addon['price'] as num?)?.toDouble() ?? 0;
+                    final dur = (addon['duration_minutes'] as int?) ?? 0;
+                    return CheckboxListTile(
+                      value: selected,
+                      onChanged: (v) {
+                        setState(() {
+                          if (v == true) {
+                            _selectedAddonIds.add(addon['id']);
+                          } else {
+                            _selectedAddonIds.remove(addon['id']);
+                          }
+                        });
+                      },
+                      title: Text(addon['name'] ?? '',
+                          style: const TextStyle(fontSize: 14)),
+                      subtitle: Text(
+                        '+\$${price.toStringAsFixed(2)}${dur > 0 ? ' · +$dur min' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textTertiary,
+                        ),
+                      ),
+                      activeColor: AppColors.primary,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.mdAll),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: AppSpacing.xxl),
+
+            // Payment method
+            Text('Payment Method',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                _PaymentChip(
+                  label: 'Cash',
+                  icon: Icons.money_rounded,
+                  selected: _paymentMethod == 'cash',
+                  onTap: () => setState(() => _paymentMethod = 'cash'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _PaymentChip(
+                  label: 'EcoCash',
+                  icon: Icons.phone_android_rounded,
+                  selected: _paymentMethod == 'ecocash',
+                  onTap: () => setState(() => _paymentMethod = 'ecocash'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _PaymentChip(
+                  label: 'PayNow',
+                  icon: Icons.account_balance_rounded,
+                  selected: _paymentMethod == 'paynow',
+                  onTap: () => setState(() => _paymentMethod = 'paynow'),
+                ),
+              ],
+            ),
+
+            // Cancellation policy
+            if (_cancelPolicy != null) ...[
+              const SizedBox(height: AppSpacing.xxl),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.06),
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        color: AppColors.warning, size: 20),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Cancellation Policy',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Free cancellation up to ${_cancelPolicy!['free_cancel_hours']}h before. '
+                            'Late cancel: ${_cancelPolicy!['late_cancel_fee_percent']}% fee. '
+                            'No-show: ${_cancelPolicy!['no_show_fee_percent']}% fee.',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: AppSpacing.xxl),
 
             // Promo code section
@@ -871,6 +1089,40 @@ class _BookingScreenState extends State<BookingScreen> {
                     ],
                   ),
                 ],
+                if (_addonsTotal > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Add-ons (${_selectedAddonIds.length})',
+                          style: const TextStyle(fontSize: 14)),
+                      Text(
+                        '+\$${_addonsTotal.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (_travelFee > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Travel fee',
+                          style: TextStyle(fontSize: 14)),
+                      Text(
+                        '+\$${_travelFee.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (_discountAmount > 0) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Row(
@@ -924,8 +1176,14 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xs),
-                Text('Payment collected at time of service',
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  _paymentMethod == 'cash'
+                      ? 'Cash payment at time of service'
+                      : _paymentMethod == 'ecocash'
+                          ? 'Pay via EcoCash'
+                          : 'Pay via PayNow',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ]),
             ),
 
@@ -948,6 +1206,68 @@ class _BookingScreenState extends State<BookingScreen> {
 
             const SizedBox(height: AppSpacing.xxl),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PaymentChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: selected
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : AppColors.cardLight,
+        borderRadius: AppRadius.mdAll,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.mdAll,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.mdAll,
+              border: Border.all(
+                color: selected
+                    ? AppColors.primary
+                    : Colors.grey.shade300,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(icon,
+                    size: 22,
+                    color:
+                        selected ? AppColors.primary : AppColors.textTertiary),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

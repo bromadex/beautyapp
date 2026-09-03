@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
@@ -353,6 +354,30 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          if (_otherId != null)
+            FutureBuilder(
+              future: supabase
+                  .from('profiles')
+                  .select('whatsapp_number')
+                  .eq('id', _otherId!)
+                  .maybeSingle(),
+              builder: (context, snapshot) {
+                final wa = snapshot.data?['whatsapp_number'] as String?;
+                if (wa == null || wa.isEmpty) return const SizedBox.shrink();
+                return IconButton(
+                  onPressed: () {
+                    final clean = wa.replaceAll(RegExp(r'[^0-9+]'), '');
+                    launchUrl(Uri.parse('https://wa.me/$clean'),
+                        mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.chat_rounded, size: 22),
+                  tooltip: 'WhatsApp',
+                  color: const Color(0xFF25D366),
+                );
+              },
+            ),
+        ],
       ),
       body: Column(
         children: [

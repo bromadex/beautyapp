@@ -35,6 +35,12 @@ import 'screens/notifications_screen.dart';
 import 'screens/smart_match_screen.dart';
 import 'screens/activation_screen.dart';
 import 'screens/account_settings_screen.dart';
+import 'screens/dispute_screen.dart';
+import 'screens/provider_settings_screen.dart';
+import 'screens/client_notes_screen.dart';
+import 'screens/service_requests_screen.dart';
+import 'screens/create_service_request_screen.dart';
+import 'screens/service_request_quote_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
 import 'supabase_client.dart';
@@ -63,7 +69,9 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/gallery') &&
         !loc.startsWith('/provider/subscription') &&
         !loc.startsWith('/provider/promotions') &&
-        !loc.startsWith('/provider/availability');
+        !loc.startsWith('/provider/availability') &&
+        !loc.startsWith('/provider/settings') &&
+        !loc.startsWith('/provider/service-requests');
     if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
 
     // Authenticated: route away from auth screens and root to the right shell
@@ -300,6 +308,63 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, state) => ProviderReviewsScreen(
         providerId: state.pathParameters['id']!,
+      ),
+    ),
+
+    // Dispute / Report Issue
+    GoRoute(
+      path: '/dispute/:bookingId',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => DisputeScreen(
+        bookingId: state.pathParameters['bookingId']!,
+      ),
+    ),
+
+    // Provider Settings (travel fees, cancellation, buffer, whatsapp)
+    GoRoute(
+      path: '/provider/settings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProviderSettingsScreen(),
+    ),
+
+    // Client Notes (provider-only, private)
+    GoRoute(
+      path: '/client-notes/:clientId',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ClientNotesScreen(
+        clientId: state.pathParameters['clientId']!,
+        bookingId: state.uri.queryParameters['bookingId'],
+      ),
+    ),
+
+    // Service Requests Marketplace
+    GoRoute(
+      path: '/service-requests',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ServiceRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/provider/service-requests',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ServiceRequestsScreen(isProvider: true),
+    ),
+    GoRoute(
+      path: '/service-request/create',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const CreateServiceRequestScreen(),
+    ),
+    GoRoute(
+      path: '/service-request/:id/quote',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ServiceRequestQuoteScreen(
+        requestId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
+      path: '/service-request/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ServiceRequestQuoteScreen(
+        requestId: state.pathParameters['id']!,
       ),
     ),
 

@@ -177,6 +177,86 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
+  // -- Cancel booking --
+  Future<void> _cancelBooking() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          title: const Text('Cancel Booking'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Are you sure you want to cancel this booking?'),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: ctrl,
+                decoration: const InputDecoration(
+                  hintText: 'Reason (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Keep Booking')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Cancel Booking'),
+            ),
+          ],
+        );
+      },
+    );
+    if (reason == null) return;
+
+    try {
+      final uid = supabase.auth.currentUser!.id;
+      await supabase.from('bookings').update({
+        'status': 'cancelled',
+        'cancelled_by': _isProvider ? 'provider' : 'client',
+        'cancelled_at': DateTime.now().toIso8601String(),
+        'cancel_reason': reason.isEmpty ? null : reason,
+      }).eq('id', widget.bookingId);
+
+      final notifyId =
+          _isProvider ? _booking!['client_id'] : _booking!['provider_id'];
+      final myName = _isProvider
+          ? (_booking?['provider']?['full_name'] ?? 'Provider')
+          : (_booking?['client']?['full_name'] ?? 'Client');
+      NotificationService.send(
+        userId: notifyId,
+        type: 'booking_status',
+        title: 'Booking Cancelled',
+        body: '$myName cancelled the booking${reason.isNotEmpty ? ': $reason' : ''}',
+        referenceId: widget.bookingId,
+      );
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  // -- Book Again --
+  void _bookAgain() {
+    final b = _booking!;
+    context.push('/book/${b['provider_id']}/${b['service_id']}');
+  }
+
+  // -- Report Issue --
+  void _reportIssue() {
+    context.push('/dispute/${widget.bookingId}');
+  }
+
   // -- Helpers --
 
   String _fmt(String? iso) {
@@ -465,6 +545,95 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     onTap: () => context.push('/review/${widget.bookingId}'),
                   );
                 },
+              ),
+            ],
+
+            // WhatsApp contact button
+            if (status == 'confirmed') ...[
+              const SizedBox(height: AppSpacing.sm),
+              FutureBuilder(
+                future: _isProvider
+                    ? supabase
+                        .from('profiles')
+                        .select('whatsapp_number')
+                        .eq('id', b['client_id'])
+                        .maybeSingle()
+                    : supabase
+                        .from('profiles')
+                        .select('whatsapp_number')
+                        .eq('id', b['provider_id'])
+                        .maybeSingle(),
+                builder: (context, snapshot) {
+                  final whatsapp =
+                      snapshot.data?['whatsapp_number'] as String?;
+                  if (whatsapp == null || whatsapp.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return _ActionCard(
+                    icon: Icons.chat_rounded,
+                    label: 'WhatsApp',
+                    subtitle: 'Message on WhatsApp',
+                    color: const Color(0xFF25D366),
+                    onTap: () {
+                      final clean =
+                          whatsapp.replaceAll(RegExp(r'[^0-9+]'), '');
+                      final uri =
+                          Uri.parse('https://wa.me/$clean');
+                      launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
+                    },
+                  );
+                },
+              ),
+            ],
+
+            // Client Notes (provider only)
+            if (_isProvider &&
+                (status == 'confirmed' || status == 'completed')) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _ActionCard(
+                icon: Icons.note_alt_outlined,
+                label: 'Client Notes',
+                subtitle: 'Private notes about this client',
+                color: AppColors.secondary,
+                onTap: () => context.push(
+                    '/client-notes/${b['client_id']}?bookingId=${widget.bookingId}'),
+              ),
+            ],
+
+            // Cancel booking (both client and provider, before completion)
+            if (status == 'pending' || status == 'confirmed') ...[
+              const SizedBox(height: AppSpacing.sm),
+              _ActionCard(
+                icon: Icons.cancel_outlined,
+                label: 'Cancel Booking',
+                subtitle: 'Cancel this appointment',
+                color: AppColors.error,
+                onTap: _cancelBooking,
+              ),
+            ],
+
+            // Book Again (client only, after completed)
+            if (!_isProvider && status == 'completed') ...[
+              const SizedBox(height: AppSpacing.sm),
+              _ActionCard(
+                icon: Icons.replay_rounded,
+                label: 'Book Again',
+                subtitle: 'Rebook with the same provider and service',
+                color: AppColors.secondary,
+                onTap: _bookAgain,
+              ),
+            ],
+
+            // Report Issue (both sides, after confirmed or completed)
+            if (status == 'confirmed' || status == 'completed') ...[
+              const SizedBox(height: AppSpacing.sm),
+              _ActionCard(
+                icon: Icons.flag_outlined,
+                label: 'Report an Issue',
+                subtitle: 'Report a problem with this booking',
+                color: AppColors.warning,
+                onTap: _reportIssue,
               ),
             ],
 
