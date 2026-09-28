@@ -64,7 +64,7 @@ class _PriceOfferSheetState extends State<PriceOfferSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: AppColors.borderStrong,
               borderRadius: BorderRadius.circular(2),
             ),
           ),

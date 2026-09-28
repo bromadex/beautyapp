@@ -147,7 +147,7 @@ class _CreateServiceRequestScreenState
                       final selected = _selectedCategoryId == cat['id'];
                       return ChoiceChip(
                         label: Text(
-                            '${cat['icon'] ?? ''} ${cat['name'] ?? ''}'),
+                            '${cat['name'] ?? ''}'),
                         selected: selected,
                         onSelected: (_) => setState(
                             () => _selectedCategoryId = cat['id']),

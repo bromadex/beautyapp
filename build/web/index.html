@@ -20,7 +20,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="BeauTap — beauty at your fingertips. Book trusted beauty professionals to your door.">
-  <meta name="theme-color" content="#C2185B">
+  <meta name="theme-color" content="#FAF6F3">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -33,8 +33,50 @@
 
   <title>BeauTap</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; background: #FAF6F3; }
+    #bt-loader {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      background: #FAF6F3; transition: opacity .35s ease; z-index: 9999;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    #bt-loader .mark {
+      width: 64px; height: 64px; border-radius: 20px; background: #8E3B63;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 26px; letter-spacing: -1px;
+      box-shadow: 0 10px 28px rgba(142, 59, 99, .25);
+    }
+    #bt-loader .name { color: #241B20; font-weight: 800; font-size: 20px; letter-spacing: -.4px; }
+    #bt-loader .bar { width: 120px; height: 4px; border-radius: 4px; background: #F7E9EF; overflow: hidden; }
+    #bt-loader .bar::after {
+      content: ""; display: block; width: 40%; height: 100%; border-radius: 4px; background: #8E3B63;
+      animation: bt-slide 1.1s ease-in-out infinite;
+    }
+    @keyframes bt-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+  </style>
 </head>
 <body>
+  <div id="bt-loader" aria-label="Loading BeauTap">
+    <div class="mark">B</div>
+    <div class="name">BeauTap</div>
+    <div class="bar"></div>
+  </div>
+  <script>
+    (function () {
+      var loader = document.getElementById('bt-loader');
+      var obs = new MutationObserver(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) {
+          obs.disconnect();
+          setTimeout(function () {
+            loader.style.opacity = '0';
+            setTimeout(function () { loader.remove(); }, 400);
+          }, 250);
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

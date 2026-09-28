@@ -486,7 +486,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: AppColors.surfaceLight,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: Colors.grey.shade200,
+                            color: AppColors.border,
                           ),
                         ),
                         child: TextField(
@@ -624,7 +624,7 @@ class _DateSeparator extends StatelessWidget {
             vertical: AppSpacing.xs + 2,
           ),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200.withValues(alpha: 0.7),
+            color: AppColors.border.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(

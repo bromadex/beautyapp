@@ -127,7 +127,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                     height: 180,
                     decoration: BoxDecoration(
                       borderRadius: AppRadius.mdAll,
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: ClipRRect(
                       borderRadius: AppRadius.mdAll,
@@ -136,7 +136,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         errorBuilder: (_, __, ___) => Container(
-                          color: Colors.grey.shade100,
+                          color: AppColors.surfaceMuted,
                           child: const Icon(Icons.broken_image_outlined,
                               size: 48, color: AppColors.textTertiary),
                         ),
@@ -153,7 +153,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                     borderRadius: AppRadius.mdAll,
                     items: _categories.map((c) => DropdownMenuItem(
                       value: c['id'] as String,
-                      child: Text('${c['icon'] ?? ''} ${c['name']}'),
+                      child: Text('${c['name']}'),
                     )).toList(),
                     onChanged: (v) =>
                         setDialogState(() => selectedCat = v),
@@ -447,7 +447,7 @@ class _GalleryImageCardState extends State<_GalleryImageCard> {
                 widget.imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey.shade100,
+                  color: AppColors.surfaceMuted,
                   child: const Icon(Icons.broken_image_outlined,
                       color: AppColors.textTertiary),
                 ),

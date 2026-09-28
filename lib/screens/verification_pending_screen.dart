@@ -226,7 +226,7 @@ class _VerificationPendingScreenState
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: AppRadius.mdAll,
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Row(
                     children: [

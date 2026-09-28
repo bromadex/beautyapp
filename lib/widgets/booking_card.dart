@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme.dart';
+import 'ui.dart';
 
 class BookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
@@ -280,8 +281,7 @@ class BookingCard extends StatelessWidget {
             children: [
               // -- Header row: icon, service/provider, status chip, unread --
               Row(children: [
-                Text(cat?['icon'] ?? '✂️',
-                    style: const TextStyle(fontSize: 24)),
+                CategoryBadge(name: cat?['name'], size: 44),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(

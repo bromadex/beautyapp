@@ -270,7 +270,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppRadius.lgAll,
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -300,14 +300,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: List.generate(_topProviders.length, (i) {
           final p = _topProviders[i];
           return Column(
             children: [
-              if (i > 0) Divider(height: 1, color: Colors.grey.shade200),
+              if (i > 0) Divider(height: 1, color: AppColors.border),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                 child: Row(
@@ -316,7 +316,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: i < 3 ? AppColors.warning.withValues(alpha: 0.1) : Colors.grey.shade100,
+                        color: i < 3 ? AppColors.warning.withValues(alpha: 0.1) : AppColors.surfaceMuted,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -370,7 +370,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppRadius.lgAll,
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.border),
         ),
         child: const Center(
           child: Text('No bookings yet', style: TextStyle(color: AppColors.textTertiary)),
@@ -382,7 +382,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: List.generate(_recentBookings.length, (i) {
@@ -394,7 +394,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           return Column(
             children: [
-              if (i > 0) Divider(height: 1, color: Colors.grey.shade200),
+              if (i > 0) Divider(height: 1, color: AppColors.border),
               InkWell(
                 onTap: () => context.push('/booking/${b['id']}'),
                 child: Padding(
@@ -497,7 +497,7 @@ class _StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: AppRadius.lgAll,
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

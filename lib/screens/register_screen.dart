@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -99,7 +100,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (existing == null) {
               await supabase.from('profiles').upsert({
                 'id': user.id,
-                'full_name': user.userMetadata?['full_name'] ??
+                'full_name':
+                    user.userMetadata?['full_name'] ??
                     user.userMetadata?['name'] ??
                     '',
                 'user_type': _userType,
@@ -111,9 +113,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 }, onConflict: 'provider_id');
               }
             } else {
-              await supabase.from('profiles').update({
-                'user_type': _userType,
-              }).eq('id', user.id);
+              await supabase
+                  .from('profiles')
+                  .update({'user_type': _userType})
+                  .eq('id', user.id);
               if (_userType == 'provider') {
                 await supabase.from('provider_profiles').upsert({
                   'provider_id': user.id,
@@ -121,9 +124,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 }, onConflict: 'provider_id');
               }
             }
-            await supabase.auth.updateUser(UserAttributes(
-              data: {'user_type': _userType},
-            ));
+            await supabase.auth.updateUser(
+              UserAttributes(data: {'user_type': _userType}),
+            );
           }
           context.go(_userType == 'provider' ? '/provider/home' : '/home');
         }
@@ -246,435 +249,455 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // --- Gradient header ---
-            Container(
-              decoration: const BoxDecoration(
-                gradient: AppColors.heroGradient,
-              ),
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + AppSpacing.lg,
-                bottom: AppSpacing.xxl,
-                left: AppSpacing.xl,
-                right: AppSpacing.xl,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: () => context.go('/login'),
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      ),
-                    ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    MediaQuery.of(context).padding.top + 8,
+                    24,
+                    0,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Text(
-                    'Create Account',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    _userType == 'provider'
-                        ? 'Start earning on your own terms'
-                        : 'Book beauty services at your fingertips',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // --- Form section ---
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 20 * (1 - value)),
-                    child: child,
-                  ),
-                );
-              },
-              child: Padding(
-                padding: AppSpacing.screenPadding,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: Row(
                     children: [
-                      const SizedBox(height: AppSpacing.xxl),
-
-                      // --- Role picker ---
-                      _buildSectionLabel('I am a...'),
-                      const SizedBox(height: AppSpacing.md),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _RoleCard(
-                              icon: Icons.person_rounded,
-                              label: 'Client',
-                              subtitle: 'Book services',
-                              selected: _userType == 'client',
-                              onTap: () => setState(() => _userType = 'client'),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: _RoleCard(
-                              icon: Icons.auto_awesome_rounded,
-                              label: 'Provider',
-                              subtitle: 'Offer services',
-                              selected: _userType == 'provider',
-                              onTap: () => setState(() => _userType = 'provider'),
-                            ),
-                          ),
-                        ],
+                      IconButton(
+                        onPressed: () => context.go('/login'),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        tooltip: 'Back to sign in',
                       ),
+                      const Spacer(),
+                      const BrandMark(size: 32),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Create your account',
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _userType == 'provider'
+                            ? 'Grow your beauty business — clients book you directly.'
+                            : 'Book trusted stylists who come to your door.',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                      const SizedBox(height: AppSpacing.xl),
+                // --- Form section ---
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: AppSpacing.screenPadding,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: AppSpacing.xxl),
 
-                      // --- Google Sign-Up ---
-                      OutlinedButton.icon(
-                        onPressed: _googleLoading ? null : _signUpWithGoogle,
-                        icon: _googleLoading
-                            ? SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.textSecondary,
+                          // --- Role picker ---
+                          _buildSectionLabel('I am a...'),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  icon: Icons.person_rounded,
+                                  label: 'Client',
+                                  subtitle: 'Book services',
+                                  selected: _userType == 'client',
+                                  onTap: () =>
+                                      setState(() => _userType = 'client'),
                                 ),
-                              )
-                            : Image.network(
-                                'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                                width: 20,
-                                height: 20,
-                                errorBuilder: (_, __, ___) =>
-                                    const Icon(Icons.g_mobiledata_rounded, size: 24),
                               ),
-                        label: Text(
-                          _googleLoading ? 'Signing up...' : 'Sign up with Google',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: _RoleCard(
+                                  icon: Icons.auto_awesome_rounded,
+                                  label: 'Provider',
+                                  subtitle: 'Offer services',
+                                  selected: _userType == 'provider',
+                                  onTap: () =>
+                                      setState(() => _userType = 'provider'),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: AppRadius.mdAll),
-                        ),
-                      ),
 
-                      const SizedBox(height: AppSpacing.xl),
+                          const SizedBox(height: AppSpacing.xl),
 
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.lg),
-                            child: Text(
-                              'or register with email',
+                          // --- Google Sign-Up ---
+                          OutlinedButton.icon(
+                            onPressed: _googleLoading
+                                ? null
+                                : _signUpWithGoogle,
+                            icon: _googleLoading
+                                ? SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  )
+                                : Image.network(
+                                    'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                                    width: 20,
+                                    height: 20,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.g_mobiledata_rounded,
+                                      size: 24,
+                                    ),
+                                  ),
+                            label: Text(
+                              _googleLoading
+                                  ? 'Signing up...'
+                                  : 'Sign up with Google',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: BorderSide(color: AppColors.borderStrong),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.mdAll,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: AppSpacing.xl),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Divider(color: AppColors.borderStrong),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.lg,
+                                ),
+                                child: Text(
+                                  'or register with email',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(color: AppColors.borderStrong),
+                              ),
+                            ],
+                          ),
+
+                          // --- Provider specialties ---
+                          if (_userType == 'provider' &&
+                              _categories.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xxl),
+                            _buildSectionLabel('Your specialties'),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Select the services you offer',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textTertiary,
                               ),
                             ),
-                          ),
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                        ],
-                      ),
-
-                      // --- Provider specialties ---
-                      if (_userType == 'provider' && _categories.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.xxl),
-                        _buildSectionLabel('Your specialties'),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Select the services you offer',
-                          style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
-                          children: _categories.map((cat) {
-                            final id = cat['id'] as String;
-                            final selected = _selectedCategories.contains(id);
-                            return FilterChip(
-                              label: Text('${cat['icon'] ?? ''} ${cat['name']}'),
-                              selected: selected,
-                              onSelected: (_) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedCategories.remove(id);
-                                  } else {
-                                    _selectedCategories.add(id);
-                                  }
-                                });
-                              },
-                              selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                              checkmarkColor: AppColors.primary,
-                              labelStyle: TextStyle(
-                                color: selected ? AppColors.primary : AppColors.textPrimary,
-                                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                                fontSize: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.mdAll,
-                                side: BorderSide(
-                                  color: selected
-                                      ? AppColors.primary.withValues(alpha: 0.3)
-                                      : Colors.grey.shade300,
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm,
-                                vertical: AppSpacing.xs,
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-
-                      const SizedBox(height: AppSpacing.xxl),
-
-                      // --- Personal info ---
-                      _buildSectionLabel('Personal information'),
-                      const SizedBox(height: AppSpacing.md),
-                      TextFormField(
-                        controller: _nameCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Enter your full name' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      TextFormField(
-                        controller: _phoneCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          hintText: '077XXXXXXX',
-                          prefixIcon: Icon(Icons.phone_outlined),
-                        ),
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Enter your phone number' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      TextFormField(
-                        controller: _locationCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Location',
-                          hintText: _userType == 'provider'
-                              ? 'e.g. Borrowdale, Harare'
-                              : 'e.g. Harare, Zimbabwe',
-                          prefixIcon: const Icon(Icons.location_on_outlined),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Enter your location' : null,
-                      ),
-
-                      const SizedBox(height: AppSpacing.xxl),
-
-                      // --- Account credentials ---
-                      _buildSectionLabel('Account credentials'),
-                      const SizedBox(height: AppSpacing.md),
-                      TextFormField(
-                        controller: _emailCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || !v.contains('@') ? 'Enter a valid email' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscurePassword = !_obscurePassword),
-                          ),
-                        ),
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || v.length < 6 ? 'Min 6 characters' : null,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      TextFormField(
-                        controller: _confirmPasswordCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Confirm Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirm
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscureConfirm = !_obscureConfirm),
-                          ),
-                        ),
-                        obscureText: _obscureConfirm,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _register(),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Confirm your password';
-                          if (v != _passwordCtrl.text) return 'Passwords do not match';
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: AppSpacing.xxxl),
-
-                      // --- Submit ---
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: AppRadius.mdAll,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                            const SizedBox(height: AppSpacing.md),
+                            Wrap(
+                              spacing: AppSpacing.sm,
+                              runSpacing: AppSpacing.sm,
+                              children: _categories.map((cat) {
+                                final id = cat['id'] as String;
+                                final selected = _selectedCategories.contains(
+                                  id,
+                                );
+                                return FilterChip(
+                                  label: Text(
+                                    '${cat['name']}',
+                                  ),
+                                  selected: selected,
+                                  onSelected: (_) {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedCategories.remove(id);
+                                      } else {
+                                        _selectedCategories.add(id);
+                                      }
+                                    });
+                                  },
+                                  selectedColor: AppColors.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  checkmarkColor: AppColors.primary,
+                                  labelStyle: TextStyle(
+                                    color: selected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    fontSize: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: AppRadius.mdAll,
+                                    side: BorderSide(
+                                      color: selected
+                                          ? AppColors.primary.withValues(
+                                              alpha: 0.3,
+                                            )
+                                          : AppColors.borderStrong,
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.sm,
+                                    vertical: AppSpacing.xs,
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ],
-                        ),
-                        child: FilledButton(
-                          onPressed: _loading ? null : _register,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            disabledBackgroundColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  _userType == 'provider'
-                                      ? 'Create Provider Account'
-                                      : 'Create Account',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                      ),
 
-                      if (_userType == 'provider') ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withValues(alpha: 0.08),
-                            borderRadius: AppRadius.mdAll,
+                          const SizedBox(height: AppSpacing.xxl),
+
+                          // --- Personal info ---
+                          _buildSectionLabel('Personal information'),
+                          const SizedBox(height: AppSpacing.md),
+                          TextFormField(
+                            controller: _nameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Full Name',
+                              prefixIcon: Icon(Icons.person_outline),
+                            ),
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Enter your full name'
+                                : null,
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle_outline_rounded,
-                                  size: 16, color: AppColors.success),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  'Free to create — only \$3 when you start accepting bookings',
-                                  style: TextStyle(
-                                    fontSize: 12,
+                          const SizedBox(height: AppSpacing.lg),
+
+                          TextFormField(
+                            controller: _phoneCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Phone Number',
+                              hintText: '077XXXXXXX',
+                              prefixIcon: Icon(Icons.phone_outlined),
+                            ),
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Enter your phone number'
+                                : null,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+
+                          TextFormField(
+                            controller: _locationCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Location',
+                              hintText: _userType == 'provider'
+                                  ? 'e.g. Borrowdale, Harare'
+                                  : 'e.g. Harare, Zimbabwe',
+                              prefixIcon: const Icon(
+                                Icons.location_on_outlined,
+                              ),
+                            ),
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Enter your location'
+                                : null,
+                          ),
+
+                          const SizedBox(height: AppSpacing.xxl),
+
+                          // --- Account credentials ---
+                          _buildSectionLabel('Account credentials'),
+                          const SizedBox(height: AppSpacing.md),
+                          TextFormField(
+                            controller: _emailCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email_outlined),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            validator: (v) => v == null || !v.contains('@')
+                                ? 'Enter a valid email'
+                                : null,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+
+                          TextFormField(
+                            controller: _passwordCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                              ),
+                            ),
+                            obscureText: _obscurePassword,
+                            textInputAction: TextInputAction.next,
+                            validator: (v) => v == null || v.length < 6
+                                ? 'Min 6 characters'
+                                : null,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+
+                          TextFormField(
+                            controller: _confirmPasswordCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Confirm Password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirm
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscureConfirm = !_obscureConfirm,
+                                ),
+                              ),
+                            ),
+                            obscureText: _obscureConfirm,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _register(),
+                            validator: (v) {
+                              if (v == null || v.isEmpty)
+                                return 'Confirm your password';
+                              if (v != _passwordCtrl.text)
+                                return 'Passwords do not match';
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: AppSpacing.xxxl),
+
+                          // --- Submit ---
+                          FilledButton(
+                            onPressed: _loading ? null : _register,
+                            child: _loading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    _userType == 'provider'
+                                        ? 'Create stylist account'
+                                        : 'Create account',
+                                  ),
+                          ),
+
+                          if (_userType == 'provider') ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(
+                                  alpha: 0.08,
+                                ),
+                                borderRadius: AppRadius.mdAll,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    size: 16,
                                     color: AppColors.success,
-                                    fontWeight: FontWeight.w500,
                                   ),
-                                ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      'Free to create — only \$3 when you start accepting bookings',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.success,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
 
-                      const SizedBox(height: AppSpacing.xl),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => context.go('/login'),
-                          child: Text.rich(
-                            TextSpan(
-                              text: 'Already have an account? ',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                              ),
-                              children: [
+                          const SizedBox(height: AppSpacing.xl),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => context.go('/login'),
+                              child: Text.rich(
                                 TextSpan(
-                                  text: 'Sign in',
+                                  text: 'Already have an account? ',
                                   style: TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
                                   ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Sign in',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: AppSpacing.xxl),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.xxl),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -725,7 +748,7 @@ class _RoleCard extends StatelessWidget {
               : Colors.white,
           borderRadius: AppRadius.lgAll,
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.grey.shade300,
+            color: selected ? AppColors.primary : AppColors.borderStrong,
             width: selected ? 2 : 1,
           ),
         ),
@@ -737,7 +760,7 @@ class _RoleCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.grey.shade100,
+                    : AppColors.surfaceMuted,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -760,7 +783,9 @@ class _RoleCard extends StatelessWidget {
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: selected ? AppColors.primary.withValues(alpha: 0.7) : AppColors.textTertiary,
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.7)
+                    : AppColors.textTertiary,
               ),
             ),
           ],

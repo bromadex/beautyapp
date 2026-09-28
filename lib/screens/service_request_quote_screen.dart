@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ServiceRequestQuoteScreen extends StatefulWidget {
   final String requestId;
@@ -195,17 +196,14 @@ class _ServiceRequestQuoteScreenState
               decoration: BoxDecoration(
                 color: AppColors.cardLight,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    if (cat?['icon'] != null)
-                      Text(cat!['icon'],
-                          style: const TextStyle(fontSize: 24)),
-                    if (cat?['icon'] != null)
-                      const SizedBox(width: AppSpacing.sm),
+                    CategoryBadge(name: cat?['name'], size: 44),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(r['title'] ?? '',
                           style:
@@ -270,7 +268,7 @@ class _ServiceRequestQuoteScreenState
                   decoration: BoxDecoration(
                     color: AppColors.cardLight,
                     borderRadius: AppRadius.lgAll,
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Center(
                     child: Text('No quotes yet',

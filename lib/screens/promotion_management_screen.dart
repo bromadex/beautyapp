@@ -443,7 +443,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
         borderRadius: AppRadius.lgAll,
         border: Border.all(
           color: !isActive || isExpired || isMaxedOut
-              ? Colors.grey.shade200
+              ? AppColors.border
               : AppColors.secondary.withValues(alpha: 0.3),
         ),
       ),
@@ -454,7 +454,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
           Container(
             height: 3,
             color: !isActive || isExpired || isMaxedOut
-                ? Colors.grey.shade300
+                ? AppColors.borderStrong
                 : AppColors.secondary,
           ),
           Padding(
@@ -473,7 +473,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                       decoration: BoxDecoration(
                         color: isActive && !isExpired && !isMaxedOut
                             ? AppColors.secondary.withValues(alpha: 0.1)
-                            : Colors.grey.shade100,
+                            : AppColors.surfaceMuted,
                         borderRadius: AppRadius.smAll,
                       ),
                       child: Row(
@@ -580,7 +580,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
               ],
             ),
           ),
-          Divider(height: 1, color: Colors.grey.shade200),
+          Divider(height: 1, color: AppColors.border),
           // Action buttons
           Padding(
             padding: const EdgeInsets.symmetric(

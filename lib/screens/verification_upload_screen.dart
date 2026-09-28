@@ -205,8 +205,8 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade200,
-                      disabledForegroundColor: Colors.grey.shade400,
+                      disabledBackgroundColor: AppColors.border,
+                      disabledForegroundColor: AppColors.textTertiary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                       elevation: _bothSelected ? 2 : 0,
@@ -294,7 +294,7 @@ class _ProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress / 2,
             minHeight: 6,
-            backgroundColor: Colors.grey.shade100,
+            backgroundColor: AppColors.surfaceMuted,
             valueColor: AlwaysStoppedAnimation(
               progress == 2 ? AppColors.success : AppColors.primary,
             ),
@@ -335,7 +335,7 @@ class _UploadCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: AppRadius.lgAll,
           border: Border.all(
-            color: hasImage ? AppColors.success : Colors.grey.shade200,
+            color: hasImage ? AppColors.success : AppColors.border,
             width: hasImage ? 2 : 1,
           ),
           boxShadow: [
@@ -407,7 +407,7 @@ class _UploadCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),

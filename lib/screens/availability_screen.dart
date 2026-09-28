@@ -214,7 +214,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                   ...List.generate(7, (i) => _buildDayRow(i)),
 
                   const SizedBox(height: AppSpacing.xxl),
-                  Divider(color: Colors.grey.shade200),
+                  Divider(color: AppColors.border),
                   const SizedBox(height: AppSpacing.xl),
 
                   Row(
@@ -281,7 +281,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       decoration: BoxDecoration(
         color: day.isAvailable ? AppColors.cardLight : AppColors.surfaceLight,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [

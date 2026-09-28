@@ -191,7 +191,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -263,7 +263,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             ),
           ),
           if (canCancel) ...[
-            Divider(height: 1, color: Colors.grey.shade200),
+            Divider(height: 1, color: AppColors.border),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
               child: Row(

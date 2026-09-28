@@ -224,7 +224,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppColors.borderStrong,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -466,7 +466,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 ? AppColors.error.withValues(alpha: 0.2)
                 : isDeactivated
                     ? AppColors.info.withValues(alpha: 0.2)
-                    : Colors.grey.shade200,
+                    : AppColors.border,
           ),
         ),
         child: Row(

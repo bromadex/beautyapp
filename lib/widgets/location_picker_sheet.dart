@@ -105,7 +105,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppColors.borderStrong,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -203,7 +203,7 @@ class _CityTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.grey.shade100,
+              : AppColors.surfaceMuted,
           borderRadius: AppRadius.smAll,
         ),
         child: Icon(

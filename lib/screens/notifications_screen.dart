@@ -224,7 +224,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             borderRadius: AppRadius.mdAll,
             border: Border.all(
               color: isRead
-                  ? Colors.grey.shade200
+                  ? AppColors.border
                   : color.withValues(alpha: 0.2),
             ),
           ),

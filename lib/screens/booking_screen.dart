@@ -6,6 +6,7 @@ import '../supabase_client.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 import '../widgets/price_offer_sheet.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -618,18 +619,11 @@ class _BookingScreenState extends State<BookingScreen> {
               decoration: BoxDecoration(
                 color: AppColors.cardLight,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
-                  // Gradient accent strip
-                  Container(
-                    height: 4,
-                    decoration: const BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                    ),
-                  ),
                   Padding(
                     padding: AppSpacing.cardPadding,
                     child: Row(children: [
@@ -641,8 +635,8 @@ class _BookingScreenState extends State<BookingScreen> {
                           borderRadius: AppRadius.mdAll,
                         ),
                         alignment: Alignment.center,
-                        child: Text(cat?['icon'] ?? '',
-                            style: const TextStyle(fontSize: 26)),
+                        child: Icon(categoryIcon(_package != null ? 'package' : cat?['name']),
+                            size: 26, color: AppColors.primary),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
@@ -654,8 +648,8 @@ class _BookingScreenState extends State<BookingScreen> {
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               _package != null
-                                  ? 'Package -- $_baseDuration min'
-                                  : '${cat?['name'] ?? ''} -- $_baseDuration min',
+                                  ? 'Package · $_baseDuration min'
+                                  : '${cat?['name'] ?? ''} · $_baseDuration min',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: 2),
@@ -770,7 +764,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.cardLight,
                   borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   children: _addons.map((addon) {
@@ -957,8 +951,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: FilledButton(
                       onPressed: _applyingPromo ? null : _applyPromo,
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.primarySoft,
+                        foregroundColor: AppColors.primary,
+                        minimumSize: const Size(0, 48),
                         shape: RoundedRectangleBorder(
                             borderRadius: AppRadius.mdAll),
                       ),
@@ -1066,7 +1061,7 @@ class _BookingScreenState extends State<BookingScreen> {
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(children: [
                 Row(
@@ -1175,7 +1170,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 ],
                 Divider(
                   height: AppSpacing.xxl,
-                  color: Colors.grey.shade200,
+                  color: AppColors.border,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1269,7 +1264,7 @@ class _PaymentChip extends StatelessWidget {
               border: Border.all(
                 color: selected
                     ? AppColors.primary
-                    : Colors.grey.shade300,
+                    : AppColors.borderStrong,
                 width: selected ? 1.5 : 1,
               ),
             ),
@@ -1335,7 +1330,7 @@ class _PickerCard extends StatelessWidget {
             border: Border.all(
               color: isSelected
                   ? AppColors.primary.withValues(alpha: 0.4)
-                  : Colors.grey.shade300,
+                  : AppColors.borderStrong,
             ),
           ),
           child: Row(

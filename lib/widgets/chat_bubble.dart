@@ -49,7 +49,7 @@ class ChatBubble extends StatelessWidget {
                     : null,
                 color: imageUrl != null
                     ? Colors.transparent
-                    : (isMine ? null : Colors.grey.shade100),
+                    : (isMine ? null : AppColors.surfaceMuted),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(AppRadius.xl),
                   topRight: Radius.circular(AppRadius.xl),
@@ -73,7 +73,7 @@ class ChatBubble extends StatelessWidget {
                                     height: 120,
                                     width: 200,
                                     decoration: BoxDecoration(
-                                      color: Colors.grey.shade100,
+                                      color: AppColors.surfaceMuted,
                                       borderRadius: AppRadius.mdAll,
                                     ),
                                     child: Center(
@@ -87,7 +87,7 @@ class ChatBubble extends StatelessWidget {
                           height: 120,
                           width: 200,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: AppColors.surfaceMuted,
                             borderRadius: AppRadius.mdAll,
                           ),
                           child: const Icon(Icons.broken_image_rounded,

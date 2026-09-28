@@ -207,7 +207,7 @@ class _ProviderProfileEditorScreenState
   Widget _buildSectionDivider() {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-      child: Divider(color: Colors.grey.shade200, thickness: 1),
+      child: Divider(color: AppColors.border, thickness: 1),
     );
   }
 
@@ -264,7 +264,7 @@ class _ProviderProfileEditorScreenState
                 decoration: BoxDecoration(
                   color: AppColors.cardLight,
                   borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: AppColors.border),
                 ),
                 padding: AppSpacing.cardPadding,
                 child: TextFormField(
@@ -368,7 +368,7 @@ class _ProviderProfileEditorScreenState
                   decoration: BoxDecoration(
                     color: AppColors.cardLight,
                     borderRadius: AppRadius.lgAll,
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

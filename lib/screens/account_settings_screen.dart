@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/avatar_widget.dart';
+import '../widgets/ui.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -12,6 +14,54 @@ class AccountSettingsScreen extends StatefulWidget {
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   bool _loading = false;
   bool _isDeactivated = false;
+  bool _savingProfile = false;
+  String? _avatarUrl;
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _locationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter your name')));
+      return;
+    }
+    setState(() => _savingProfile = true);
+    try {
+      await supabase.from('profiles').update({
+        'full_name': _nameCtrl.text.trim(),
+        'phone': _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        'location': _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+      }).eq('id', supabase.auth.currentUser!.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not save: $e'), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) setState(() => _savingProfile = false);
+    }
+  }
+
+  Future<void> _changePhoto() async {
+    final url = await AvatarUploadHelper.pickAndUpload(context);
+    if (url != null && mounted) setState(() => _avatarUrl = url);
+  }
+
+  Future<void> _signOut() async {
+    await supabase.auth.signOut();
+    if (mounted) context.go('/login');
+  }
 
   @override
   void initState() {
@@ -25,11 +75,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     try {
       final profile = await supabase
           .from('profiles')
-          .select('is_deactivated')
+          .select('is_deactivated, full_name, phone, location, avatar_url')
           .eq('id', uid)
           .single();
       if (mounted) {
-        setState(() => _isDeactivated = profile['is_deactivated'] == true);
+        setState(() {
+          _isDeactivated = profile['is_deactivated'] == true;
+          _avatarUrl = profile['avatar_url'];
+          _nameCtrl.text = profile['full_name'] ?? '';
+          _phoneCtrl.text = profile['phone'] ?? '';
+          _locationCtrl.text = profile['location'] ?? '';
+        });
       }
     } catch (_) {
       if (mounted) {
@@ -260,52 +316,73 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 child: ListView(
                   padding: AppSpacing.screenPadding,
                   children: [
-                    // Account info
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: AppRadius.lgAll,
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48, height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
+                    // Profile
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Row(children: [
+                            AvatarWidget(
+                              avatarUrl: _avatarUrl,
+                              fallbackName: _nameCtrl.text,
+                              size: 72,
+                              showEditButton: true,
+                              onEdit: _changePhoto,
                             ),
-                            child: const Icon(Icons.person_outline, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: AppSpacing.lg),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Signed in as', style: TextStyle(
-                                  fontSize: 12, color: AppColors.textTertiary,
-                                )),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text('Your profile', style: Theme.of(context).textTheme.titleMedium),
                                 const SizedBox(height: 2),
-                                Text(email, style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-                                )),
-                              ],
+                                Text(email, style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 6),
+                                GestureDetector(
+                                  onTap: _changePhoto,
+                                  child: const Text('Change photo',
+                                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                ),
+                              ]),
                             ),
+                            if (_isDeactivated) const Pill(label: 'Deactivated', color: AppColors.warning),
+                          ]),
+                          const SizedBox(height: 20),
+                          TextField(
+                            controller: _nameCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                                labelText: 'Full name', prefixIcon: Icon(Icons.person_outline_rounded)),
                           ),
-                          if (_isDeactivated)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text('Deactivated', style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.warning,
-                              )),
-                            ),
-                        ],
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _phoneCtrl,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                                labelText: 'Phone number',
+                                hintText: '+263 7X XXX XXXX',
+                                prefixIcon: Icon(Icons.phone_outlined)),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _locationCtrl,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                                labelText: 'Area / suburb',
+                                hintText: 'e.g. Avondale, Harare',
+                                prefixIcon: Icon(Icons.location_on_outlined)),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _savingProfile ? null : _saveProfile,
+                            child: Text(_savingProfile ? 'Saving…' : 'Save changes'),
+                          ),
+                        ]),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _signOut,
+                      icon: const Icon(Icons.logout_rounded, size: 20),
+                      label: const Text('Sign out'),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
 
@@ -380,7 +457,7 @@ class _SettingsTile extends StatelessWidget {
           border: Border.all(
             color: isDanger
                 ? AppColors.error.withValues(alpha: 0.2)
-                : Colors.grey.shade200,
+                : AppColors.border,
           ),
         ),
         child: Row(

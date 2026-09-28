@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
-import '../widgets/avatar_widget.dart';
-import '../widgets/star_rating_widget.dart';
+import '../widgets/ui.dart';
 
 class ProviderPublicProfileScreen extends StatefulWidget {
   final String providerId;
@@ -63,7 +62,7 @@ class _ProviderPublicProfileScreenState
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppColors.borderStrong,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -298,7 +297,7 @@ class _ProviderPublicProfileScreenState
                 margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                 decoration: BoxDecoration(
                   borderRadius: AppRadius.mdAll,
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: ListTile(
                   shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
@@ -310,7 +309,7 @@ class _ProviderPublicProfileScreenState
                       borderRadius: AppRadius.smAll,
                     ),
                     child: Center(
-                      child: Text(cat?['icon'] ?? '', style: const TextStyle(fontSize: 20)),
+                      child: Icon(categoryIcon(cat?['name']), size: 20, color: AppColors.primary),
                     ),
                   ),
                   title: Text(s['service_name'], style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -396,204 +395,136 @@ class _ProviderPublicProfileScreenState
         statusLabel = 'Offline';
     }
 
+    final avg = (_providerProfile?['average_rating'] as num?)?.toDouble() ?? 0.0;
+    final total = (_providerProfile?['total_reviews'] as num?)?.toInt() ?? 0;
+    final idVerified = _profile?['is_verified'] == true;
+    final bizVerified = _profile?['is_business_verified'] == true;
+    final location = address.isNotEmpty ? address : (_profile?['location'] ?? '').toString();
+    final isSelf = _isLoggedIn && supabase.auth.currentUser!.id == widget.providerId;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 220,
             pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
             actions: [
-              if (!_isLoggedIn || supabase.auth.currentUser!.id != widget.providerId)
+              if (!isSelf)
                 ScaleTransition(
                   scale: _heartScale,
                   child: IconButton(
                     icon: Icon(
                       _isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _isFavorited ? AppColors.accent : Colors.white,
-                      size: 28,
+                      color: _isFavorited ? AppColors.accent : AppColors.textPrimary,
                     ),
-                    tooltip: _isFavorited ? 'Remove from favorites' : 'Add to favorites',
+                    tooltip: _isFavorited ? 'Remove from favourites' : 'Save to favourites',
                     onPressed: _toggleFavorite,
                   ),
                 ),
+              const SizedBox(width: 8),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AvatarWidget(
-                        avatarUrl: _profile?['avatar_url'],
-                        fallbackName: name,
-                        size: 80,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.3,
+          ),
+
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Column(children: [
+                    Stack(children: [
+                      PersonAvatar(name: name, url: _profile?['avatar_url'], size: 104),
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surfaceLight, width: 3),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: AppRadius.xxlAll,
+                    ]),
+                    const SizedBox(height: 14),
+                    Text(name, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
+                    if (location.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textTertiary),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(location,
+                              style: Theme.of(context).textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.xs + 2),
-                            Text(
-                              statusLabel,
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
+                      ]),
                     ],
-                  ),
+                    const SizedBox(height: 12),
+                    Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
+                      Pill(label: statusLabel, color: statusColor),
+                      if (idVerified) const Pill(label: 'ID verified', color: AppColors.info, icon: Icons.verified_rounded),
+                      if (bizVerified)
+                        const Pill(label: 'Verified business', color: AppColors.success, icon: Icons.storefront_rounded),
+                    ]),
+                    const SizedBox(height: 20),
+
+                    // Stats
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: AppRadius.lgAll,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: IntrinsicHeight(
+                        child: Row(children: [
+                          Expanded(
+                            child: _Stat(
+                              value: total == 0 ? '—' : avg.toStringAsFixed(1),
+                              label: 'Rating',
+                              icon: Icons.star_rounded,
+                              onTap: total == 0 ? null : () => context.push('/provider/${widget.providerId}/reviews'),
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            child: _Stat(
+                              value: '$total',
+                              label: total == 1 ? 'Review' : 'Reviews',
+                              onTap: total == 0 ? null : () => context.push('/provider/${widget.providerId}/reviews'),
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(child: _Stat(value: '${_services.length}', label: 'Services')),
+                        ]),
+                      ),
+                    ),
+                  ]),
                 ),
               ),
             ),
           ),
 
           SliverToBoxAdapter(
-            child: Padding(
-              padding: AppSpacing.screenPadding,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sign-in banner for guests
                   if (!_isLoggedIn) ...[
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.06),
-                        borderRadius: AppRadius.mdAll,
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded,
-                              color: AppColors.primary, size: 20),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Text(
-                              'Sign in to book, save favorites, and chat with this provider.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          TextButton(
-                            onPressed: () => context.go('/login'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text('Sign In',
-                                style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
+                    SoftBanner(
+                      icon: Icons.person_outline_rounded,
+                      color: AppColors.primary,
+                      title: 'Sign in to book',
+                      message: 'Create a free account to book, save favourites and chat.',
+                      actionLabel: 'Sign in',
+                      onTap: () => context.go('/login'),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
-
-                  // Rating + reviews
-                  FutureBuilder(
-                    future: supabase
-                        .from('provider_profiles')
-                        .select('average_rating, total_reviews')
-                        .eq('provider_id', widget.providerId)
-                        .maybeSingle(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData || snapshot.data == null) {
-                        return const SizedBox.shrink();
-                      }
-                      final data = snapshot.data as Map<String, dynamic>;
-                      final avg = (data['average_rating'] as num?)?.toDouble() ?? 0.0;
-                      final total = data['total_reviews'] ?? 0;
-                      if (total == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                          child: Text(
-                            'No reviews yet',
-                            style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
-                          ),
-                        );
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                        child: InkWell(
-                          borderRadius: AppRadius.smAll,
-                          onTap: () => context.push('/provider/${widget.providerId}/reviews'),
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.08),
-                              borderRadius: AppRadius.mdAll,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                StarRatingWidget(rating: avg, size: 18),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  '${avg.toStringAsFixed(1)} ($total review${total == 1 ? '' : 's'})',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textTertiary),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // Address
-                  if (address.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 18, color: AppColors.textTertiary),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            address,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: 24),
                   ],
 
                   // Bio
@@ -631,7 +562,7 @@ class _ProviderPublicProfileScreenState
                           padding: const EdgeInsets.all(AppSpacing.lg),
                           decoration: BoxDecoration(
                             color: AppColors.cardLight,
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(color: AppColors.border),
                             borderRadius: AppRadius.mdAll,
                           ),
                           child: Row(
@@ -644,10 +575,8 @@ class _ProviderPublicProfileScreenState
                                   borderRadius: AppRadius.smAll,
                                 ),
                                 child: Center(
-                                  child: Text(
-                                    cat?['icon'] ?? '',
-                                    style: const TextStyle(fontSize: 20),
-                                  ),
+                                  child: Icon(categoryIcon(cat?['name']),
+                                      size: 20, color: AppColors.primary),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.md),
@@ -733,6 +662,8 @@ class _ProviderPublicProfileScreenState
                 ],
               ),
             ),
+              ),
+            ),
           ),
         ],
       ),
@@ -796,7 +727,7 @@ class _ProviderPublicProfileScreenState
       ),
       decoration: BoxDecoration(
         color: AppColors.cardLight,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: status == 'available'
           ? FilledButton.icon(
@@ -818,7 +749,7 @@ class _ProviderPublicProfileScreenState
                 border: Border.all(
                   color: status == 'busy'
                       ? AppColors.busy.withValues(alpha: 0.3)
-                      : Colors.grey.shade200,
+                      : AppColors.border,
                 ),
               ),
               child: Row(
@@ -951,6 +882,29 @@ class _GalleryViewerScreenState extends State<_GalleryViewerScreen> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData? icon;
+  final VoidCallback? onTap;
+  const _Stat({required this.value, required this.label, this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[Icon(icon, size: 18, color: AppColors.secondary), const SizedBox(width: 3)],
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        ]),
+        const SizedBox(height: 2),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ]),
     );
   }
 }

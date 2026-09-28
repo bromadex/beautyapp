@@ -7,7 +7,7 @@ class SmartMatchService {
   }) async {
     final providers = await supabase
         .from('provider_profiles')
-        .select('*, profiles(id, full_name, location)')
+        .select('*, profiles(id, full_name, location, avatar_url)')
         .or('is_hidden.eq.false,is_hidden.is.null');
     final providerList = List<Map<String, dynamic>>.from(providers);
 
@@ -160,7 +160,7 @@ class SmartMatchService {
 
     final providers = await supabase
         .from('provider_profiles')
-        .select('*, profiles(id, full_name, location)')
+        .select('*, profiles(id, full_name, location, avatar_url)')
         .or('is_hidden.eq.false,is_hidden.is.null');
     final providerList = List<Map<String, dynamic>>.from(providers);
 
@@ -184,11 +184,11 @@ class SmartMatchService {
   }) async {
     final providers = await supabase
         .from('provider_profiles')
-        .select('*, profiles(id, full_name, location)')
+        .select('*, profiles(id, full_name, location, avatar_url)')
         .or('is_hidden.eq.false,is_hidden.is.null')
-        .gte('total_reviews', 1)
         .order('average_rating', ascending: false)
-        .limit(limit);
+        .order('total_reviews', ascending: false)
+        .limit(limit * 2);
     var providerList = List<Map<String, dynamic>>.from(providers);
 
     if (location != null && location.isNotEmpty) {

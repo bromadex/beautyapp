@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -29,7 +30,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     try {
       final data = await supabase
           .from('favorites')
-          .select('*, profiles!favorites_provider_id_fkey(full_name, location)')
+          .select('*, profiles!favorites_provider_id_fkey(full_name, location, avatar_url)')
           .eq('client_id', userId)
           .order('created_at', ascending: false);
 
@@ -147,6 +148,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         final profile = fav['profiles'] as Map<String, dynamic>?;
                         final pp = fav['provider_profiles'] as Map<String, dynamic>?;
                         final name = profile?['full_name'] ?? 'Stylist';
+                        final avatarUrl = profile?['avatar_url'] as String?;
                         final location = profile?['location'] ?? '';
                         final status = pp?['availability_status'] ?? 'offline';
                         final rating = (pp?['average_rating'] as num?)?.toDouble() ?? 0.0;
@@ -180,7 +182,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.cardLight,
                               borderRadius: AppRadius.lgAll,
-                              border: Border.all(color: Colors.grey.shade200),
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: Padding(
                               padding: AppSpacing.cardPadding,
@@ -189,25 +191,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      // Gradient avatar
-                                      Container(
-                                        width: 52,
-                                        height: 52,
-                                        decoration: const BoxDecoration(
-                                          gradient: AppColors.primaryGradient,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                      PersonAvatar(name: name, url: avatarUrl, size: 52),
                                       const SizedBox(width: AppSpacing.lg),
                                       Expanded(
                                         child: Column(

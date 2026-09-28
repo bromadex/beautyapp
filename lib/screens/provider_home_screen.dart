@@ -8,6 +8,7 @@ import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -155,7 +156,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppColors.borderStrong,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -169,7 +170,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
               decoration: BoxDecoration(
                 color: AppColors.surfaceLight,
                 borderRadius: AppRadius.mdAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
@@ -467,98 +468,67 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          SliverAppBar(
-            expandedHeight: 140,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            surfaceTintColor: Colors.transparent,
-            automaticallyImplyLeading: false,
-            title: const BrandTitle(),
-            actions: [
-              if (_isAdmin)
-                IconButton(
-                  icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-                  tooltip: 'Admin Panel',
-                  onPressed: () => context.push('/admin/dashboard'),
-                ),
-              Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                    onPressed: () => context.push('/notifications'),
-                  ),
-                  if (_unreadNotifications > 0)
-                    Positioned(
-                      right: 8, top: 8,
-                      child: Container(
-                        width: 16, height: 16,
-                        decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                        child: Center(
-                          child: Text(
-                            _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
-                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                          ),
+          SliverToBoxAdapter(
+            child: SafeArea(
+              bottom: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    child: Row(children: [
+                      GestureDetector(
+                        onTap: () => context.push('/provider/profile'),
+                        child: PersonAvatar(name: name, url: _profile?['avatar_url'], size: 48),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(name.split(' ').first, style: Theme.of(context).textTheme.titleLarge,
+                              overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 2),
+                          Row(children: [
+                            if (_avgRating > 0) ...[
+                              const Icon(Icons.star_rounded, color: AppColors.secondary, size: 16),
+                              const SizedBox(width: 2),
+                              Text(_avgRating.toStringAsFixed(1), style: Theme.of(context).textTheme.labelMedium),
+                              const Text('  ·  ', style: TextStyle(color: AppColors.textTertiary)),
+                            ],
+                            Text('$_totalBookingsCount bookings', style: Theme.of(context).textTheme.bodySmall),
+                          ]),
+                        ]),
+                      ),
+                      if (_isAdmin)
+                        IconButton(
+                          tooltip: 'Admin',
+                          icon: const Icon(Icons.admin_panel_settings_outlined),
+                          onPressed: () => context.push('/admin/dashboard'),
+                        ),
+                      IconButton(
+                        tooltip: 'Notifications',
+                        onPressed: () => context.push('/notifications'),
+                        icon: Badge(
+                          isLabelVisible: _unreadNotifications > 0,
+                          label: Text(_unreadNotifications > 9 ? '9+' : '$_unreadNotifications'),
+                          child: const Icon(Icons.notifications_none_rounded),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-                onPressed: _signOut,
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-                    child: GestureDetector(
-                      onTap: () => context.push('/account/settings'),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 50, height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white38, width: 2),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Welcome back,', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                                Text(name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white)),
-                                const SizedBox(height: 5),
-                                Row(children: [
-                                  if (_avgRating > 0) ...[
-                                    const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                                    const SizedBox(width: 3),
-                                    Text(_avgRating.toStringAsFixed(1),
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                                    const SizedBox(width: 12),
-                                  ],
-                                  Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.8), size: 14),
-                                  const SizedBox(width: 3),
-                                  Text('$_totalBookingsCount bookings',
-                                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
-                                ]),
-                              ],
-                            ),
-                          ),
+                      PopupMenuButton<String>(
+                        tooltip: 'Menu',
+                        icon: const Icon(Icons.more_horiz_rounded),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                        onSelected: (v) {
+                          if (v == 'settings') context.push('/account/settings');
+                          if (v == 'business') context.push('/provider/settings');
+                          if (v == 'signout') _signOut();
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'business', child: Text('Business settings')),
+                          PopupMenuItem(value: 'settings', child: Text('Account settings')),
+                          PopupMenuItem(value: 'signout', child: Text('Sign out')),
                         ],
                       ),
-                    ),
+                    ]),
                   ),
                 ),
               ),
@@ -572,7 +542,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -607,8 +577,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           ],
 
                           if (!hasActiveSubscription) ...[
-                            _WarningBanner(
-                              text: 'No active subscription — your profile is hidden.',
+                            SoftBanner(
+                              icon: Icons.rocket_launch_rounded,
+                              color: AppColors.primary,
+                              title: 'Go live and start getting bookings',
+                              message: 'Activate for \$3 (includes your first month). No commission, ever.',
+                              actionLabel: 'Activate',
                               onTap: () => context.push('/provider/subscription'),
                             ),
                             const SizedBox(height: 14),
@@ -630,10 +604,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           ),
                           const SizedBox(height: 20),
 
-                          const Text('Quick Actions', style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-                          )),
-                          const SizedBox(height: 10),
+                          const SectionHeader(title: 'Quick actions'),
                           _ProviderQuickActions(
                             pendingBookings: _pendingBookingsCount,
                             unreadMessages: _unreadMessages,
@@ -644,9 +615,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           if (_recentActivity.isNotEmpty) ...[
                             Row(
                               children: [
-                                const Text('Recent Activity', style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-                                )),
+                                Text('Recent activity', style: Theme.of(context).textTheme.titleLarge),
                                 const Spacer(),
                                 TextButton(
                                   onPressed: () => context.go('/provider/bookings'),
@@ -862,7 +831,7 @@ class _NoBookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -960,7 +929,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -1215,7 +1184,7 @@ class _PrimaryActionTileState extends State<_PrimaryActionTile> {
             color: _hovering ? widget.color.withValues(alpha: 0.06) : Colors.white,
             borderRadius: AppRadius.lgAll,
             border: Border.all(
-              color: _hovering ? widget.color.withValues(alpha: 0.3) : Colors.grey.shade200,
+              color: _hovering ? widget.color.withValues(alpha: 0.3) : AppColors.border,
             ),
             boxShadow: _hovering
                 ? [BoxShadow(color: widget.color.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))]
@@ -1290,16 +1259,16 @@ class _SecondaryActionTileState extends State<_SecondaryActionTile> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: _hovering ? Colors.grey.shade50 : Colors.white,
+            color: _hovering ? AppColors.surfaceLight : Colors.white,
             borderRadius: AppRadius.mdAll,
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             children: [
               Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.surfaceMuted,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(widget.icon, color: AppColors.textSecondary, size: 18),
@@ -1327,14 +1296,14 @@ class _ActivityFeed extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: ListView.separated(
         physics: const NeverScrollableScrollPhysics(),
         shrinkWrap: true,
         padding: EdgeInsets.zero,
         itemCount: activities.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100, indent: 60),
+        separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.surfaceMuted, indent: 60),
         itemBuilder: (context, index) => _ActivityItem(activity: activities[index]),
       ),
     );
@@ -1446,33 +1415,6 @@ class _ActivityItem extends StatelessWidget {
       case 'cancelled': return Icons.cancel_outlined;
       default: return Icons.schedule_rounded;
     }
-  }
-}
-
-class _WarningBanner extends StatelessWidget {
-  final String text;
-  final VoidCallback onTap;
-  const _WarningBanner({required this.text, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.06),
-          borderRadius: AppRadius.mdAll,
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-        ),
-        child: Row(children: [
-          Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 18),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.w500))),
-          Icon(Icons.chevron_right, color: AppColors.error, size: 18),
-        ]),
-      ),
-    );
   }
 }
 

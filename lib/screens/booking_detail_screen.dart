@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final String bookingId;
@@ -423,7 +424,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     borderRadius: AppRadius.mdAll,
                   ),
                   alignment: Alignment.center,
-                  child: Text(cat?['icon'] ?? '', style: const TextStyle(fontSize: 24)),
+                  child: Icon(categoryIcon(cat?['name']), size: 24, color: AppColors.primary),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -433,7 +434,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       Text(service?['service_name'] ?? '',
                           style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.xs),
-                      Text('${cat?['name'] ?? ''} -- ${service?['duration_minutes'] ?? ''} min',
+                      Text('${cat?['name'] ?? ''} · ${service?['duration_minutes'] ?? ''} min',
                           style: Theme.of(context).textTheme.bodySmall),
                     ],
                   ),
@@ -763,7 +764,7 @@ class _Section extends StatelessWidget {
       padding: AppSpacing.cardPadding,
       decoration: BoxDecoration(
         color: AppColors.cardLight,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
         borderRadius: AppRadius.lgAll,
       ),
       child: Column(
@@ -842,7 +843,7 @@ class _ServiceTimeline extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: step.done
                             ? AppColors.success
-                            : Colors.grey.shade300,
+                            : AppColors.borderStrong,
                         border: step.done
                             ? Border.all(
                                 color: AppColors.success.withValues(alpha: 0.3),
@@ -861,7 +862,7 @@ class _ServiceTimeline extends StatelessWidget {
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           color: step.done
                               ? AppColors.success.withValues(alpha: 0.3)
-                              : Colors.grey.shade200,
+                              : AppColors.border,
                         ),
                       ),
                   ],
@@ -935,7 +936,7 @@ class _ActionCard extends StatelessWidget {
           padding: AppSpacing.cardPadding,
           decoration: BoxDecoration(
             borderRadius: AppRadius.lgAll,
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [

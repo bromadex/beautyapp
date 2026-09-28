@@ -118,21 +118,24 @@ class PushService {
           child: const Icon(Icons.notifications_active_rounded,
               color: AppColors.primary, size: 32),
         ),
-        title: const Text('Stay in the Loop'),
+        title: const Text('Never miss an appointment', textAlign: TextAlign.center),
         content: const Text(
-          'Get notified the moment your booking is confirmed, when messages arrive, and an hour before every appointment.',
-          style: TextStyle(fontSize: 14, height: 1.4),
+          'We\'ll tell you when your stylist confirms, when they message you, and an hour before every booking.',
+          textAlign: TextAlign.center,
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Enable Notifications'),
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Turn on notifications'),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Maybe later'),
+            ),
+          ]),
         ],
       ),
     );

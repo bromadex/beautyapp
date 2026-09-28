@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ServiceRequestsScreen extends StatefulWidget {
   final bool isProvider;
@@ -137,10 +138,8 @@ class _RequestCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (cat?['icon'] != null)
-                    Text(cat!['icon'], style: const TextStyle(fontSize: 22)),
-                  if (cat?['icon'] != null)
-                    const SizedBox(width: AppSpacing.sm),
+                  CategoryBadge(name: cat?['name'], size: 40),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(request['title'] ?? '',
                         style: Theme.of(context).textTheme.titleSmall),

@@ -122,7 +122,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   borderRadius: AppRadius.mdAll,
                   items: _categories.map((c) => DropdownMenuItem(
                     value: c['id'] as String,
-                    child: Text('${c['icon'] ?? ''} ${c['name']}'),
+                    child: Text('${c['name']}'),
                   )).toList(),
                   onChanged: (v) => setDialogState(() => selectedCategoryId = v),
                 ),
@@ -565,7 +565,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
       decoration: BoxDecoration(
         color: AppColors.cardLight,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: isActive ? Colors.grey.shade200 : Colors.grey.shade100),
+        border: Border.all(color: isActive ? AppColors.border : AppColors.surfaceMuted),
       ),
       child: Column(
         children: [
@@ -575,7 +575,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey.shade100,
+                  color: isActive ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceMuted,
                   borderRadius: AppRadius.mdAll,
                 ),
                 child: Icon(Icons.content_cut_rounded,
@@ -630,7 +630,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
             ]),
           ),
           if (addons.isNotEmpty) ...[
-            Divider(height: 1, color: Colors.grey.shade200),
+            Divider(height: 1, color: AppColors.border),
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
               child: Column(
@@ -729,7 +729,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
           decoration: BoxDecoration(
             color: AppColors.cardLight,
             borderRadius: AppRadius.lgAll,
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppColors.border),
           ),
           padding: AppSpacing.cardPadding,
           child: Column(

@@ -132,7 +132,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
             decoration: BoxDecoration(
               color: AppColors.cardLight,
               borderRadius: AppRadius.lgAll,
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [

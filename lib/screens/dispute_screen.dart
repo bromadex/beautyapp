@@ -131,7 +131,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.cardLight,
                         borderRadius: AppRadius.lgAll,
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: AppColors.border),
                       ),
                       child: Row(
                         children: [

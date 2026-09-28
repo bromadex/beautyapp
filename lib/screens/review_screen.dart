@@ -248,7 +248,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               decoration: BoxDecoration(
                 color: AppColors.cardLight,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [
@@ -293,7 +293,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               decoration: BoxDecoration(
                 color: AppColors.cardLight,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [

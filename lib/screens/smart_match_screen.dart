@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/smart_match_service.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class SmartMatchScreen extends StatefulWidget {
   const SmartMatchScreen({super.key});
@@ -288,7 +289,7 @@ class _SmartMatchScreenState extends State<SmartMatchScreen> {
             color: Colors.white,
             borderRadius: AppRadius.lgAll,
             border: Border.all(
-              color: isTopMatch ? AppColors.primary.withValues(alpha: 0.3) : Colors.grey.shade200,
+              color: isTopMatch ? AppColors.primary.withValues(alpha: 0.3) : AppColors.border,
             ),
             boxShadow: isTopMatch
                 ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))]
@@ -303,20 +304,7 @@ class _SmartMatchScreenState extends State<SmartMatchScreen> {
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: const BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ),
-                        ),
+                        PersonAvatar(name: name, url: provider['profiles']?['avatar_url'], size: 52),
                         if (isTopMatch)
                           Positioned(
                             top: -4,
@@ -441,7 +429,7 @@ class _SmartMatchScreenState extends State<SmartMatchScreen> {
                 ),
               ),
               if (reasons.isNotEmpty) ...[
-                Divider(height: 1, color: Colors.grey.shade100),
+                Divider(height: 1, color: AppColors.surfaceMuted),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
                   child: Row(

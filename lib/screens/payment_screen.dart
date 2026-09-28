@@ -288,7 +288,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: AppRadius.lgAll,
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +326,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Divider(color: Colors.grey.shade200),
+                    child: Divider(color: AppColors.border),
                   ),
                   _SummaryRow(
                     label: 'Service Price',

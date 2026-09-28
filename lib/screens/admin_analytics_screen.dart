@@ -276,7 +276,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: _monthlyRevenue.map((m) {
@@ -299,7 +299,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                       Container(
                         height: 24,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: AppColors.surfaceMuted,
                           borderRadius: AppRadius.smAll,
                         ),
                       ),
@@ -341,7 +341,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -393,7 +393,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Wrap(
         spacing: AppSpacing.sm,
@@ -432,7 +432,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -489,7 +489,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: _popularServices.asMap().entries.map((entry) {
@@ -526,7 +526,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                       Container(
                         height: 20,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: AppColors.surfaceMuted,
                           borderRadius: AppRadius.smAll,
                         ),
                       ),

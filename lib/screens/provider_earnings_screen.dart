@@ -93,7 +93,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: _DashboardCard(
-                    label: 'COD Pending',
+                    label: 'Cash to collect',
                     amount: '\$${_pendingCod.toStringAsFixed(2)}',
                     icon: Icons.hourglass_bottom_rounded,
                     color: AppColors.warning,
@@ -217,7 +217,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: AppRadius.lgAll,
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +397,7 @@ class _StatusChip extends StatelessWidget {
       case 'pending':
         fgColor = AppColors.warning;
         bgColor = AppColors.warning.withValues(alpha: 0.1);
-        label = 'COD Pending';
+        label = 'Cash to collect';
         break;
       case 'refunded':
         fgColor = AppColors.error;
