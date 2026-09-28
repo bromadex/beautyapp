@@ -58,7 +58,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
       final uid = supabase.auth.currentUser!.id;
       final isProvider = _booking?['provider_id'] == uid;
       final reportedUserId =
-          isProvider ? _booking?['client_id'] : _booking?['provider_id'];
+          isProvider ? (_booking?['client_id']) : (_booking?['provider_id']);
 
       await supabase.from('disputes').insert({
         'booking_id': widget.bookingId,
