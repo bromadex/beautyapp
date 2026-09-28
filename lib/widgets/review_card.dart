@@ -13,7 +13,7 @@ class ReviewCard extends StatelessWidget {
     final rating = (review['rating'] as num).toDouble();
     final comment = review['comment'] ?? '';
     final imageUrl = review['after_service_image_url'];
-    final createdAt = DateTime.tryParse(review['created_at'] ?? '');
+    final createdAt = DateTime.tryParse(review['created_at'] ?? '')?.toLocal();
     final dateStr = createdAt != null
         ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
         : '';
@@ -147,7 +147,7 @@ class ReviewCard extends StatelessWidget {
 
   String _formatReplyDate(String? iso) {
     if (iso == null) return '';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     return '${dt.day}/${dt.month}/${dt.year}';
   }

@@ -50,7 +50,7 @@ class _AdminVerificationScreenState
     await supabase.from('verifications').update({
       'status': approve ? 'approved' : 'rejected',
       'admin_note': note,
-      'reviewed_at': DateTime.now().toIso8601String(),
+      'reviewed_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', verificationId);
 
     if (approve) {

@@ -77,84 +77,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   /// Renewal ($5/month) applies while active.
   bool get _payingActivation => !_isActive;
 
-  double get _price => _payingActivation
-      ? AppConfig.providerActivationFee
-      : AppConfig.providerMonthlyFee;
 
   Future<void> _pay() async {
     setState(() => _processing = true);
 
-    // Real Paynow checkout when configured
     final outcome = await PaynowCheckout.run(
       context,
       purpose: 'subscription',
       tier: _payingActivation ? 'activation' : 'monthly',
       months: 1,
     );
-    if (outcome != PaynowOutcome.unconfigured) {
-      if (mounted) setState(() => _processing = false);
-      if (outcome == PaynowOutcome.paid) {
-        await _load();
-        if (mounted) _snack('Payment received — you\'re live!', AppColors.success);
-      } else if (mounted &&
-          (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
-        _snack(
-            outcome == PaynowOutcome.failed
-                ? 'Payment was not completed. Please try again.'
-                : 'Payment still pending — refresh this page in a few minutes.',
-            AppColors.warning);
-      }
-      return;
-    }
-
-    // Simulated fallback until Paynow is configured
-    try {
-      final userId = supabase.auth.currentUser!.id;
-      final start = DateTime.now();
-
-      // Renewals extend from the current end date, activations start today
-      DateTime base = start;
-      if (!_payingActivation) {
-        final end = DateTime.tryParse(_subscription?['end_date'] ?? '');
-        if (end != null && end.isAfter(start)) base = end;
-      }
-      final endDate = DateTime(base.year, base.month + 1, base.day);
-
-      final payload = {
-        'provider_id': userId,
-        'start_date': start.toIso8601String().split('T')[0],
-        'end_date': endDate.toIso8601String().split('T')[0],
-        'status': 'active',
-        'plan': _payingActivation ? 'activation' : 'monthly',
-        'amount_paid': _price,
-        'payment_ref': 'SIM-${DateTime.now().millisecondsSinceEpoch}',
-      };
-
-      if (_subscription == null) {
-        await supabase.from('subscriptions').insert(payload);
-      } else {
-        await supabase
-            .from('subscriptions')
-            .update(payload)
-            .eq('provider_id', userId);
-      }
-
-      await supabase
-          .from('provider_profiles')
-          .update({'is_hidden': false}).eq('provider_id', userId);
-
+    if (mounted) setState(() => _processing = false);
+    if (outcome == PaynowOutcome.paid) {
       await _load();
-      if (mounted) {
-        _snack(
-            _payingActivation
-                ? 'Account activated — your first month is live!'
-                : 'Renewed for another month!',
-            AppColors.success);
-      }
-    } catch (e) {
-      if (mounted) _snack('Error: $e', AppColors.error);
-    } finally {
-      if (mounted) setState(() => _processing = false);
+      if (mounted) _snack('Payment received — you\'re live!', AppColors.success);
+    } else if (mounted &&
+        (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
+      _snack(
+          outcome == PaynowOutcome.failed
+              ? 'Payment was not completed. Please try again.'
+              : 'Payment still pending — refresh this page in a few minutes.',
+          AppColors.warning);
     }
   }
 
@@ -190,13 +133,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     setState(() => _processing = true);
     try {
-      final userId = supabase.auth.currentUser!.id;
-      await supabase
-          .from('subscriptions')
-          .update({'status': 'cancelled'}).eq('provider_id', userId);
-      await supabase
-          .from('provider_profiles')
-          .update({'is_hidden': true}).eq('provider_id', userId);
+      await supabase.rpc('cancel_my_subscription');
       await _load();
       if (mounted) {
         _snack('Subscription cancelled — reactivate anytime for \$3.',

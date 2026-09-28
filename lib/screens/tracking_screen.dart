@@ -131,7 +131,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Future<void> _markEnRoute() async {
     try {
       await supabase.from('bookings').update({
-        'en_route_at': DateTime.now().toIso8601String(),
+        'en_route_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.bookingId);
       await _locationService.startSharing(widget.bookingId);
     } catch (e) {
@@ -157,7 +157,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Future<void> _markArrived() async {
     try {
       await supabase.from('bookings').update({
-        'arrived_at': DateTime.now().toIso8601String(),
+        'arrived_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.bookingId);
     } catch (e) {
       if (mounted) {

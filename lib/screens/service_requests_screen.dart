@@ -114,7 +114,7 @@ class _RequestCard extends StatelessWidget {
     final status = request['status'] as String? ?? 'open';
     final budgetMin = (request['budget_min'] as num?)?.toDouble();
     final budgetMax = (request['budget_max'] as num?)?.toDouble();
-    final createdAt = DateTime.tryParse(request['created_at'] ?? '');
+    final createdAt = DateTime.tryParse(request['created_at'] ?? '')?.toLocal();
     final dateStr = createdAt != null
         ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
         : '';

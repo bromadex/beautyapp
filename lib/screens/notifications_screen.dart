@@ -125,7 +125,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _timeAgo(String? iso) {
     if (iso == null) return '';
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return 'Just now';

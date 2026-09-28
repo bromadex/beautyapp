@@ -259,7 +259,7 @@ class BookingCard extends StatelessWidget {
     final service = booking['services'] as Map?;
     final cat = service?['service_categories'] as Map?;
     final profile = booking['profiles'] as Map?;
-    final bookingTime = DateTime.tryParse(booking['booking_time'] ?? '');
+    final bookingTime = DateTime.tryParse(booking['booking_time'] ?? '')?.toLocal();
     final timeStr = bookingTime != null
         ? '${bookingTime.day}/${bookingTime.month}/${bookingTime.year} at ${TimeOfDay.fromDateTime(bookingTime).format(context)}'
         : 'Unknown time';

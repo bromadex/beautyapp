@@ -9,7 +9,7 @@ import { getServiceAccount, pushToUser } from "../_shared/fcm.ts";
 
 Deno.serve(async (req) => {
   const secret = Deno.env.get("WEBHOOK_SECRET");
-  if (secret && req.headers.get("x-webhook-secret") !== secret) {
+  if (!secret || req.headers.get("x-webhook-secret") !== secret) {
     return new Response("Forbidden", { status: 403 });
   }
 

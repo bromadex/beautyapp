@@ -289,14 +289,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     } catch (_) {}
 
     try {
-      final now = DateTime.now().toIso8601String();
       nextBooking = await supabase
           .from('bookings')
           .select('*, services(service_name, duration_minutes), profiles!bookings_client_id_fkey(full_name)')
           .eq('provider_id', userId)
-          .inFilter('status', ['confirmed', 'en_route', 'arrived', 'in_progress'])
-          .gte('booking_date', now.substring(0, 10))
-          .order('booking_date', ascending: true)
+          .eq('status', 'confirmed')
+          .gte('booking_time', DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String())
           .order('booking_time', ascending: true)
           .limit(1)
           .maybeSingle();
@@ -304,8 +302,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
     try {
       final now = DateTime.now();
-      final weekAgo = now.subtract(const Duration(days: 7)).toIso8601String();
-      final twoWeeksAgo = now.subtract(const Duration(days: 14)).toIso8601String();
+      final weekAgo = now.subtract(const Duration(days: 7)).toUtc().toIso8601String();
+      final twoWeeksAgo = now.subtract(const Duration(days: 14)).toUtc().toIso8601String();
 
       final payments = await supabase
           .from('payments')
@@ -326,7 +324,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     } catch (_) {}
 
     try {
-      final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toIso8601String();
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toUtc().toIso8601String();
       final bookings = await supabase
           .from('bookings')
           .select('id, status')
@@ -395,7 +393,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     try {
       final recentBookings = await supabase
           .from('bookings')
-          .select('id, status, booking_date, booking_time, created_at, services(service_name), profiles!bookings_client_id_fkey(full_name)')
+          .select('id, status, booking_time, created_at, services(service_name), profiles!bookings_client_id_fkey(full_name)')
           .eq('provider_id', userId)
           .order('created_at', ascending: false)
           .limit(3);
@@ -692,57 +690,43 @@ class _NextBookingCard extends StatelessWidget {
     final clientName = booking['profiles']?['full_name'] ?? 'Client';
     final serviceName = booking['services']?['service_name'] ?? 'Service';
     final durationMin = booking['services']?['duration_minutes'];
-    final bookingDate = booking['booking_date'] ?? '';
-    final bookingTime = booking['booking_time'] ?? '';
     final bookingId = booking['id'];
+    final bookingDt =
+        DateTime.tryParse(booking['booking_time'] ?? '')?.toLocal();
 
-    String timeDisplay = bookingTime;
-    if (bookingTime.isNotEmpty) {
-      try {
-        final parts = bookingTime.split(':');
-        final hour = int.parse(parts[0]);
-        final minute = parts[1];
-        final period = hour >= 12 ? 'PM' : 'AM';
-        final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-        timeDisplay = '$displayHour:$minute $period';
-      } catch (_) {}
-    }
-
-    String dateDisplay = bookingDate;
+    String timeDisplay = '';
+    String dateDisplay = '';
     String? countdown;
-    if (bookingDate.isNotEmpty && bookingTime.isNotEmpty) {
-      try {
-        final date = DateTime.parse(bookingDate);
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        final tomorrow = today.add(const Duration(days: 1));
-        final bookDay = DateTime(date.year, date.month, date.day);
+    if (bookingDt != null) {
+      final hour = bookingDt.hour;
+      final minute = bookingDt.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      timeDisplay = '$displayHour:$minute $period';
 
-        if (bookDay == today) {
-          dateDisplay = 'Today';
-        } else if (bookDay == tomorrow) {
-          dateDisplay = 'Tomorrow';
-        } else {
-          final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          dateDisplay = '${months[date.month - 1]} ${date.day}';
-        }
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+      final bookDay = DateTime(bookingDt.year, bookingDt.month, bookingDt.day);
+      if (bookDay == today) {
+        dateDisplay = 'Today';
+      } else if (bookDay == tomorrow) {
+        dateDisplay = 'Tomorrow';
+      } else {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateDisplay = '${months[bookingDt.month - 1]} ${bookingDt.day}';
+      }
 
-        try {
-          final timeParts = bookingTime.split(':');
-          final bookingDt = DateTime(date.year, date.month, date.day,
-              int.parse(timeParts[0]), int.parse(timeParts[1]));
-          final diff = bookingDt.difference(now);
-          if (diff.isNegative) {
-            countdown = 'Now';
-          } else if (diff.inMinutes < 60) {
-            countdown = 'In ${diff.inMinutes} min';
-          } else if (diff.inHours < 24) {
-            countdown = 'In ${diff.inHours} hours';
-          } else {
-            countdown = 'In ${diff.inDays} days';
-          }
-        } catch (_) {}
-      } catch (_) {}
+      final diff = bookingDt.difference(now);
+      if (diff.isNegative) {
+        countdown = 'Now';
+      } else if (diff.inMinutes < 60) {
+        countdown = 'In ${diff.inMinutes} min';
+      } else if (diff.inHours < 24) {
+        countdown = 'In ${diff.inHours} hours';
+      } else {
+        countdown = 'In ${diff.inDays} days';
+      }
     }
 
     final clientInitials = clientName.split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
@@ -1406,7 +1390,7 @@ class _ActivityItem extends StatelessWidget {
     String timeAgo = '';
     if (createdAt.isNotEmpty) {
       try {
-        final dt = DateTime.parse(createdAt);
+        final dt = DateTime.parse(createdAt).toLocal();
         final diff = DateTime.now().difference(dt);
         if (diff.inMinutes < 60) {
           timeAgo = '${diff.inMinutes}m ago';

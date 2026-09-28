@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
@@ -62,6 +63,37 @@ class _ServiceRequestQuoteScreenState
     }
   }
 
+  Future<void> _acceptQuote(Map<String, dynamic> q) async {
+    final price = (q['quoted_price'] as num).toStringAsFixed(0);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Accept this quote?'),
+        content: Text(
+            'A booking request for \$$price will be sent to ${q['provider']?['full_name'] ?? 'the stylist'} '
+            'for your preferred date and time. They will confirm it with you.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Accept & Book')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final bookingId = await supabase.rpc('accept_quote', params: {'p_quote_id': q['id']});
+      if (mounted) context.go('/booking/$bookingId');
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      if (e.message.contains('ACTIVATION_REQUIRED')) {
+        context.push('/activation');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   Future<void> _submitQuote() async {
     final price = double.tryParse(_priceCtrl.text);
     if (price == null || price <= 0) {
@@ -110,6 +142,12 @@ class _ServiceRequestQuoteScreenState
           ),
         );
         context.pop();
+      }
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -273,17 +311,7 @@ class _ServiceRequestQuoteScreenState
                         ),
                         trailing: isMyRequest && q['status'] == 'pending'
                             ? FilledButton(
-                                onPressed: () async {
-                                  await supabase
-                                      .from('service_request_quotes')
-                                      .update({'status': 'accepted'})
-                                      .eq('id', q['id']);
-                                  await supabase
-                                      .from('service_requests')
-                                      .update({'status': 'matched'})
-                                      .eq('id', widget.requestId);
-                                  if (mounted) context.pop();
-                                },
+                                onPressed: () => _acceptQuote(q),
                                 style: FilledButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: AppSpacing.md),

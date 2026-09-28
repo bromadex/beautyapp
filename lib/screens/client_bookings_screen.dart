@@ -104,9 +104,18 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
       ),
     );
     if (confirm == true) {
-      await supabase.from('bookings')
-          .update({'status': 'cancelled', 'cancel_reason': 'Cancelled by client'})
-          .eq('id', bookingId);
+      try {
+        await supabase.rpc('cancel_booking', params: {
+          'p_booking_id': bookingId,
+          'p_reason': 'Cancelled by client',
+        });
+      } on PostgrestException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+          );
+        }
+      }
       _load();
     }
   }
@@ -119,8 +128,6 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
 
     await supabase.from('bookings').update({
       'negotiation_status': 'agreed',
-      'agreed_price': counterPrice,
-      'total_price': counterPrice,
     }).eq('id', bookingId);
 
     NotificationService.send(

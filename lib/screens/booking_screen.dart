@@ -1,6 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
+import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/price_offer_sheet.dart';
@@ -8,10 +11,12 @@ import '../widgets/price_offer_sheet.dart';
 class BookingScreen extends StatefulWidget {
   final String providerId;
   final String serviceId;
+  final String? packageId;
   const BookingScreen({
     super.key,
     required this.providerId,
     required this.serviceId,
+    this.packageId,
   });
   @override
   State<BookingScreen> createState() => _BookingScreenState();
@@ -47,9 +52,15 @@ class _BookingScreenState extends State<BookingScreen> {
   // Payment method
   String _paymentMethod = 'cash';
 
-  // Travel fee
+  // Travel fee (estimate; the server recalculates from the same inputs)
   double _travelFee = 0;
   Map<String, dynamic>? _providerProfile;
+  double? _clientLat;
+  double? _clientLng;
+  bool _locating = false;
+
+  // Package booking
+  Map<String, dynamic>? _package;
 
   // Cancellation policy
   Map<String, dynamic>? _cancelPolicy;
@@ -116,6 +127,17 @@ class _BookingScreenState extends State<BookingScreen> {
             .maybeSingle();
       } catch (_) {}
 
+      Map<String, dynamic>? package;
+      if (widget.packageId != null) {
+        package = await supabase
+            .from('service_packages')
+            .select('*, package_services(services(service_name, duration_minutes))')
+            .eq('id', widget.packageId!)
+            .eq('provider_id', widget.providerId)
+            .eq('is_active', true)
+            .maybeSingle();
+      }
+
       // Load cancellation policy
       Map<String, dynamic>? policy;
       try {
@@ -134,6 +156,7 @@ class _BookingScreenState extends State<BookingScreen> {
           _addons = List<Map<String, dynamic>>.from(addons);
           _providerProfile = pp;
           _cancelPolicy = policy;
+          _package = package;
           _loading = false;
         });
       }
@@ -166,32 +189,68 @@ class _BookingScreenState extends State<BookingScreen> {
     if (time != null) setState(() => _selectedTime = time);
   }
 
-  Future<bool> _hasConflict(DateTime bookingDateTime) async {
-    final service = _service!;
-    final durationMinutes = (service['duration_minutes'] as int?) ?? 60;
-    final bookingEnd = bookingDateTime.add(Duration(minutes: durationMinutes));
-
-    final existing = await supabase
-        .from('bookings')
-        .select('booking_time, services(duration_minutes)')
-        .eq('provider_id', widget.providerId)
-        .inFilter('status', ['pending', 'confirmed']);
-
-    for (final b in existing as List) {
-      final existingStart = DateTime.parse(b['booking_time']);
-      final existingDur = (b['services']?['duration_minutes'] as int?) ?? 60;
-      final existingEnd = existingStart.add(Duration(minutes: existingDur));
-
-      if (bookingDateTime.isBefore(existingEnd) &&
-          bookingEnd.isAfter(existingStart)) {
-        return true;
-      }
+  int get _baseDuration {
+    if (_package != null) {
+      final items = (_package!['package_services'] as List?) ?? [];
+      final total = items.fold<int>(0, (sum, ps) =>
+          sum + (((ps['services']?['duration_minutes']) as int?) ?? 0));
+      if (total > 0) return total;
     }
-    return false;
+    return (_service?['duration_minutes'] as int?) ?? 60;
   }
 
-  double get _servicePrice =>
-      (_service?['price'] as num?)?.toDouble() ?? 0;
+  Future<String?> _slotProblem(DateTime bookingDateTime) async {
+    final res = await supabase.rpc('check_slot', params: {
+      'p_provider': widget.providerId,
+      'p_start': bookingDateTime.toUtc().toIso8601String(),
+      'p_minutes': _baseDuration + _addonsDuration,
+    });
+    return res as String?;
+  }
+
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    try {
+      final pos = await LocationService().getCurrentPosition();
+      if (pos == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Location unavailable — travel fee will be agreed with your stylist.')));
+        }
+        return;
+      }
+      setState(() {
+        _clientLat = pos.latitude;
+        _clientLng = pos.longitude;
+        _travelFee = _estimateTravelFee();
+      });
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  double _estimateTravelFee() {
+    final pp = _providerProfile;
+    final perKm = (pp?['travel_fee_per_km'] as num?)?.toDouble() ?? 0;
+    final lat = (pp?['latitude'] as num?)?.toDouble();
+    final lng = (pp?['longitude'] as num?)?.toDouble();
+    if (perKm <= 0 || lat == null || lng == null || _clientLat == null) return 0;
+    double rad(double d) => d * math.pi / 180;
+    final dLat = rad(_clientLat! - lat);
+    final dLng = rad(_clientLng! - lng);
+    final a = math.pow(math.sin(dLat / 2), 2) +
+        math.cos(rad(lat)) * math.cos(rad(_clientLat!)) * math.pow(math.sin(dLng / 2), 2);
+    final km = 6371 * 2 * math.asin(math.sqrt(a));
+    final free = (pp?['free_travel_radius_km'] as num?)?.toDouble() ?? 0;
+    final maxFee = (pp?['max_travel_fee'] as num?)?.toDouble() ?? 20;
+    final fee = math.min(maxFee, math.max(0, km - free) * perKm);
+    return (fee * 100).roundToDouble() / 100;
+  }
+
+  double get _servicePrice => _package != null
+      ? (_package!['package_price'] as num?)?.toDouble() ?? 0
+      : (_service?['price'] as num?)?.toDouble() ?? 0;
 
   double get _addonsTotal {
     double total = 0;
@@ -250,62 +309,22 @@ class _BookingScreenState extends State<BookingScreen> {
     });
 
     try {
-      final results = await supabase
-          .from('promotions')
-          .select()
-          .eq('provider_id', widget.providerId)
-          .ilike('code', code)
-          .eq('is_active', true)
-          .limit(1);
-
-      if (results.isEmpty) {
-        if (mounted) setState(() => _promoError = 'Invalid promo code');
+      final rows = await supabase.rpc('check_promo', params: {
+        'p_provider': widget.providerId,
+        'p_code': code,
+        'p_amount': _effectivePrice,
+      }) as List;
+      final res = rows.isNotEmpty ? rows.first as Map<String, dynamic> : null;
+      if (res == null || res['error'] != null) {
+        if (mounted) setState(() => _promoError = res?['error'] ?? 'Invalid promo code');
         return;
       }
-
-      final promo = results[0] as Map<String, dynamic>;
-
-      // Check expiry
-      if (promo['valid_until'] != null) {
-        final validUntil = DateTime.parse(promo['valid_until']);
-        if (validUntil.isBefore(DateTime.now())) {
-          if (mounted) setState(() => _promoError = 'This promo code has expired');
-          return;
-        }
-      }
-
-      // Check max uses
-      if (promo['max_uses'] != null &&
-          (promo['used_count'] ?? 0) >= promo['max_uses']) {
-        if (mounted) setState(() => _promoError = 'This promo code has reached its limit');
-        return;
-      }
-
-      // Check min order amount
-      final minOrder =
-          (promo['min_order_amount'] as num?)?.toDouble() ?? 0;
-      if (_servicePrice < minOrder) {
-        if (mounted) setState(() => _promoError =
-            'Min order \$${minOrder.toStringAsFixed(0)} required');
-        return;
-      }
-
-      // Calculate discount
-      double discount;
-      if (promo['discount_type'] == 'percentage') {
-        discount =
-            _servicePrice * (promo['discount_value'] as num).toDouble() / 100;
-      } else {
-        discount = (promo['discount_value'] as num).toDouble();
-      }
-      discount = discount.clamp(0, _servicePrice);
-
       setState(() {
-        _appliedPromo = promo;
-        _discountAmount = discount;
+        _appliedPromo = {'code': code};
+        _discountAmount = (res['discount'] as num).toDouble();
       });
     } catch (e) {
-      setState(() => _promoError = 'Error applying promo code');
+      if (mounted) setState(() => _promoError = 'Error applying promo code');
     } finally {
       if (mounted) setState(() => _applyingPromo = false);
     }
@@ -399,34 +418,11 @@ class _BookingScreenState extends State<BookingScreen> {
         // Subscriptions table unreachable — don't block the client
       }
 
-      final pp = await supabase
-          .from('provider_profiles')
-          .select('availability_status')
-          .eq('provider_id', widget.providerId)
-          .maybeSingle();
-
-      if (pp?['availability_status'] == 'busy') {
+      final problem = await _slotProblem(bookingDateTime);
+      if (problem != null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('This provider is currently busy'),
-              backgroundColor: AppColors.warning,
-            ),
-          );
-        }
-        setState(() => _submitting = false);
-        return;
-      }
-
-      final conflict = await _hasConflict(bookingDateTime);
-      if (conflict) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  'The provider already has a booking at that time. Please choose another slot.'),
-              backgroundColor: AppColors.error,
-            ),
+            SnackBar(content: Text(problem), backgroundColor: AppColors.error),
           );
         }
         setState(() => _submitting = false);
@@ -437,7 +433,7 @@ class _BookingScreenState extends State<BookingScreen> {
         'client_id': currentUid,
         'provider_id': widget.providerId,
         'service_id': widget.serviceId,
-        'booking_time': bookingDateTime.toIso8601String(),
+        'booking_time': bookingDateTime.toUtc().toIso8601String(),
         'address': _addressCtrl.text.trim(),
         'status': 'pending',
         'total_price': _totalPrice,
@@ -446,6 +442,9 @@ class _BookingScreenState extends State<BookingScreen> {
         'payment_method': _paymentMethod,
         'addons_total': _addonsTotal,
         'travel_fee': _travelFee,
+        if (_package != null) 'package_id': _package!['id'],
+        if (_clientLat != null) 'client_lat': _clientLat,
+        if (_clientLng != null) 'client_lng': _clientLng,
         'client_note':
             _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
         if (_isNegotiated) ...{
@@ -454,7 +453,7 @@ class _BookingScreenState extends State<BookingScreen> {
           'negotiation_rounds': 1,
           'offer_expires_at': DateTime.now()
               .add(const Duration(hours: 24))
-              .toIso8601String(),
+              .toUtc().toIso8601String(),
         },
       };
 
@@ -477,16 +476,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   'addon_duration': a['duration_minutes'] ?? 0,
                 }))
             .toList();
-        try {
-          await supabase.from('booking_addons').insert(addonRows);
-        } catch (_) {}
-      }
-
-      // Increment promo used_count
-      if (_appliedPromo != null) {
-        await supabase.from('promotions').update({
-          'used_count': (_appliedPromo!['used_count'] ?? 0) + 1,
-        }).eq('id', _appliedPromo!['id']);
+        await supabase.from('booking_addons').insert(addonRows);
       }
 
       // Notify provider
@@ -536,6 +526,15 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
             ],
           ),
+        );
+      }
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      if (e.message.contains('ACTIVATION_REQUIRED')) {
+        context.push('/activation');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
         );
       }
     } catch (e) {
@@ -650,11 +649,13 @@ class _BookingScreenState extends State<BookingScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_service!['service_name'],
+                            Text(_package?['name'] ?? _service!['service_name'],
                                 style: Theme.of(context).textTheme.titleMedium),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
-                              '${cat?['name'] ?? ''} -- ${_service!['duration_minutes']} min',
+                              _package != null
+                                  ? 'Package -- $_baseDuration min'
+                                  : '${cat?['name'] ?? ''} -- $_baseDuration min',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: 2),
@@ -663,7 +664,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           ],
                         ),
                       ),
-                      Text('\$${_service!['price']}',
+                      Text('\$${_servicePrice.toStringAsFixed(_servicePrice % 1 == 0 ? 0 : 2)}',
                           style: Theme.of(context)
                               .textTheme
                               .headlineSmall
@@ -719,6 +720,30 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               maxLines: 2,
             ),
+            if (((_providerProfile?['travel_fee_per_km'] as num?) ?? 0) > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(children: [
+                TextButton.icon(
+                  onPressed: _locating ? null : _useMyLocation,
+                  icon: _locating
+                      ? const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.my_location_rounded, size: 18),
+                  label: Text(_clientLat == null
+                      ? 'Use my location for travel fee'
+                      : 'Location set'),
+                ),
+                const Spacer(),
+                if (_clientLat != null)
+                  Text(
+                    _travelFee > 0
+                        ? 'Travel: \$${_travelFee.toStringAsFixed(2)}'
+                        : 'No travel fee',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              ]),
+            ],
 
             const SizedBox(height: AppSpacing.xxl),
 

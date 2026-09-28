@@ -27,6 +27,13 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   final _noShowCtrl = TextEditingController(text: '100');
   final _policyTextCtrl = TextEditingController();
 
+  // Business verification
+  final _bizNameCtrl = TextEditingController();
+  final _bizRegCtrl = TextEditingController();
+  Map<String, dynamic>? _bizVerification;
+  bool _bizVerified = false;
+  bool _submittingBiz = false;
+
   // WhatsApp
   final _whatsappCtrl = TextEditingController();
   String _preferredContact = 'in_app';
@@ -71,10 +78,19 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
       final profile = await supabase
           .from('profiles')
-          .select('whatsapp_number')
+          .select('whatsapp_number, is_business_verified')
           .eq('id', uid)
           .maybeSingle();
       _whatsappCtrl.text = profile?['whatsapp_number'] ?? '';
+      _bizVerified = profile?['is_business_verified'] == true;
+
+      _bizVerification = await supabase
+          .from('business_verifications')
+          .select()
+          .eq('provider_id', uid)
+          .maybeSingle();
+      _bizNameCtrl.text = _bizVerification?['business_name'] ?? '';
+      _bizRegCtrl.text = _bizVerification?['registration_number'] ?? '';
     } catch (_) {}
 
     if (mounted) setState(() => _loading = false);
@@ -101,7 +117,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         'policy_text': _policyTextCtrl.text.trim().isEmpty
             ? null
             : _policyTextCtrl.text.trim(),
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'provider_id');
 
       await supabase.from('profiles').update({
@@ -131,8 +147,93 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     }
   }
 
+  Future<void> _submitBusiness() async {
+    if (_bizNameCtrl.text.trim().isEmpty || _bizRegCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter your business name and registration number')));
+      return;
+    }
+    setState(() => _submittingBiz = true);
+    try {
+      final row = await supabase.from('business_verifications').upsert({
+        'provider_id': supabase.auth.currentUser!.id,
+        'business_name': _bizNameCtrl.text.trim(),
+        'registration_number': _bizRegCtrl.text.trim(),
+        'status': 'pending',
+      }, onConflict: 'provider_id').select().single();
+      if (mounted) {
+        setState(() => _bizVerification = row);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Submitted — we\'ll review it within 2 working days')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) setState(() => _submittingBiz = false);
+    }
+  }
+
+  Widget _buildBusinessSection() {
+    final status = _bizVerification?['status'];
+    if (_bizVerified) {
+      return _StatusNote(
+        icon: Icons.verified_rounded,
+        color: AppColors.success,
+        text: 'Your business is verified. Clients see a Verified Business badge on your profile.',
+      );
+    }
+    if (status == 'pending') {
+      return _StatusNote(
+        icon: Icons.hourglass_top_rounded,
+        color: AppColors.warning,
+        text: 'Submitted for review: ${_bizVerification?['business_name'] ?? ''}. We\'ll notify you once it\'s checked.',
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (status == 'rejected')
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: _StatusNote(
+            icon: Icons.info_outline_rounded,
+            color: AppColors.error,
+            text: 'Not approved${_bizVerification?['admin_notes'] != null ? ': ${_bizVerification!['admin_notes']}' : ''}. You can correct the details and resubmit.',
+          ),
+        ),
+      Text('Registered salons and businesses can get a Verified Business badge.',
+          style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _bizNameCtrl,
+        decoration: InputDecoration(
+          labelText: 'Registered business name',
+          border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+          isDense: true,
+        ),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      TextField(
+        controller: _bizRegCtrl,
+        decoration: InputDecoration(
+          labelText: 'Company registration number',
+          border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+          isDense: true,
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      OutlinedButton(
+        onPressed: _submittingBiz ? null : _submitBusiness,
+        child: Text(_submittingBiz ? 'Submitting…' : 'Submit for Verification'),
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
+    _bizNameCtrl.dispose();
+    _bizRegCtrl.dispose();
     _travelFeeCtrl.dispose();
     _freeRadiusCtrl.dispose();
     _maxTravelFeeCtrl.dispose();
@@ -308,6 +409,15 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
               ],
             ),
 
+            const SizedBox(height: AppSpacing.xxl),
+
+            _SectionHeader(
+              icon: Icons.storefront_outlined,
+              title: 'Business Verification',
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildBusinessSection(),
+
             const SizedBox(height: AppSpacing.xxxl),
 
             FilledButton(
@@ -372,6 +482,29 @@ class _NumberField extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
         isDense: true,
       ),
+    );
+  }
+}
+
+class _StatusNote extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  const _StatusNote({required this.icon, required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: AppRadius.mdAll,
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13, height: 1.4))),
+      ]),
     );
   }
 }

@@ -144,8 +144,6 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
 
     await supabase.from('bookings').update({
       'negotiation_status': 'agreed',
-      'agreed_price': offeredPrice,
-      'total_price': offeredPrice,
     }).eq('id', bookingId);
 
     NotificationService.send(
@@ -190,7 +188,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       'provider_counter_price': counterPrice,
       'negotiation_rounds': rounds + 1,
       'offer_expires_at':
-          DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+          DateTime.now().add(const Duration(hours: 24)).toUtc().toIso8601String(),
     }).eq('id', bookingId);
 
     NotificationService.send(

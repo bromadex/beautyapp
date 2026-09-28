@@ -1,8 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
-import '../services/notification_service.dart';
 import '../services/paynow_service.dart';
 import '../theme.dart';
 import '../widgets/payment_method_card.dart';
@@ -55,6 +54,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         setState(() {
           _booking = booking;
           _service = booking['services'];
+          _selectedMethod = switch (booking['payment_method']) {
+            'cash' => 'cash_on_delivery',
+            'ecocash' => 'mobile_money',
+            _ => 'card',
+          };
           _loading = false;
         });
       }
@@ -77,9 +81,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double get _discountAmount =>
       (_booking?['discount_amount'] as num?)?.toDouble() ?? 0.0;
 
-  String _generateRef() =>
-      'TXN-${DateTime.now().millisecondsSinceEpoch}-${Random().nextInt(9999)}';
-
   Future<void> _processPayment() async {
     if (_selectedMethod == 'mobile_money' &&
         _mobileNumberCtrl.text.trim().isEmpty) {
@@ -95,101 +96,51 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _processing = true);
 
     try {
-      final uid = supabase.auth.currentUser?.id;
-      if (uid == null) return;
-      final ref = _generateRef();
-      final now = DateTime.now().toIso8601String();
+      if (_selectedMethod == 'cash_on_delivery') {
+        await supabase.rpc('choose_cash_payment',
+            params: {'p_booking_id': widget.bookingId});
+        if (mounted) _showSuccessDialog(true, 'Cash');
+        return;
+      }
 
-      final isCod = _selectedMethod == 'cash_on_delivery';
-      final paymentStatus = isCod ? 'pending' : 'paid';
-      final bookingPaymentStatus = isCod ? 'cod_pending' : 'paid';
-
-      // Stage 20: try real Paynow checkout first (card + mobile money).
-      // Falls through to the simulated path only when Paynow isn't
-      // configured yet.
-      if (!isCod) {
-        final method = _selectedMethod == 'mobile_money'
+      final outcome = await PaynowCheckout.run(
+        context,
+        purpose: 'booking',
+        bookingId: widget.bookingId,
+        method: _selectedMethod == 'mobile_money'
             ? _selectedNetwork.toLowerCase()
-            : 'web';
-        final outcome = await PaynowCheckout.run(
-          context,
-          purpose: 'booking',
-          bookingId: widget.bookingId,
-          method: method,
-          phone: _selectedMethod == 'mobile_money'
-              ? _mobileNumberCtrl.text.trim()
-              : null,
-        );
-
-        if (outcome != PaynowOutcome.unconfigured) {
-          if (mounted) setState(() => _processing = false);
-          if (!mounted) return;
-          switch (outcome) {
-            case PaynowOutcome.paid:
-              // Edge functions recorded the payment and notified the provider
-              _showSuccessDialog(false, 'Paynow');
-              break;
-            case PaynowOutcome.failed:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Payment was not completed. Please try again.'),
-                  backgroundColor: AppColors.error,
-                ),
-              );
-              break;
-            case PaynowOutcome.timeout:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                      'Payment still pending — check My Bookings in a few minutes.'),
-                  backgroundColor: AppColors.warning,
-                ),
-              );
-              break;
-            case PaynowOutcome.cancelled:
-            case PaynowOutcome.unconfigured:
-              break;
-          }
-          return;
-        }
-      }
-
-      // Simulate processing delay for card/mobile money
-      if (!isCod) {
-        await Future.delayed(const Duration(seconds: 2));
-      }
-
-      // Insert payment record — provider keeps 100%, no commission
-      await supabase.from('payments').insert({
-        'booking_id': widget.bookingId,
-        'client_id': uid,
-        'provider_id': _booking!['provider_id'],
-        'amount': _amount,
-        'method': _selectedMethod,
-        'status': paymentStatus,
-        'transaction_ref': ref,
-        'paid_at': isCod ? null : now,
-      });
-
-      // Update booking payment status
-      await supabase.from('bookings').update({
-        'payment_status': bookingPaymentStatus,
-      }).eq('id', widget.bookingId);
-
-      // Notify provider
-      final serviceName = _service?['service_name'] ?? 'a service';
-      NotificationService.send(
-        userId: _booking!['provider_id'],
-        type: 'payment',
-        title: isCod ? 'Cash Payment Pending' : 'Payment Received',
-        body: isCod
-            ? 'Client chose cash on delivery for $serviceName (\$${_amount.toStringAsFixed(2)})'
-            : 'You received \$${_amount.toStringAsFixed(2)} for $serviceName',
-        referenceId: widget.bookingId,
+            : 'web',
+        phone: _selectedMethod == 'mobile_money'
+            ? _mobileNumberCtrl.text.trim()
+            : null,
       );
-
+      if (!mounted) return;
+      switch (outcome) {
+        case PaynowOutcome.paid:
+          _showSuccessDialog(false, 'Paynow');
+        case PaynowOutcome.failed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment was not completed. Please try again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        case PaynowOutcome.timeout:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Payment still pending — check My Bookings in a few minutes.'),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        case PaynowOutcome.cancelled:
+          break;
+      }
+    } on PostgrestException catch (e) {
       if (mounted) {
-        _showSuccessDialog(isCod, ref);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+        );
       }
     } catch (e) {
       if (mounted) {

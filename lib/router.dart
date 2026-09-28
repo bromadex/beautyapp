@@ -12,6 +12,8 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_users_screen.dart';
 import 'screens/admin_bookings_screen.dart';
 import 'screens/admin_analytics_screen.dart';
+import 'screens/admin_disputes_screen.dart';
+import 'screens/admin_business_screen.dart';
 import 'screens/provider_profile_editor_screen.dart';
 import 'screens/service_management_screen.dart';
 import 'screens/gallery_management_screen.dart';
@@ -203,6 +205,20 @@ final appRouter = GoRouter(
 
     // Provider Management (Stage 3)
     GoRoute(
+      path: '/admin/disputes',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AdminDisputesScreen(),
+    ),
+
+    // Provider Management (Stage 3)
+    GoRoute(
+      path: '/admin/business',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AdminBusinessScreen(),
+    ),
+
+    // Provider Management (Stage 3)
+    GoRoute(
       path: '/provider/profile/edit',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const ProviderProfileEditorScreen(),
@@ -258,6 +274,7 @@ final appRouter = GoRouter(
       builder: (_, state) => BookingScreen(
         providerId: state.pathParameters['providerId']!,
         serviceId:  state.pathParameters['serviceId']!,
+        packageId:  state.uri.queryParameters['package'],
       ),
     ),
     GoRoute(

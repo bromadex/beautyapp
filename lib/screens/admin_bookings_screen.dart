@@ -180,8 +180,11 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
     final serviceName = b['services']?['service_name'] ?? 'Service';
     final status = b['status'] ?? 'pending';
     final price = b['total_price'];
-    final date = b['booking_date'] ?? '';
-    final time = b['booking_time'] ?? '';
+    final dt = DateTime.tryParse(b['booking_time'] ?? '')?.toLocal();
+    final date = dt == null ? '' : '${dt.day}/${dt.month}/${dt.year}';
+    final time = dt == null
+        ? ''
+        : '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     final canCancel = !['completed', 'cancelled'].contains(status);
 
     return Container(

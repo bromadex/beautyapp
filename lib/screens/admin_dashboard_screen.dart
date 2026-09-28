@@ -247,15 +247,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _ActionItem(Icons.calendar_month_rounded, 'Bookings', AppColors.secondary, () => context.push('/admin/bookings')),
       _ActionItem(Icons.verified_rounded, 'Verifications', AppColors.warning, () => context.push('/admin/verify')),
       _ActionItem(Icons.bar_chart_rounded, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),
+      _ActionItem(Icons.flag_rounded, 'Disputes', AppColors.error, () => context.push('/admin/disputes')),
+      _ActionItem(Icons.storefront_rounded, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
     ];
 
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: AppSpacing.sm,
       mainAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 0.85,
+      childAspectRatio: 1.1,
       children: actions.map((a) => _buildActionTile(a)).toList(),
     );
   }

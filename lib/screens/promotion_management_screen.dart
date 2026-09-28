@@ -237,7 +237,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                   'min_order_amount':
                       double.tryParse(minOrderCtrl.text.trim()) ?? 0,
                   'max_uses': int.tryParse(maxUsesCtrl.text.trim()),
-                  'valid_until': validUntil?.toIso8601String(),
+                  'valid_until': validUntil?.toUtc().toIso8601String(),
                 };
 
                 try {

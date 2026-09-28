@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/paynow_service.dart';
-import '../supabase_client.dart';
 import '../theme.dart';
 
 /// Stage 19: One-time $1 client activation wall.
 /// Shown after verification approval, before unlimited booking access.
-/// Payment is simulated until Paynow goes live (Stage 20).
 class ActivationScreen extends StatefulWidget {
   const ActivationScreen({super.key});
 
@@ -20,13 +18,10 @@ class _ActivationScreenState extends State<ActivationScreen> {
   Future<void> _activate() async {
     setState(() => _paying = true);
     try {
-      // Stage 20: real Paynow checkout when configured
       final outcome =
           await PaynowCheckout.run(context, purpose: 'activation');
 
-      if (outcome == PaynowOutcome.paid) {
-        // Webhook already set is_activated = true
-      } else if (outcome != PaynowOutcome.unconfigured) {
+      if (outcome != PaynowOutcome.paid) {
         if (mounted) {
           setState(() => _paying = false);
           if (outcome == PaynowOutcome.failed ||
@@ -42,14 +37,6 @@ class _ActivationScreenState extends State<ActivationScreen> {
           }
         }
         return;
-      } else {
-        // Simulated payment fallback (Paynow not configured yet)
-        await Future.delayed(const Duration(seconds: 2));
-
-        await supabase
-            .from('profiles')
-            .update({'is_activated': true})
-            .eq('id', supabase.auth.currentUser!.id);
       }
 
       if (!mounted) return;

@@ -47,15 +47,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
   }
 
   Future<void> _markCodPaid(String paymentId, String bookingId) async {
-    await supabase.from('payments').update({
-      'status': 'paid',
-      'paid_at': DateTime.now().toIso8601String(),
-    }).eq('id', paymentId);
-
-    await supabase.from('bookings').update({
-      'payment_status': 'paid',
-      'status': 'completed',
-    }).eq('id', bookingId);
+    await supabase.rpc('confirm_cash_received', params: {'p_booking_id': bookingId});
 
     await _loadEarnings();
 

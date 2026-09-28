@@ -6,12 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
-/// Stage 20: Paynow checkout client.
-///
-/// Talks to the `initiate-payment` / `check-payment-status` edge functions.
-/// When Paynow isn't configured yet (no merchant credentials, or functions
-/// not deployed), [PaynowCheckout.run] returns [PaynowOutcome.unconfigured]
-/// and callers fall back to the simulated payment path.
+/// Paynow checkout client for the `initiate-payment` /
+/// `check-payment-status` edge functions. Payment state is only ever
+/// written server-side.
 class PaynowInitResult {
   final bool configured;
   final String? paymentId;
@@ -28,7 +25,7 @@ class PaynowInitResult {
   });
 }
 
-enum PaynowOutcome { paid, failed, cancelled, timeout, unconfigured }
+enum PaynowOutcome { paid, failed, cancelled, timeout }
 
 class PaynowService {
   /// Starts a Paynow transaction server-side.
@@ -64,9 +61,10 @@ class PaynowService {
         browserUrl: data['browserUrl'] as String?,
         instructions: data['instructions'] as String?,
       );
-    } catch (_) {
-      // Function not deployed / network error → simulated fallback
-      return const PaynowInitResult(configured: false);
+    } catch (e) {
+      return const PaynowInitResult(
+          configured: true,
+          error: 'Could not reach the payment service. Check your connection and try again.');
     }
   }
 
@@ -104,13 +102,11 @@ class PaynowCheckout {
       months: months,
     );
 
-    if (!init.configured) return PaynowOutcome.unconfigured;
-
-    if (init.error != null || init.paymentId == null) {
+    if (init.error != null || init.paymentId == null || !init.configured) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment could not be started: ${init.error ?? 'unknown error'}'),
+            content: Text('Payment could not be started: ${init.error ?? 'payments are temporarily unavailable'}'),
             backgroundColor: AppColors.error,
           ),
         );

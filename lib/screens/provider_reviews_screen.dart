@@ -86,7 +86,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     try {
       await supabase.from('reviews').update({
         'provider_reply': reply,
-        'provider_reply_at': DateTime.now().toIso8601String(),
+        'provider_reply_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', review['id']);
       _load();
     } catch (e) {

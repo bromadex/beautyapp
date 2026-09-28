@@ -165,7 +165,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
                   itemBuilder: (_, i) {
                     final note = _notes[i];
                     final createdAt =
-                        DateTime.tryParse(note['created_at'] ?? '');
+                        DateTime.tryParse(note['created_at'] ?? '')?.toLocal();
                     final dateStr = createdAt != null
                         ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
                         : '';

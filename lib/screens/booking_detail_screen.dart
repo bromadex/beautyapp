@@ -19,6 +19,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _loading = true;
   String? _error;
   bool _isProvider = false;
+  Map<String, dynamic>? _policy;
   RealtimeChannel? _channel;
 
   @override
@@ -73,9 +74,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         return;
       }
 
+      final policy = await supabase
+          .from('cancellation_policies')
+          .select()
+          .eq('provider_id', data['provider_id'])
+          .maybeSingle();
+
       if (mounted) {
         setState(() {
           _booking    = data;
+          _policy     = policy;
           _isProvider = data['provider_id'] == userId;
           _loading    = false;
         });
@@ -109,7 +117,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   Future<void> _markArrived() async {
     await supabase.from('bookings').update({
-      'provider_arrived_at': DateTime.now().toIso8601String(),
+      'provider_arrived_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', widget.bookingId);
     final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
     NotificationService.send(
@@ -124,7 +132,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   Future<void> _markStarted() async {
     await supabase.from('bookings').update({
-      'service_started_at': DateTime.now().toIso8601String(),
+      'service_started_at': DateTime.now().toUtc().toIso8601String(),
       'status':             'confirmed',
     }).eq('id', widget.bookingId);
     final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
@@ -162,7 +170,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (confirm == true) {
       await supabase.from('bookings').update({
         'status':               'completed',
-        'service_completed_at': DateTime.now().toIso8601String(),
+        'service_completed_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.bookingId);
       final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
       final serviceName = _booking?['services']?['service_name'] ?? 'your service';
@@ -178,7 +186,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   // -- Cancel booking --
+  double get _lateCancelFee {
+    final b = _booking!;
+    if (_isProvider || b['status'] != 'confirmed' || _policy == null) return 0;
+    final start = DateTime.tryParse(b['booking_time'] ?? '');
+    if (start == null) return 0;
+    final freeHours = (_policy!['free_cancel_hours'] as num?)?.toInt() ?? 24;
+    if (start.difference(DateTime.now()).inMinutes >= freeHours * 60) return 0;
+    final pct = (_policy!['late_cancel_fee_percent'] as num?)?.toDouble() ?? 0;
+    final total = (b['total_price'] as num?)?.toDouble() ?? 0;
+    return (total * pct / 100 * 100).roundToDouble() / 100;
+  }
+
   Future<void> _cancelBooking() async {
+    final fee = _lateCancelFee;
     final reason = await showDialog<String>(
       context: context,
       builder: (ctx) {
@@ -187,8 +208,24 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           title: const Text('Cancel Booking'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Are you sure you want to cancel this booking?'),
+              if (fee > 0) ...[
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.smAll,
+                  ),
+                  child: Text(
+                    'This is within ${_policy!['free_cancel_hours']}h of your appointment, '
+                    'so a late cancellation fee of \$${fee.toStringAsFixed(2)} applies.',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: ctrl,
@@ -216,31 +253,48 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (reason == null) return;
 
     try {
-      final uid = supabase.auth.currentUser!.id;
-      await supabase.from('bookings').update({
-        'status': 'cancelled',
-        'cancelled_by': _isProvider ? 'provider' : 'client',
-        'cancelled_at': DateTime.now().toIso8601String(),
-        'cancel_reason': reason.isEmpty ? null : reason,
-      }).eq('id', widget.bookingId);
-
-      final notifyId =
-          _isProvider ? _booking!['client_id'] : _booking!['provider_id'];
-      final myName = _isProvider
-          ? (_booking?['provider']?['full_name'] ?? 'Provider')
-          : (_booking?['client']?['full_name'] ?? 'Client');
-      NotificationService.send(
-        userId: notifyId,
-        type: 'booking_status',
-        title: 'Booking Cancelled',
-        body: '$myName cancelled the booking${reason.isNotEmpty ? ': $reason' : ''}',
-        referenceId: widget.bookingId,
-      );
+      await supabase.rpc('cancel_booking', params: {
+        'p_booking_id': widget.bookingId,
+        'p_reason': reason,
+      });
       _load();
-    } catch (e) {
+    } on PostgrestException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  // -- No-show --
+  Future<void> _markNoShow() async {
+    final other = _isProvider ? 'the client' : 'your stylist';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report a No-Show?'),
+        content: Text(
+            'Only do this if $other did not turn up. The booking will be closed'
+            '${_isProvider && _policy != null ? ' and your no-show fee of ${_policy!['no_show_fee_percent']}% will be recorded' : ''}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Report No-Show'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await supabase.rpc('mark_no_show', params: {'p_booking_id': widget.bookingId});
+      _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
         );
       }
     }
@@ -384,7 +438,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ],
                   ),
                 ),
-                Text('\$${service?['price'] ?? b['total_price']}',
+                Text('\$${b['total_price'] ?? service?['price']}',
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall
@@ -439,6 +493,18 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ],
               ),
             ),
+
+            if (((b['cancellation_fee'] as num?) ?? 0) > 0) ...[
+              const SizedBox(height: AppSpacing.md),
+              _Section(
+                title: b['no_show_by'] != null ? 'NO-SHOW FEE' : 'CANCELLATION FEE',
+                child: _InfoRow(
+                  icon: Icons.receipt_long_outlined,
+                  label: '\$${(b['cancellation_fee'] as num).toStringAsFixed(2)} owed to the stylist'
+                      '${b['cancel_reason'] != null ? ' — ${b['cancel_reason']}' : ''}',
+                ),
+              ),
+            ],
 
             // Client note
             if (b['client_note'] != null && (b['client_note'] as String).isNotEmpty) ...[
@@ -622,6 +688,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 subtitle: 'Rebook with the same provider and service',
                 color: AppColors.secondary,
                 onTap: _bookAgain,
+              ),
+            ],
+
+            // No-show (either side, once the booking time has passed)
+            if (status == 'confirmed' &&
+                (DateTime.tryParse(b['booking_time'] ?? '')?.isBefore(DateTime.now()) ?? false)) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _ActionCard(
+                icon: Icons.person_off_outlined,
+                label: 'Report a No-Show',
+                subtitle: _isProvider ? 'The client did not turn up' : 'Your stylist did not arrive',
+                color: AppColors.error,
+                onTap: _markNoShow,
               ),
             ],
 
