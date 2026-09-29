@@ -52,24 +52,37 @@ Future<void> _applyPendingOAuthUserType() async {
   if (user == null) return;
 
   try {
-    await supabase.from('profiles').upsert({
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ??
-          user.userMetadata?['name'] ??
-          user.email?.split('@').first ??
-          '',
-      'user_type': pendingType,
-    }, onConflict: 'id');
+    // Only a brand-new account takes the role picked on the sign-up page. An
+    // existing account keeps its name, bio and role (the database also refuses
+    // role changes on accounts older than a day or with bookings).
+    final existing =
+        await supabase.from('profiles').select('user_type').eq('id', user.id).maybeSingle();
+    if (existing == null) {
+      await supabase.from('profiles').insert({
+        'id': user.id,
+        'full_name': user.userMetadata?['full_name'] ??
+            user.userMetadata?['name'] ??
+            user.email?.split('@').first ??
+            '',
+        'user_type': pendingType,
+      });
+    } else if (existing['user_type'] != pendingType) {
+      await supabase.from('profiles').update({'user_type': pendingType}).eq('id', user.id);
+    }
 
-    if (pendingType == 'provider') {
-      await supabase.from('provider_profiles').upsert({
-        'provider_id': user.id,
-        'bio': '',
-      }, onConflict: 'provider_id');
+    final row = await supabase.from('profiles').select('user_type').eq('id', user.id).maybeSingle();
+    final actualType = (row?['user_type'] ?? pendingType) as String;
+
+    if (actualType == 'provider') {
+      await supabase.from('provider_profiles').upsert(
+        {'provider_id': user.id, 'bio': ''},
+        onConflict: 'provider_id',
+        ignoreDuplicates: true,
+      );
     }
 
     await supabase.auth.updateUser(UserAttributes(
-      data: {'user_type': pendingType},
+      data: {'user_type': actualType},
     ));
   } catch (_) {}
 }
