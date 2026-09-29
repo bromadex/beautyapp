@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../widgets/booking_card.dart';
@@ -101,7 +102,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.check_circle_outline,
+          child: const Icon(TablerIcons.circle_check,
               color: AppColors.success, size: 32),
         ),
         title: const Text('Mark as Completed?'),
@@ -144,7 +145,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.error_outline,
+                  child: const Icon(TablerIcons.alert_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -154,7 +155,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: const Icon(TablerIcons.refresh),
                   label: const Text('Retry'),
                 ),
               ],

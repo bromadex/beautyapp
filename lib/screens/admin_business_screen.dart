@@ -80,7 +80,7 @@ class _AdminBusinessScreenState extends State<AdminBusinessScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _items.isEmpty
               ? Center(child: Text('Nothing waiting for review',
-                  style: Theme.of(context).textTheme.bodyMedium))
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)))
               : ListView.separated(
                   padding: AppSpacing.screenPadding,
                   itemCount: _items.length,
@@ -96,9 +96,9 @@ class _AdminBusinessScreenState extends State<AdminBusinessScreen> {
                           const SizedBox(height: AppSpacing.xs),
                           Text('Owner: ${v['profiles']?['full_name'] ?? '—'}'
                               '${v['profiles']?['phone'] != null ? ' · ${v['profiles']['phone']}' : ''}',
-                              style: Theme.of(context).textTheme.bodyMedium),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                           Text('Registration no.: ${v['registration_number'] ?? '—'}',
-                              style: Theme.of(context).textTheme.bodyMedium),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                           const SizedBox(height: AppSpacing.md),
                           Row(children: [
                             Expanded(

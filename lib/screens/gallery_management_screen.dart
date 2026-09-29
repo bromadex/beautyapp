@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -108,7 +109,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: AppRadius.smAll,
                 ),
-                child: const Icon(Icons.add_photo_alternate_outlined,
+                child: const Icon(TablerIcons.photo_plus,
                     color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -137,7 +138,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                         width: double.infinity,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.surfaceMuted,
-                          child: const Icon(Icons.broken_image_outlined,
+                          child: const Icon(TablerIcons.photo_off,
                               size: 48, color: AppColors.textTertiary),
                         ),
                       ),
@@ -148,7 +149,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                     value: selectedCat,
                     decoration: const InputDecoration(
                       labelText: 'Category',
-                      prefixIcon: Icon(Icons.category_outlined),
+                      prefixIcon: Icon(TablerIcons.category),
                     ),
                     borderRadius: AppRadius.mdAll,
                     items: _categories.map((c) => DropdownMenuItem(
@@ -164,7 +165,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Caption (optional)',
                       hintText: 'e.g. Box braids -- medium length',
-                      prefixIcon: Icon(Icons.short_text_rounded),
+                      prefixIcon: Icon(TablerIcons.align_left),
                     ),
                     maxLines: 2,
                   ),
@@ -195,7 +196,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                   'category_id': selectedCat,
                 });
               },
-              icon: const Icon(Icons.cloud_upload_outlined),
+              icon: const Icon(TablerIcons.cloud_upload),
               label: const Text('Upload'),
             ),
           ],
@@ -271,7 +272,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
         onPressed: _uploading ? null : _uploadImage,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_photo_alternate_outlined),
+        icon: const Icon(TablerIcons.photo_plus),
         label: const Text('Add Photo'),
       ),
       body: Stack(
@@ -336,7 +337,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                Icons.camera_alt_outlined,
+                TablerIcons.camera,
                 size: 48,
                 color: AppColors.primary,
               ),
@@ -363,7 +364,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
             const SizedBox(height: AppSpacing.xxl),
             FilledButton.icon(
               onPressed: _uploadImage,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
+              icon: const Icon(TablerIcons.photo_plus),
               label: const Text('Add Your First Photo'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -448,7 +449,7 @@ class _GalleryImageCardState extends State<_GalleryImageCard> {
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: AppColors.surfaceMuted,
-                  child: const Icon(Icons.broken_image_outlined,
+                  child: const Icon(TablerIcons.photo_off,
                       color: AppColors.textTertiary),
                 ),
               ),
@@ -462,7 +463,7 @@ class _GalleryImageCardState extends State<_GalleryImageCard> {
                   child: Center(
                     child: IconButton(
                       onPressed: widget.onDelete,
-                      icon: const Icon(Icons.delete_outline_rounded),
+                      icon: const Icon(TablerIcons.trash),
                       color: Colors.white,
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.error.withValues(alpha: 0.8),

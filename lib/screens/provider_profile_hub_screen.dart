@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -132,79 +133,79 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               const SizedBox(height: AppSpacing.xl),
 
               _HubTile(
-                icon: Icons.account_balance_wallet_outlined,
+                icon: TablerIcons.wallet,
                 label: 'Earnings',
                 subtitle: 'What you\'ve made, by week and month',
                 onTap: () => context.push('/earnings'),
               ),
               _HubTile(
-                icon: Icons.view_list_rounded,
+                icon: TablerIcons.list,
                 label: 'All bookings',
                 subtitle: 'Requests, upcoming and past bookings',
                 onTap: () => context.push('/provider/bookings'),
               ),
               _HubTile(
-                icon: Icons.person_outline,
+                icon: TablerIcons.user,
                 label: 'Edit Profile',
                 subtitle: 'Bio, location, service radius',
                 onTap: () => context.push('/provider/profile/edit'),
               ),
               _HubTile(
-                icon: Icons.content_cut_rounded,
+                icon: TablerIcons.scissors,
                 label: 'My Services',
                 subtitle: 'Manage what you offer and pricing',
                 onTap: () => context.push('/provider/services'),
               ),
               _HubTile(
-                icon: Icons.photo_library_outlined,
+                icon: TablerIcons.photo,
                 label: 'Gallery',
                 subtitle: 'Showcase your work',
                 onTap: () => context.push('/provider/gallery'),
               ),
               _HubTile(
-                icon: Icons.schedule_rounded,
+                icon: TablerIcons.clock,
                 label: 'Working Hours',
                 subtitle: 'Set your schedule and blocked dates',
                 onTap: () => context.push('/provider/availability'),
               ),
               _HubTile(
-                icon: Icons.local_offer_outlined,
+                icon: TablerIcons.tag,
                 label: 'Promotions',
                 subtitle: 'Create discounts and offers',
                 onTap: () => context.push('/provider/promotions'),
               ),
               _HubTile(
-                icon: Icons.workspace_premium_rounded,
+                icon: TablerIcons.crown,
                 label: 'Subscription',
                 subtitle: hasActiveSub ? 'Manage your plan' : 'Subscribe to appear in search',
                 onTap: () => context.push('/provider/subscription'),
               ),
               _HubTile(
-                icon: Icons.star_outline_rounded,
+                icon: TablerIcons.star,
                 label: 'My Reviews',
                 subtitle: 'See what clients say about you',
                 onTap: () => context.push('/provider/$uid/reviews'),
               ),
               _HubTile(
-                icon: Icons.visibility_outlined,
+                icon: TablerIcons.eye,
                 label: 'Public Profile',
                 subtitle: 'View your profile as clients see it',
                 onTap: () => context.push('/provider/$uid'),
               ),
               _HubTile(
-                icon: Icons.tune_rounded,
+                icon: TablerIcons.adjustments_horizontal,
                 label: 'Business Settings',
                 subtitle: 'Travel fees, cancellation, buffer time',
                 onTap: () => context.push('/provider/settings'),
               ),
               _HubTile(
-                icon: Icons.request_page_outlined,
+                icon: TablerIcons.file_invoice,
                 label: 'Service Requests',
                 subtitle: 'Browse and quote on client requests',
                 onTap: () => context.push('/provider/service-requests'),
               ),
               _HubTile(
-                icon: Icons.settings_outlined,
+                icon: TablerIcons.settings,
                 label: 'Account Settings',
                 subtitle: 'Deactivate or delete your account',
                 onTap: () => context.push('/account/settings'),
@@ -212,7 +213,7 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: _signOut,
-                icon: const Icon(Icons.logout_rounded, size: 18),
+                icon: const Icon(TablerIcons.logout, size: 18),
                 label: const Text('Sign Out'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
@@ -272,7 +273,7 @@ class _HubTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+              Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
             ],
           ),
         ),

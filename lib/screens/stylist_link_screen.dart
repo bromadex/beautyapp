@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../widgets/ui.dart';
@@ -57,7 +58,7 @@ class _StylistLinkScreenState extends State<StylistLinkScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: EmptyState(
-          icon: Icons.wifi_off_rounded,
+          icon: TablerIcons.wifi_off,
           title: 'Couldn\'t load this page',
           message: 'Check your connection and try again.',
           actionLabel: 'Try again',
@@ -69,7 +70,7 @@ class _StylistLinkScreenState extends State<StylistLinkScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: EmptyState(
-          icon: Icons.link_off_rounded,
+          icon: TablerIcons.link_off,
           title: 'Stylist not found',
           message: 'This booking link doesn\'t exist any more. Check the spelling or browse other stylists.',
           actionLabel: 'Browse stylists',

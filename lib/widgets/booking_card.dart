@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../theme.dart';
 import 'ui.dart';
@@ -47,7 +48,7 @@ class BookingCard extends StatelessWidget {
     switch (ns) {
       case 'client_offered':
         bannerColor = AppColors.info;
-        bannerIcon = Icons.local_offer_rounded;
+        bannerIcon = TablerIcons.tag;
         bannerTitle = isClient
             ? 'Your offer: \$${offeredPrice?.toStringAsFixed(0)}'
             : 'Price offer: \$${offeredPrice?.toStringAsFixed(0)}';
@@ -59,7 +60,7 @@ class BookingCard extends StatelessWidget {
         break;
       case 'provider_countered':
         bannerColor = AppColors.warning;
-        bannerIcon = Icons.swap_horiz_rounded;
+        bannerIcon = TablerIcons.arrows_exchange;
         bannerTitle = isClient
             ? 'Counter-offer: \$${counterPrice?.toStringAsFixed(0)}'
             : 'You countered: \$${counterPrice?.toStringAsFixed(0)}';
@@ -69,13 +70,13 @@ class BookingCard extends StatelessWidget {
         break;
       case 'agreed':
         bannerColor = AppColors.success;
-        bannerIcon = Icons.handshake_rounded;
+        bannerIcon = TablerIcons.heart_handshake;
         bannerTitle = 'Agreed: \$${agreedPrice?.toStringAsFixed(0)}';
         bannerSubtitle = 'Price accepted by both parties';
         break;
       case 'declined':
         bannerColor = AppColors.error;
-        bannerIcon = Icons.block_rounded;
+        bannerIcon = TablerIcons.ban;
         bannerTitle = 'Offer declined';
         bannerSubtitle = 'Client offered \$${offeredPrice?.toStringAsFixed(0)}';
         break;
@@ -345,7 +346,7 @@ class BookingCard extends StatelessWidget {
 
               // -- Date/time row --
               Row(children: [
-                Icon(Icons.access_time_rounded,
+                Icon(TablerIcons.clock,
                     size: 15, color: AppColors.textTertiary),
                 const SizedBox(width: AppSpacing.xs),
                 Text(timeStr, style: Theme.of(context).textTheme.bodySmall),
@@ -355,7 +356,7 @@ class BookingCard extends StatelessWidget {
 
               // -- Address & price row --
               Row(children: [
-                Icon(Icons.location_on_outlined,
+                Icon(TablerIcons.map_pin,
                     size: 15, color: AppColors.textTertiary),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
@@ -476,7 +477,7 @@ class BookingList extends StatelessWidget {
       return Center(
         child: Text(
           'Nothing here',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),
       );
     }

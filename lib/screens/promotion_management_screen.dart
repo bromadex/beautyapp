@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -66,8 +67,8 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                 ),
                 child: Icon(
                   existing == null
-                      ? Icons.add_circle_outline
-                      : Icons.edit_outlined,
+                      ? TablerIcons.circle_plus
+                      : TablerIcons.pencil,
                   color: AppColors.secondary,
                   size: 20,
                 ),
@@ -90,7 +91,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     labelText: 'Promo Code *',
                     hintText: 'e.g. SUMMER20',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.confirmation_number_outlined),
+                    prefixIcon: const Icon(TablerIcons.ticket),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -100,7 +101,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     labelText: 'Description',
                     hintText: 'e.g. Summer sale - 20% off',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.description_outlined),
+                    prefixIcon: const Icon(TablerIcons.file_text),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -109,7 +110,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                   decoration: InputDecoration(
                     labelText: 'Discount Type',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.discount_outlined),
+                    prefixIcon: const Icon(TablerIcons.discount),
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -129,7 +130,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     hintText: discountType == 'percentage' ? 'e.g. 20' : 'e.g. 10',
                     suffixText: discountType == 'percentage' ? '%' : '\$',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.local_offer_outlined),
+                    prefixIcon: const Icon(TablerIcons.tag),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -141,7 +142,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     hintText: '0 for no minimum',
                     prefixText: '\$ ',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.attach_money_rounded),
+                    prefixIcon: const Icon(TablerIcons.currency_dollar),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -152,7 +153,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     labelText: 'Max Uses (optional)',
                     hintText: 'Leave blank for unlimited',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                    prefixIcon: const Icon(Icons.people_outline),
+                    prefixIcon: const Icon(TablerIcons.users),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -171,10 +172,10 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     decoration: InputDecoration(
                       labelText: 'Valid Until (optional)',
                       border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                      prefixIcon: const Icon(Icons.event_outlined),
+                      prefixIcon: const Icon(TablerIcons.calendar_event),
                       suffixIcon: validUntil != null
                           ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
+                              icon: const Icon(TablerIcons.x, size: 18),
                               onPressed: () =>
                                   setDialogState(() => validUntil = null),
                             )
@@ -261,7 +262,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                   }
                 }
               },
-              icon: Icon(existing == null ? Icons.add : Icons.save, size: 18),
+              icon: Icon(existing == null ? TablerIcons.plus : TablerIcons.device_floppy, size: 18),
               label: Text(existing == null ? 'Create' : 'Save'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -357,7 +358,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
         onPressed: () => _showAddEditDialog(),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
+        icon: const Icon(TablerIcons.plus),
         label: const Text('New Promo'),
       ),
       body: _loading
@@ -390,7 +391,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
               color: AppColors.secondary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.local_offer_outlined,
+            child: const Icon(TablerIcons.tag,
                 size: 56, color: AppColors.secondary),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -406,7 +407,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
           const SizedBox(height: AppSpacing.xxl),
           FilledButton.icon(
             onPressed: () => _showAddEditDialog(),
-            icon: const Icon(Icons.add),
+            icon: const Icon(TablerIcons.plus),
             label: const Text('Create Promotion'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -480,7 +481,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.confirmation_number_outlined,
+                            TablerIcons.ticket,
                             size: 16,
                             color: isActive && !isExpired && !isMaxedOut
                                 ? AppColors.secondary
@@ -534,7 +535,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                 Row(
                   children: [
                     _PromoStat(
-                      icon: Icons.people_outline,
+                      icon: TablerIcons.users,
                       text: maxUses != null
                           ? '$usedCount / $maxUses used'
                           : '$usedCount used',
@@ -542,7 +543,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     const SizedBox(width: AppSpacing.lg),
                     if (validUntil != null)
                       _PromoStat(
-                        icon: Icons.schedule_rounded,
+                        icon: TablerIcons.clock,
                         text: isExpired
                             ? 'Expired'
                             : 'Until ${validUntil.day}/${validUntil.month}/${validUntil.year}',
@@ -551,7 +552,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     if (promo['min_order_amount'] != null &&
                         (promo['min_order_amount'] as num) > 0)
                       _PromoStat(
-                        icon: Icons.attach_money_rounded,
+                        icon: TablerIcons.currency_dollar,
                         text:
                             'Min \$${(promo['min_order_amount'] as num).toStringAsFixed(0)}',
                       ),
@@ -591,13 +592,13 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
               children: [
                 IconButton(
                   onPressed: () => _shareCode(code),
-                  icon: const Icon(Icons.copy_rounded, size: 20),
+                  icon: const Icon(TablerIcons.copy, size: 20),
                   tooltip: 'Copy Code',
                   color: AppColors.info,
                 ),
                 IconButton(
                   onPressed: () => _showAddEditDialog(existing: promo),
-                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  icon: const Icon(TablerIcons.pencil, size: 20),
                   tooltip: 'Edit',
                   color: AppColors.textSecondary,
                 ),
@@ -605,8 +606,8 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                   onPressed: () => _toggleActive(promo),
                   icon: Icon(
                     isActive
-                        ? Icons.pause_circle_outline
-                        : Icons.play_circle_outline,
+                        ? TablerIcons.player_pause
+                        : TablerIcons.player_play,
                     size: 20,
                   ),
                   tooltip: isActive ? 'Deactivate' : 'Activate',
@@ -615,7 +616,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                 const Spacer(),
                 IconButton(
                   onPressed: () => _delete(promo['id']),
-                  icon: const Icon(Icons.delete_outline, size: 20),
+                  icon: const Icon(TablerIcons.trash, size: 20),
                   tooltip: 'Delete',
                   color: AppColors.error,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
 
 class PaymentMethodCard extends StatelessWidget {
@@ -96,7 +97,7 @@ class PaymentMethodCard extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.check_rounded,
+                  TablerIcons.check,
                   color: Colors.white,
                   size: 16,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -79,7 +80,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                 color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_outline,
+              child: const Icon(TablerIcons.circle_check,
                   color: AppColors.success, size: 32),
             ),
             title: const Text('Report Submitted'),
@@ -142,7 +143,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                               color: AppColors.warning.withValues(alpha: 0.1),
                               borderRadius: AppRadius.mdAll,
                             ),
-                            child: const Icon(Icons.flag_outlined,
+                            child: const Icon(TablerIcons.flag,
                                 color: AppColors.warning, size: 22),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -224,7 +225,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                             width: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.send_rounded),
+                        : const Icon(TablerIcons.send),
                     label: Text(
                         _submitting ? 'Submitting...' : 'Submit Report'),
                     style: FilledButton.styleFrom(

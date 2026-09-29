@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:url_launcher/url_launcher.dart';
@@ -220,7 +221,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
                 }
               },
-              icon: const Icon(Icons.copy_rounded, size: 18),
+              icon: const Icon(TablerIcons.copy, size: 18),
               label: const Text('Copy link'),
             ),
           ),
@@ -231,7 +232,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                 Uri.parse('https://wa.me/?text=${Uri.encodeComponent('Book me on BeauTap: $_link')}'),
                 mode: LaunchMode.externalApplication,
               ),
-              icon: const Icon(Icons.share_rounded, size: 18),
+              icon: const Icon(TablerIcons.share_2, size: 18),
               label: const Text('WhatsApp'),
             ),
           ),
@@ -314,14 +315,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     final status = _bizVerification?['status'];
     if (_bizVerified) {
       return _StatusNote(
-        icon: Icons.verified_rounded,
+        icon: TablerIcons.rosette_discount_check,
         color: AppColors.success,
         text: 'Your business is verified. Clients see a Verified Business badge on your profile.',
       );
     }
     if (status == 'pending') {
       return _StatusNote(
-        icon: Icons.hourglass_top_rounded,
+        icon: TablerIcons.hourglass_high,
         color: AppColors.warning,
         text: 'Submitted for review: ${_bizVerification?['business_name'] ?? ''}. We\'ll notify you once it\'s checked.',
       );
@@ -331,7 +332,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: _StatusNote(
-            icon: Icons.info_outline_rounded,
+            icon: TablerIcons.info_circle,
             color: AppColors.error,
             text: 'Not approved${_bizVerification?['admin_notes'] != null ? ': ${_bizVerification!['admin_notes']}' : ''}. You can correct the details and resubmit.',
           ),
@@ -414,16 +415,16 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SectionHeader(icon: Icons.link_rounded, title: 'Your Booking Link'),
+            _SectionHeader(icon: TablerIcons.link, title: 'Your Booking Link'),
             const SizedBox(height: AppSpacing.sm),
             _buildLinkSection(),
             const SizedBox(height: AppSpacing.xxl),
-            _SectionHeader(icon: Icons.loyalty_outlined, title: 'Loyalty Reward'),
+            _SectionHeader(icon: TablerIcons.gift, title: 'Loyalty Reward'),
             const SizedBox(height: AppSpacing.sm),
             _buildLoyaltySection(),
             const SizedBox(height: AppSpacing.xxl),
             _SectionHeader(
-              icon: Icons.rule_rounded,
+              icon: TablerIcons.list_check,
               title: 'Booking Rules',
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -461,7 +462,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
             // Travel Fees
             _SectionHeader(
-              icon: Icons.directions_car_outlined,
+              icon: TablerIcons.car,
               title: 'Travel Fees',
             ),
             const SizedBox(height: AppSpacing.md),
@@ -491,7 +492,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
             // Buffer Time
             _SectionHeader(
-              icon: Icons.timer_outlined,
+              icon: TablerIcons.clock_hour_4,
               title: 'Buffer Time',
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -509,7 +510,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
             // Cancellation Policy
             _SectionHeader(
-              icon: Icons.event_busy_outlined,
+              icon: TablerIcons.calendar_x,
               title: 'Cancellation Policy',
             ),
             const SizedBox(height: AppSpacing.md),
@@ -551,7 +552,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
 
             // WhatsApp & Contact
             _SectionHeader(
-              icon: Icons.chat_outlined,
+              icon: TablerIcons.message_circle,
               title: 'Contact Preferences',
             ),
             const SizedBox(height: AppSpacing.md),
@@ -561,7 +562,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
               decoration: InputDecoration(
                 labelText: 'WhatsApp Number',
                 hintText: '+263 7X XXX XXXX',
-                prefixIcon: const Icon(Icons.phone_android_rounded),
+                prefixIcon: const Icon(TablerIcons.device_mobile),
                 border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
               ),
             ),
@@ -596,7 +597,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             const SizedBox(height: AppSpacing.xxl),
 
             _SectionHeader(
-              icon: Icons.storefront_outlined,
+              icon: TablerIcons.building_store,
               title: 'Business Verification',
             ),
             const SizedBox(height: AppSpacing.md),

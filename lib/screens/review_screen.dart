@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
@@ -172,7 +173,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       gradient: AppColors.primaryGradient,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 36),
+                    child: const Icon(TablerIcons.heart_filled, color: Colors.white, size: 36),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   Text(
@@ -387,7 +388,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           onTap: _pickImage,
                           child: const Padding(
                             padding: EdgeInsets.all(AppSpacing.sm),
-                            child: Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                            child: Icon(TablerIcons.refresh, color: Colors.white, size: 20),
                           ),
                         ),
                       ),
@@ -420,7 +421,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.add_photo_alternate_outlined,
+                          TablerIcons.photo_plus,
                           color: AppColors.primary,
                           size: 24,
                         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../config/app_config.dart';
 import '../services/paynow_service.dart';
 import '../supabase_client.dart';
@@ -144,7 +145,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             left == 0
                 ? 'You\'ve used this month\'s free bookings. Go Pro to keep accepting clients.'
                 : '$left free booking${left == 1 ? '' : 's'} left this month. Pro removes the limit.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
         ]),
       ),
@@ -163,7 +164,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.star_rounded, color: AppColors.secondary),
+          const Icon(TablerIcons.star_filled, color: AppColors.secondary),
           const SizedBox(width: 8),
           Text('Get featured', style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
@@ -174,7 +175,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           active
               ? 'You\'re featured until ${until.day}/${until.month}. Buying again adds another 7 days.'
               : 'Appear at the top of Browse and Home in your city, with a Featured badge.',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
@@ -195,7 +196,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             color: AppColors.warning.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.pause_circle_outline_rounded,
+          child: const Icon(TablerIcons.player_pause,
               color: AppColors.warning, size: 32),
         ),
         title: const Text('Cancel Subscription?'),
@@ -260,7 +261,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded,
+                const Icon(TablerIcons.alert_circle,
                     size: 48, color: AppColors.error),
                 const SizedBox(height: AppSpacing.lg),
                 Text(_error!,
@@ -270,7 +271,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 FilledButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: const Icon(TablerIcons.refresh),
                   label: const Text('Retry'),
                 ),
               ],
@@ -330,25 +331,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     if (_isActive) {
       gradient = const [Color(0xFFC2185B), Color(0xFF880E4F)];
-      icon = Icons.verified_rounded;
+      icon = TablerIcons.rosette_discount_check;
       title = 'Pro — active';
       subtitle =
           '$_daysRemaining days remaining · you keep 100% of what you earn';
     } else if (_subscription?['status'] == 'cancelled') {
       gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
-      icon = Icons.pause_circle_outline_rounded;
+      icon = TablerIcons.player_pause;
       title = 'Pro cancelled';
       subtitle =
           'You\'re on the Free plan. Go Pro again for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to remove the booking limit.';
     } else if (_isLapsed) {
       gradient = const [Color(0xFFDC2626), Color(0xFFEF4444)];
-      icon = Icons.warning_rounded;
+      icon = TablerIcons.alert_triangle;
       title = 'Pro expired';
       subtitle =
           'You\'re on the Free plan (5 bookings a month). Renew Pro to remove the limit.';
     } else {
       gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
-      icon = Icons.spa_rounded;
+      icon = TablerIcons.leaf;
       title = 'You\'re on the Free plan';
       subtitle =
           'Take up to 5 bookings a month for free. Go Pro for unlimited bookings.';
@@ -423,7 +424,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   sub: 'One-time activation,\nmonth 1 included',
                 ),
               ),
-              const Icon(Icons.arrow_forward_rounded,
+              const Icon(TablerIcons.arrow_right,
                   color: AppColors.textTertiary, size: 20),
               Expanded(
                 child: _priceBlock(
@@ -499,11 +500,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Widget _buildBenefits() {
     const benefits = [
-      ('You keep 100% of what you earn', Icons.account_balance_wallet_rounded),
-      ('Unlimited bookings (Free plan: 5 a month)', Icons.all_inclusive_rounded),
-      ('Appear in client searches', Icons.search_rounded),
-      ('Gallery, promos, reviews & ratings', Icons.auto_awesome_rounded),
-      ('Cancel anytime — you keep the Free plan', Icons.lock_open_rounded),
+      ('You keep 100% of what you earn', TablerIcons.wallet),
+      ('Unlimited bookings (Free plan: 5 a month)', TablerIcons.infinity),
+      ('Appear in client searches', TablerIcons.search),
+      ('Gallery, promos, reviews & ratings', TablerIcons.sparkles),
+      ('Cancel anytime — you keep the Free plan', TablerIcons.lock_open),
     ];
 
     return Container(
@@ -533,7 +534,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: AppColors.success.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_rounded,
+                      child: const Icon(TablerIcons.check,
                           size: 13, color: AppColors.success),
                     ),
                     const SizedBox(width: AppSpacing.md),
@@ -560,7 +561,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       child: const Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: AppColors.info, size: 18),
+          Icon(TablerIcons.info_circle, color: AppColors.info, size: 18),
           SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
@@ -603,7 +604,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: Colors.white),
               )
-            : const Icon(Icons.rocket_launch_rounded),
+            : const Icon(TablerIcons.rocket),
         label: Text(label,
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         style: FilledButton.styleFrom(

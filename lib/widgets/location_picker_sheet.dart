@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -127,7 +128,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     controller: _searchCtrl,
                     decoration: InputDecoration(
                       hintText: 'Search city...',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: const Icon(TablerIcons.search),
                       border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -145,7 +146,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                           horizontal: AppSpacing.lg),
                       children: [
                         _CityTile(
-                          icon: Icons.public_rounded,
+                          icon: TablerIcons.world,
                           name: 'All Zimbabwe',
                           subtitle: 'Search nationwide',
                           isSelected: widget.currentCity == 'All Zimbabwe',
@@ -153,7 +154,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                         ),
                         const Divider(height: 1),
                         ..._filtered.map((city) => _CityTile(
-                              icon: Icons.location_city_rounded,
+                              icon: TablerIcons.building_community,
                               name: city['name'] as String,
                               subtitle: city['country'] as String? ?? 'Zimbabwe',
                               isSelected: widget.currentCity == city['name'],
@@ -222,7 +223,7 @@ class _CityTile extends StatelessWidget {
       subtitle: Text(subtitle,
           style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
       trailing: isSelected
-          ? const Icon(Icons.check_circle_rounded,
+          ? const Icon(TablerIcons.circle_check_filled,
               color: AppColors.primary, size: 22)
           : null,
       onTap: onTap,

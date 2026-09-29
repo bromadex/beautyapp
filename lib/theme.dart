@@ -1,58 +1,68 @@
 import 'package:flutter/material.dart';
 
-/// BeauTap design system — warm, calm and friendly.
-/// Mulberry brand colour, blush tints, warm off-white surfaces,
-/// Plus Jakarta Sans throughout.
+/// BeauTap design system — Direction B "Rich, modern".
+/// Forest green with soft gold on a light canvas, Manrope throughout,
+/// JetBrains Mono for reference codes. Text colours pass 4.5:1.
 class AppColors {
-  static const Color primary = Color(0xFF8E3B63);     // Mulberry
-  static const Color primaryDark = Color(0xFF6D2A4B);
-  static const Color primarySoft = Color(0xFFF7E9EF);  // Blush tint
-  static const Color secondary = Color(0xFFD99A3D);    // Honey gold
-  static const Color accent = Color(0xFFC2577F);       // Rose
+  // Brand
+  static const Color primary = Color(0xFF0F3B31);      // Forest
+  static const Color primaryDark = Color(0xFF0B2C25);  // Forest pressed
+  static const Color pine = Color(0xFF2A5A4E);         // Tiles and avatars on dark headers
+  static const Color primarySoft = Color(0xFFE4EDE8);  // Mint
+  static const Color gold = Color(0xFFC8A15A);         // Payment on dark, Featured, FAB, active tab bar
+  static const Color goldText = Color(0xFF7A5C22);     // Gold-toned text on light
+  static const Color goldLight = Color(0xFFE7D3A6);    // Text and badges on Forest
+  static const Color cream = Color(0xFFF4ECDB);        // Plan banner, loyalty card, tag chips
+  static const Color secondary = gold;
+  static const Color accent = goldText;
 
-  static const Color success = Color(0xFF2F9E6E);
-  static const Color warning = Color(0xFFD98A1C);
-  static const Color error = Color(0xFFD64560);
-  static const Color info = Color(0xFF3C7DD9);
+  // Feedback
+  static const Color success = Color(0xFF2E6B35);
+  static const Color successSoft = Color(0xFFE3F0E3);
+  static const Color warning = Color(0xFFC98A00);
+  static const Color warningText = Color(0xFF7A4F00);
+  static const Color warningSoft = Color(0xFFFBEFD3);
+  static const Color error = Color(0xFFB3261E);
+  static const Color errorText = Color(0xFFA8261C);
+  static const Color errorSoft = Color(0xFFF8E1DE);
+  static const Color info = pine;
 
-  static const Color surfaceLight = Color(0xFFFAF6F3); // Warm off-white
-  static const Color surfaceMuted = Color(0xFFF3EDE9);
-  static const Color surfaceDark = Color(0xFF1C1619);
-
+  // Surfaces
+  static const Color surfaceLight = Color(0xFFF5F6F3); // Canvas
+  static const Color surfaceMuted = Color(0xFFECEEEB);
+  static const Color surfaceDark = Color(0xFF14201C);
   static const Color cardLight = Colors.white;
-  static const Color cardDark = Color(0xFF2A2226);
+  static const Color cardDark = Color(0xFF1D2A25);
 
-  static const Color border = Color(0xFFEDE4DF);
-  static const Color borderStrong = Color(0xFFE0D5CF);
+  static const Color border = Color(0xFFE1E5E1);       // Line
+  static const Color borderStrong = Color(0xFFB9C2BD); // Field line
 
-  static const Color textPrimary = Color(0xFF241B20);
-  static const Color textSecondary = Color(0xFF6B5F66);
-  static const Color textTertiary = Color(0xFF9D9197);
+  static const Color textPrimary = Color(0xFF14201C);  // Ink
+  static const Color textSecondary = Color(0xFF55625D);// Slate
+  static const Color textTertiary = Color(0xFF6B7671);
 
-  static const Color available = success;
+  static const Color available = Color(0xFF3FB26B);
   static const Color busy = warning;
-  static const Color offline = Color(0xFFB9AEB3);
+  static const Color offline = Color(0xFF9AA59F);
 
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF9C4570), Color(0xFF7E3257)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    colors: [primary, primary],
   );
 
   static const LinearGradient heroGradient = LinearGradient(
-    colors: [Color(0xFF8E3B63), Color(0xFF5E2442)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    colors: [primary, primary],
   );
 }
 
 class AppRadius {
-  static const double sm = 10;
-  static const double md = 14;
-  static const double lg = 18;
-  static const double xl = 24;
-  static const double xxl = 32;
+  static const double xs = 6;   // Pills, badges
+  static const double sm = 10;  // Fields, chips, 48px buttons
+  static const double md = 12;  // Cards, 52px buttons
+  static const double lg = 12;
+  static const double xl = 20;  // Sheet top
+  static const double xxl = 28;
 
+  static BorderRadius get xsAll => BorderRadius.circular(xs);
   static BorderRadius get smAll => BorderRadius.circular(sm);
   static BorderRadius get mdAll => BorderRadius.circular(md);
   static BorderRadius get lgAll => BorderRadius.circular(lg);
@@ -70,21 +80,22 @@ class AppSpacing {
   static const double xxl = 24;
   static const double xxxl = 32;
 
-  static const EdgeInsets screenPadding = EdgeInsets.all(xl);
-  static const EdgeInsets cardPadding = EdgeInsets.all(lg);
+  static const EdgeInsets screenPadding = EdgeInsets.all(lg);
+  static const EdgeInsets cardPadding = EdgeInsets.all(md);
 }
 
 class AppShadows {
-  static const List<BoxShadow> soft = [
-    BoxShadow(color: Color(0x0F3A1F2C), blurRadius: 18, offset: Offset(0, 6)),
-  ];
+  static const List<BoxShadow> soft = [];
   static const List<BoxShadow> lifted = [
-    BoxShadow(color: Color(0x1A3A1F2C), blurRadius: 28, offset: Offset(0, 10)),
+    BoxShadow(color: Color(0x1414201C), blurRadius: 16, offset: Offset(0, 6)),
   ];
 }
 
+/// Reference codes and transaction IDs.
+const TextStyle monoStyle = TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13, color: AppColors.textSecondary);
+
 class AppTheme {
-  static const String fontFamily = 'Jakarta';
+  static const String fontFamily = 'Manrope';
 
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
@@ -109,23 +120,23 @@ class AppTheme {
     );
 
     const text = TextTheme(
-      displaySmall: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.8, height: 1.15, color: AppColors.textPrimary),
-      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.6, height: 1.2, color: AppColors.textPrimary),
-      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.4, height: 1.25, color: AppColors.textPrimary),
-      headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3, height: 1.3, color: AppColors.textPrimary),
-      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.2, color: AppColors.textPrimary),
-      titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: AppColors.textPrimary),
+      displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -0.72, height: 1.1, color: AppColors.textPrimary),
+      headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.4, height: 1.2, color: AppColors.textPrimary),
+      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.24, height: 1.25, color: AppColors.textPrimary),
+      headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.2, height: 1.3, color: AppColors.textPrimary),
+      titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
       titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-      bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 1.5, color: AppColors.textPrimary),
-      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, height: 1.45, color: AppColors.textSecondary),
-      bodySmall: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.4, color: AppColors.textTertiary),
-      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-      labelMedium: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-      labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.2, color: AppColors.textTertiary),
+      bodyLarge: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, height: 1.45, color: AppColors.textPrimary),
+      bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.45, color: AppColors.textPrimary),
+      bodySmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4, color: AppColors.textSecondary),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+      labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+      labelSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.48, color: AppColors.textSecondary),
     );
 
     OutlineInputBorder field(Color c, [double w = 1]) => OutlineInputBorder(
-          borderRadius: AppRadius.mdAll,
+          borderRadius: AppRadius.smAll,
           borderSide: BorderSide(color: c, width: w),
         );
 
@@ -135,7 +146,7 @@ class AppTheme {
       fontFamily: fontFamily,
       textTheme: text,
       scaffoldBackgroundColor: AppColors.surfaceLight,
-      splashFactory: InkSparkle.splashFactory,
+      splashFactory: InkRipple.splashFactory,
       visualDensity: VisualDensity.standard,
 
       appBarTheme: const AppBarTheme(
@@ -144,7 +155,7 @@ class AppTheme {
         centerTitle: false,
         backgroundColor: AppColors.surfaceLight,
         surfaceTintColor: Colors.transparent,
-        titleSpacing: 20,
+        titleSpacing: 16,
         titleTextStyle: TextStyle(
           fontFamily: fontFamily,
           fontSize: 20,
@@ -179,15 +190,15 @@ class AppTheme {
         filled: true,
         fillColor: Colors.white,
         isDense: false,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         border: field(AppColors.borderStrong),
         enabledBorder: field(AppColors.borderStrong),
-        focusedBorder: field(AppColors.primary, 1.6),
+        focusedBorder: field(AppColors.primary, 2),
         errorBorder: field(AppColors.error),
-        focusedErrorBorder: field(AppColors.error, 1.6),
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
-        floatingLabelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
-        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+        focusedErrorBorder: field(AppColors.error, 2),
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15, fontWeight: FontWeight.w500),
+        floatingLabelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+        hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 15),
         prefixIconColor: AppColors.textTertiary,
         suffixIconColor: AppColors.textTertiary,
       ),
@@ -196,12 +207,12 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.surfaceMuted,
+          disabledBackgroundColor: const Color(0xFFDDE2DE),
           disabledForegroundColor: AppColors.textTertiary,
           minimumSize: const Size(64, 52),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
 
@@ -219,13 +230,13 @@ class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.primary,
           backgroundColor: Colors.white,
           minimumSize: const Size(64, 48),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          side: const BorderSide(color: AppColors.borderStrong),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
 
@@ -247,12 +258,12 @@ class AppTheme {
         disabledColor: AppColors.surfaceMuted,
         checkmarkColor: AppColors.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.pill,
-          side: const BorderSide(color: AppColors.border),
+          borderRadius: AppRadius.smAll,
+          side: const BorderSide(color: AppColors.borderStrong),
         ),
-        side: const BorderSide(color: AppColors.border),
+        side: const BorderSide(color: AppColors.borderStrong),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        labelStyle: const TextStyle(fontFamily: fontFamily, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        labelStyle: const TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
         secondaryLabelStyle: const TextStyle(fontFamily: fontFamily, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
       ),
 
@@ -261,18 +272,18 @@ class AppTheme {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        indicatorColor: AppColors.primarySoft,
+        indicatorColor: Colors.transparent,
         indicatorShape: RoundedRectangleBorder(borderRadius: AppRadius.pill),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
               size: 24,
-              color: states.contains(WidgetState.selected) ? AppColors.primary : AppColors.textTertiary,
+              color: states.contains(WidgetState.selected) ? AppColors.primary : AppColors.textSecondary,
             )),
         labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
               fontFamily: fontFamily,
               fontSize: 12,
-              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-              color: states.contains(WidgetState.selected) ? AppColors.primary : AppColors.textTertiary,
+              fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w600,
+              color: states.contains(WidgetState.selected) ? AppColors.primary : AppColors.textSecondary,
             )),
       ),
 
@@ -281,7 +292,7 @@ class AppTheme {
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
         showDragHandle: true,
         dragHandleColor: AppColors.borderStrong,
       ),
@@ -303,9 +314,9 @@ class AppTheme {
       ),
 
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+        backgroundColor: AppColors.gold,
+        foregroundColor: AppColors.textPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 2,
         highlightElevation: 4,
         extendedTextStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700, fontSize: 15),
@@ -313,11 +324,11 @@ class AppTheme {
 
       tabBarTheme: const TabBarThemeData(
         labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textTertiary,
-        indicatorColor: AppColors.primary,
-        labelStyle: TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w700),
+        unselectedLabelColor: AppColors.textSecondary,
+        indicatorColor: AppColors.gold,
+        labelStyle: TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w800),
         unselectedLabelStyle: TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w500),
-        indicatorSize: TabBarIndicatorSize.label,
+        indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: AppColors.border,
       ),
 
@@ -336,7 +347,7 @@ class AppTheme {
       ),
 
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.white : AppColors.textTertiary),
+        thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.white : AppColors.textSecondary),
         trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? AppColors.primary : AppColors.surfaceMuted),
         trackOutlineColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.transparent : AppColors.borderStrong),
       ),
@@ -350,7 +361,7 @@ class AppTheme {
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.primary,
-        linearTrackColor: AppColors.primarySoft,
+        linearTrackColor: Color(0xFFE6D8B8),
         circularTrackColor: Colors.transparent,
       ),
       badgeTheme: const BadgeThemeData(backgroundColor: AppColors.error),
@@ -365,25 +376,31 @@ class AppTheme {
 class StatusColors {
   static Color background(String status) {
     switch (status) {
-      case 'confirmed': return AppColors.info.withValues(alpha: 0.1);
-      case 'en_route': return AppColors.warning.withValues(alpha: 0.1);
-      case 'arrived': case 'in_progress': return AppColors.accent.withValues(alpha: 0.1);
-      case 'completed': return AppColors.success.withValues(alpha: 0.1);
-      case 'cancelled': return AppColors.error.withValues(alpha: 0.1);
-      case 'pending': return AppColors.warning.withValues(alpha: 0.1);
-      default: return Colors.grey.withValues(alpha: 0.1);
+      case 'confirmed': case 'en_route': case 'arrived': case 'in_progress': return AppColors.primarySoft;
+      case 'completed': return AppColors.successSoft;
+      case 'cancelled': case 'no_show': return AppColors.errorSoft;
+      case 'pending': case 'awaiting_deposit': return AppColors.warningSoft;
+      default: return AppColors.surfaceMuted;
     }
   }
 
   static Color foreground(String status) {
     switch (status) {
-      case 'confirmed': return AppColors.info;
-      case 'en_route': return AppColors.warning;
-      case 'arrived': case 'in_progress': return AppColors.accent;
+      case 'confirmed': case 'en_route': case 'arrived': case 'in_progress': return AppColors.primary;
       case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      case 'pending': return AppColors.warning;
-      default: return Colors.grey;
+      case 'cancelled': case 'no_show': return AppColors.errorText;
+      case 'pending': case 'awaiting_deposit': return AppColors.warningText;
+      default: return AppColors.textSecondary;
+    }
+  }
+
+  /// Left strip on booking cards.
+  static Color strip(String status) {
+    switch (status) {
+      case 'completed': return AppColors.success;
+      case 'cancelled': case 'no_show': return AppColors.error;
+      case 'pending': case 'awaiting_deposit': return AppColors.warning;
+      default: return AppColors.primary;
     }
   }
 
@@ -391,11 +408,12 @@ class StatusColors {
     switch (status) {
       case 'pending': return 'Pending';
       case 'confirmed': return 'Confirmed';
-      case 'en_route': return 'En Route';
+      case 'en_route': return 'On the way';
       case 'arrived': return 'Arrived';
-      case 'in_progress': return 'In Progress';
+      case 'in_progress': return 'In progress';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
+      case 'no_show': return 'No-show';
       default: return status;
     }
   }

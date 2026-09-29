@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -176,7 +177,7 @@ class _CreateServiceRequestScreenState
                     controller: _locationCtrl,
                     decoration: InputDecoration(
                       hintText: 'e.g. Borrowdale, Harare',
-                      prefixIcon: const Icon(Icons.location_on_outlined),
+                      prefixIcon: const Icon(TablerIcons.map_pin),
                       border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
                     ),
                   ),
@@ -233,7 +234,7 @@ class _CreateServiceRequestScreenState
                             setState(() => _preferredDate = d);
                           }
                         },
-                        icon: const Icon(Icons.calendar_month_outlined,
+                        icon: const Icon(TablerIcons.calendar_month,
                             size: 18),
                         label: Text(_preferredDate != null
                             ? '${_preferredDate!.day}/${_preferredDate!.month}/${_preferredDate!.year}'
@@ -253,7 +254,7 @@ class _CreateServiceRequestScreenState
                             setState(() => _preferredTime = t);
                           }
                         },
-                        icon: const Icon(Icons.access_time_rounded,
+                        icon: const Icon(TablerIcons.clock,
                             size: 18),
                         label: Text(_preferredTime != null
                             ? _preferredTime!.format(context)
@@ -271,7 +272,7 @@ class _CreateServiceRequestScreenState
                             width: 18,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.send_rounded),
+                        : const Icon(TablerIcons.send),
                     label: Text(_submitting
                         ? 'Posting...'
                         : 'Post Request'),

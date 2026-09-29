@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -138,7 +139,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
         onPressed: _addNote,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        child: const Icon(TablerIcons.plus),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -147,7 +148,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.note_alt_outlined,
+                      Icon(TablerIcons.notes,
                           size: 56, color: AppColors.textTertiary),
                       const SizedBox(height: AppSpacing.lg),
                       Text('No notes yet',
@@ -180,7 +181,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.note_outlined,
+                                Icon(TablerIcons.note,
                                     size: 16,
                                     color: AppColors.textTertiary),
                                 const SizedBox(width: AppSpacing.xs),
@@ -193,7 +194,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
                                   onPressed: () =>
                                       _deleteNote(note['id']),
                                   icon: const Icon(
-                                      Icons.delete_outline,
+                                      TablerIcons.trash,
                                       size: 18),
                                   color: AppColors.error,
                                   visualDensity:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -86,7 +87,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                   child: _DashboardCard(
                     label: 'Total Earned',
                     amount: '\$${_totalEarnings.toStringAsFixed(2)}',
-                    icon: Icons.account_balance_wallet_rounded,
+                    icon: TablerIcons.wallet,
                     color: AppColors.success,
                   ),
                 ),
@@ -95,7 +96,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                   child: _DashboardCard(
                     label: 'Cash to collect',
                     amount: '\$${_pendingCod.toStringAsFixed(2)}',
-                    icon: Icons.hourglass_bottom_rounded,
+                    icon: TablerIcons.hourglass_low,
                     color: AppColors.warning,
                   ),
                 ),
@@ -116,7 +117,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.verified_rounded,
+                  Icon(TablerIcons.rosette_discount_check,
                       color: AppColors.success, size: 18),
                   SizedBox(width: AppSpacing.md),
                   Expanded(
@@ -181,7 +182,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.account_balance_wallet_outlined,
+                            TablerIcons.wallet,
                             size: 40,
                             color: AppColors.primary,
                           ),
@@ -280,7 +281,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
                                 child: FilledButton.icon(
                                   onPressed: () =>
                                       _markCodPaid(p['id'], p['booking_id']),
-                                  icon: const Icon(Icons.check_rounded,
+                                  icon: const Icon(TablerIcons.check,
                                       size: 18),
                                   label:
                                       const Text('Mark Cash as Received'),

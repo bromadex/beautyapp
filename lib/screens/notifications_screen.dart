@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -96,23 +97,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   IconData _iconForType(String type) {
     switch (type) {
       case 'booking':
-        return Icons.calendar_month_rounded;
+        return TablerIcons.calendar_month;
       case 'booking_status':
-        return Icons.update_rounded;
+        return TablerIcons.clock_edit;
       case 'payment':
-        return Icons.payment_rounded;
+        return TablerIcons.credit_card;
       case 'review':
-        return Icons.star_rounded;
+        return TablerIcons.star_filled;
       case 'message':
-        return Icons.chat_bubble_outline_rounded;
+        return TablerIcons.message_circle;
       case 'promotion':
-        return Icons.local_offer_outlined;
+        return TablerIcons.tag;
       case 'review_request':
-        return Icons.rate_review_outlined;
+        return TablerIcons.message_star;
       case 'waitlist':
-        return Icons.event_available_rounded;
+        return TablerIcons.calendar_check;
       default:
-        return Icons.notifications_outlined;
+        return TablerIcons.bell;
     }
   }
 
@@ -163,7 +164,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (unreadCount > 0)
             TextButton.icon(
               onPressed: _markAllRead,
-              icon: const Icon(Icons.done_all_rounded, size: 18),
+              icon: const Icon(TablerIcons.checks, size: 18),
               label: const Text('Read All'),
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.primary,
@@ -205,7 +206,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.notifications_off_outlined,
+            child: const Icon(TablerIcons.bell_off,
                 size: 56, color: AppColors.primary),
           ),
           const SizedBox(height: AppSpacing.xl),

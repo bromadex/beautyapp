@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -100,7 +101,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
       appBar: AppBar(
         title: const Text('All Bookings'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadBookings),
+          IconButton(icon: const Icon(TablerIcons.refresh), onPressed: _loadBookings),
         ],
       ),
       body: Column(
@@ -147,7 +148,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.calendar_today_rounded, size: 48, color: AppColors.textTertiary),
+                    Icon(TablerIcons.calendar, size: 48, color: AppColors.textTertiary),
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       _statusFilter == 'all' ? 'No bookings yet' : 'No ${StatusColors.label(_statusFilter).toLowerCase()} bookings',
@@ -231,7 +232,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline_rounded, size: 14, color: AppColors.textTertiary),
+                      const Icon(TablerIcons.user, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
                       Text('Client: $clientName', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
@@ -239,7 +240,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.spa_outlined, size: 14, color: AppColors.textTertiary),
+                      const Icon(TablerIcons.leaf, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
                       Text('Provider: $providerName', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
@@ -247,7 +248,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textTertiary),
+                      const Icon(TablerIcons.clock, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
                       Text('$date at $time', style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
                       const Spacer(),
@@ -271,7 +272,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                 children: [
                   TextButton.icon(
                     onPressed: () => _cancelBooking(b),
-                    icon: const Icon(Icons.cancel_outlined, size: 16),
+                    icon: const Icon(TablerIcons.circle_x, size: 16),
                     label: const Text('Cancel'),
                     style: TextButton.styleFrom(foregroundColor: AppColors.error),
                   ),

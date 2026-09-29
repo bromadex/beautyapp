@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
@@ -142,7 +143,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _error != null
                 ? EmptyState(
-                    icon: Icons.wifi_off_rounded,
+                    icon: TablerIcons.wifi_off,
                     title: 'Something went wrong',
                     message: _error!,
                     actionLabel: 'Try again',
@@ -152,7 +153,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                     _list(
                       upcoming,
                       const EmptyState(
-                        icon: Icons.event_available_rounded,
+                        icon: TablerIcons.calendar_check,
                         title: 'No upcoming bookings',
                         message: 'When you book a stylist, your appointment shows up here.',
                       ),
@@ -161,7 +162,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                     _list(
                       past,
                       const EmptyState(
-                        icon: Icons.history_rounded,
+                        icon: TablerIcons.history,
                         title: 'Nothing here yet',
                         message: 'Your finished and cancelled bookings will appear here.',
                       ),
@@ -182,7 +183,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
             Center(
               child: FilledButton.icon(
                 onPressed: () => context.go('/browse'),
-                icon: const Icon(Icons.search_rounded),
+                icon: const Icon(TablerIcons.search),
                 label: const Text('Find a stylist'),
               ),
             ),
@@ -283,7 +284,7 @@ class _ReceiptCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
                         Text('${dt == null ? '' : '${_days[dt.weekday - 1]} · $hh · '}$stylist',
-                            style: Theme.of(context).textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ]),
                     ),
                     Text('\$${total.toStringAsFixed(total % 1 == 0 ? 0 : 2)}',
@@ -300,7 +301,7 @@ class _ReceiptCard extends StatelessWidget {
                     if (upcoming) ...[
                       TextButton.icon(
                         onPressed: onReschedule,
-                        icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+                        icon: const Icon(TablerIcons.calendar_cog, size: 18),
                         label: const Text('Reschedule'),
                       ),
                       TextButton(
@@ -312,17 +313,17 @@ class _ReceiptCard extends StatelessWidget {
                       if (status == 'completed' && !reviewed)
                         TextButton.icon(
                           onPressed: () => context.push('/review/${b['id']}'),
-                          icon: const Icon(Icons.star_outline_rounded, size: 18),
+                          icon: const Icon(TablerIcons.star, size: 18),
                           label: const Text('Review'),
                         ),
                       TextButton.icon(
                         onPressed: () => context.push('/book/${b['provider_id']}/${b['service_id']}'),
-                        icon: const Icon(Icons.replay_rounded, size: 18),
+                        icon: const Icon(TablerIcons.repeat, size: 18),
                         label: const Text('Book again'),
                       ),
                     ],
                     const Spacer(),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+                    const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
                   ]),
                 ]),
               ),

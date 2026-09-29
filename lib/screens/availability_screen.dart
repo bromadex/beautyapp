@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -219,7 +220,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
                   Row(
                     children: [
-                      Icon(Icons.block_rounded, size: 18, color: AppColors.textSecondary),
+                      Icon(TablerIcons.ban, size: 18, color: AppColors.textSecondary),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Blocked Dates',
@@ -246,7 +247,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                         final label = '${d.day}/${d.month}/${d.year}';
                         return Chip(
                           label: Text(label, style: const TextStyle(fontSize: 13)),
-                          deleteIcon: const Icon(Icons.close, size: 16),
+                          deleteIcon: const Icon(TablerIcons.x, size: 16),
                           onDeleted: () =>
                               setState(() => _blockedDates.remove(d)),
                           backgroundColor: AppColors.error.withValues(alpha: 0.08),
@@ -259,7 +260,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
                     onPressed: _addBlockedDate,
-                    icon: const Icon(Icons.add_rounded, size: 18),
+                    icon: const Icon(TablerIcons.plus, size: 18),
                     label: const Text('Add Blocked Date'),
                   ),
 

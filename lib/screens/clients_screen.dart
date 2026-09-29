@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -64,7 +65,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
           await context.push('/provider/add-booking');
           _load();
         },
-        icon: const Icon(Icons.add),
+        icon: const Icon(TablerIcons.plus),
         label: const Text('Add booking'),
       ),
       body: _loading
@@ -75,7 +76,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   ? ListView(children: const [
                       SizedBox(height: 80),
                       EmptyState(
-                        icon: Icons.people_outline_rounded,
+                        icon: TablerIcons.users,
                         title: 'No clients yet',
                         message: 'Everyone who books you, in the app or added by you, shows up here with their visits and spend.',
                       ),
@@ -95,7 +96,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search_rounded),
+                          prefixIcon: Icon(TablerIcons.search),
                           hintText: 'Search name or phone',
                           isDense: true,
                         ),
@@ -219,7 +220,7 @@ class _ClientRow extends StatelessWidget {
               ],
             ]),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+          const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
         ]),
       ),
     );
@@ -345,7 +346,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
     if (c == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const EmptyState(icon: Icons.person_off_outlined, title: 'Client not found', message: 'They have no bookings with you.'),
+        body: const EmptyState(icon: TablerIcons.user_off, title: 'Client not found', message: 'They have no bookings with you.'),
       );
     }
     final phone = c['phone'] as String?;
@@ -370,7 +371,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
               Text(c['name'] ?? 'Client', style: Theme.of(context).textTheme.headlineSmall),
               Text(
                 [if (phone != null) phone, c['client_id'] == null ? 'Added by you' : 'BeauTap client'].join(' · '),
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
               ),
             ]),
           ),
@@ -396,7 +397,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
                 await context.push('/provider/add-booking?client=${Uri.encodeComponent(widget.clientKey)}');
                 _load();
               },
-              icon: const Icon(Icons.add, size: 18),
+              icon: const Icon(TablerIcons.plus, size: 18),
               label: const Text('Book again'),
             ),
           ),
@@ -405,7 +406,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () => shareOnWhatsApp('Hi ${(c['name'] ?? '').toString().split(' ').first}, ', phone: phone),
-                icon: const Icon(Icons.chat_rounded, size: 18),
+                icon: const Icon(TablerIcons.message_circle, size: 18),
                 label: const Text('WhatsApp'),
               ),
             ),
@@ -425,14 +426,14 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             ),
           for (final t in _suggested.where((s) => !_tags.contains(s)).take(4))
             ActionChip(
-              avatar: const Icon(Icons.add, size: 16),
+              avatar: const Icon(TablerIcons.plus, size: 16),
               label: Text(t),
               onPressed: () => setState(() {
                 _tags = [..._tags, t];
                 _dirty = true;
               }),
             ),
-          ActionChip(avatar: const Icon(Icons.edit_outlined, size: 16), label: const Text('Other'), onPressed: _addTag),
+          ActionChip(avatar: const Icon(TablerIcons.pencil, size: 16), label: const Text('Other'), onPressed: _addTag),
         ]),
         const SizedBox(height: 20),
         Text('Private notes', style: Theme.of(context).textTheme.titleSmall),

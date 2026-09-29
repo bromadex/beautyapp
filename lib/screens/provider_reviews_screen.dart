@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -146,7 +147,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
             Text('Report review', style: Theme.of(ctx).textTheme.headlineSmall),
             const SizedBox(height: 4),
             Text('Our team checks every report. The reviewer isn\'t told who reported it.',
-                style: Theme.of(ctx).textTheme.bodyMedium),
+                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             RadioGroup<String>(
               groupValue: picked,
@@ -263,7 +264,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
-                            Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                            Icon(TablerIcons.star_filled, size: 14, color: AppColors.warning),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: ClipRRect(
@@ -323,7 +324,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.rate_review_outlined, size: 56, color: AppColors.textTertiary),
+                        Icon(TablerIcons.message_star, size: 56, color: AppColors.textTertiary),
                         const SizedBox(height: AppSpacing.lg),
                         const Text(
                           'No reviews yet',
@@ -370,7 +371,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                             Row(children: [
                               TextButton.icon(
                                 onPressed: isParty ? null : () => _toggleHelpful(review),
-                                icon: Icon(voted ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined, size: 16),
+                                icon: Icon(voted ? TablerIcons.thumb_up_filled : TablerIcons.thumb_up, size: 16),
                                 label: Text(helpful > 0 ? 'Helpful · $helpful' : 'Helpful'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: voted ? AppColors.primary : AppColors.textSecondary,
@@ -397,7 +398,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                                 child: TextButton.icon(
                                   onPressed: () =>
                                       _showReplyDialog(review),
-                                  icon: const Icon(Icons.reply_rounded,
+                                  icon: const Icon(TablerIcons.arrow_back_up,
                                       size: 16),
                                   label: const Text('Reply'),
                                   style: TextButton.styleFrom(

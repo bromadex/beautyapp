@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -182,8 +183,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Icon(
                         sent
-                            ? Icons.mark_email_read_rounded
-                            : Icons.lock_reset_rounded,
+                            ? TablerIcons.mail_check
+                            : TablerIcons.lock_cog,
                         color: AppColors.primary,
                         size: 20,
                       ),
@@ -232,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: resetEmailCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(TablerIcons.mail),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     autofocus: true,
@@ -373,7 +374,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 20,
                                 height: 20,
                                 errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.g_mobiledata_rounded,
+                                  TablerIcons.brand_google,
                                   size: 24,
                                 ),
                               ),
@@ -407,7 +408,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Email address',
-                          prefixIcon: Icon(Icons.mail_outline_rounded),
+                          prefixIcon: Icon(TablerIcons.mail),
                         ),
                         keyboardType: TextInputType.emailAddress,
                         autofillHints: const [AutofillHints.email],
@@ -421,12 +422,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _passwordCtrl,
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          prefixIcon: const Icon(TablerIcons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                                  ? TablerIcons.eye_off
+                                  : TablerIcons.eye,
                               size: 20,
                             ),
                             onPressed: () => setState(
@@ -472,7 +473,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             context.go('/home');
                           }
                         },
-                        icon: const Icon(Icons.explore_outlined, size: 20),
+                        icon: const Icon(TablerIcons.compass, size: 20),
                         label: const Text('Just browsing? Continue as guest'),
                       ),
                       const SizedBox(height: 20),
@@ -482,7 +483,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Text(
                             'New to BeauTap?',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                           ),
                           TextButton(
                             onPressed: () => context.go('/register'),

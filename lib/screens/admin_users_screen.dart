@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -255,17 +256,17 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
-              _detailRow(Icons.phone_outlined, 'Phone', phone.isNotEmpty ? phone : 'Not set'),
+              _detailRow(TablerIcons.phone, 'Phone', phone.isNotEmpty ? phone : 'Not set'),
               if (createdAt != null)
-                _detailRow(Icons.calendar_today_outlined, 'Joined', createdAt.toLocal().toString().substring(0, 10)),
-              _detailRow(Icons.shield_outlined, 'Status',
+                _detailRow(TablerIcons.calendar, 'Joined', createdAt.toLocal().toString().substring(0, 10)),
+              _detailRow(TablerIcons.shield, 'Status',
                 isBanned ? 'Banned' : isDeactivated ? 'Frozen' : 'Active'),
               const SizedBox(height: AppSpacing.xxl),
 
               // Action buttons
               if (type == 'provider')
                 _actionButton(
-                  icon: Icons.person_outlined,
+                  icon: TablerIcons.user,
                   label: 'View Public Profile',
                   color: AppColors.primary,
                   onTap: () {
@@ -275,7 +276,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 ),
               const SizedBox(height: 8),
               _actionButton(
-                icon: isBanned ? Icons.check_circle_outline : Icons.block_rounded,
+                icon: isBanned ? TablerIcons.circle_check : TablerIcons.ban,
                 label: isBanned ? 'Unban User' : 'Ban User',
                 color: isBanned ? AppColors.success : AppColors.error,
                 onTap: () {
@@ -285,7 +286,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
               ),
               const SizedBox(height: 8),
               _actionButton(
-                icon: isDeactivated ? Icons.play_circle_outline : Icons.pause_circle_outline,
+                icon: isDeactivated ? TablerIcons.player_play : TablerIcons.player_pause,
                 label: isDeactivated ? 'Unfreeze Account' : 'Freeze Account',
                 color: AppColors.info,
                 onTap: () {
@@ -295,7 +296,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
               ),
               const SizedBox(height: 8),
               _actionButton(
-                icon: Icons.delete_forever_rounded,
+                icon: TablerIcons.trash_x,
                 label: 'Delete Account',
                 color: AppColors.error,
                 isDanger: true,
@@ -408,10 +409,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
                       hintText: 'Search by name or phone...',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: const Icon(TablerIcons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear_rounded),
+                              icon: const Icon(TablerIcons.x),
                               onPressed: () {
                                 _searchCtrl.clear();
                                 setState(() => _searchQuery = '');
@@ -503,7 +504,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                       ),
                       if (isVerified) ...[
                         const SizedBox(width: AppSpacing.xs),
-                        const Icon(Icons.verified_rounded, color: AppColors.success, size: 14),
+                        const Icon(TablerIcons.rosette_discount_check, color: AppColors.success, size: 14),
                       ],
                     ],
                   ),

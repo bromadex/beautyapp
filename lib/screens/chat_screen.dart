@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -283,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.chat_bubble_outline,
+                  child: const Icon(TablerIcons.message_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -294,13 +295,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   _error!,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.xxl),
                 FilledButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  icon: const Icon(TablerIcons.refresh, size: 18),
                   label: const Text('Retry'),
                 ),
               ],
@@ -370,7 +371,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     launchUrl(Uri.parse('https://wa.me/$clean'),
                         mode: LaunchMode.externalApplication);
                   },
-                  icon: const Icon(Icons.chat_rounded, size: 22),
+                  icon: const Icon(TablerIcons.message_circle, size: 22),
                   tooltip: 'WhatsApp',
                   color: const Color(0xFF25D366),
                 );
@@ -393,7 +394,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             color: AppColors.primary.withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.chat_bubble_outline_rounded,
+                          child: const Icon(TablerIcons.message_circle,
                               size: 40, color: AppColors.primary),
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -470,7 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.image_outlined, size: 22),
+                        icon: const Icon(TablerIcons.photo, size: 22),
                         color: AppColors.primary,
                         onPressed: _sending ? null : _pickAndSendImage,
                         tooltip: 'Send image',
@@ -535,7 +536,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: IconButton(
-                                icon: const Icon(Icons.send_rounded, size: 20),
+                                icon: const Icon(TablerIcons.send, size: 20),
                                 color: Colors.white,
                                 onPressed: () =>
                                     _sendMessage(text: _messageCtrl.text),
@@ -560,7 +561,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.info_outline_rounded,
+                  Icon(TablerIcons.info_circle,
                       size: 16, color: AppColors.warning),
                   const SizedBox(width: AppSpacing.sm),
                   Text(

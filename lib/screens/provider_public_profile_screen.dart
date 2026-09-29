@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
@@ -76,7 +77,7 @@ class _ProviderPublicProfileScreenState
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.lock_outline_rounded,
+              child: Icon(TablerIcons.lock,
                   color: AppColors.primary, size: 36),
             ),
             const SizedBox(height: AppSpacing.xl),
@@ -361,7 +362,7 @@ class _ProviderPublicProfileScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: AppColors.error),
+              Icon(TablerIcons.alert_circle, size: 64, color: AppColors.error),
               const SizedBox(height: AppSpacing.lg),
               Text(_error!, style: TextStyle(color: AppColors.error)),
               const SizedBox(height: AppSpacing.lg),
@@ -388,19 +389,15 @@ class _ProviderPublicProfileScreenState
     final address = _providerProfile?['address'] ?? '';
 
     Color statusColor;
-    String statusLabel;
     switch (status) {
       case 'available':
         statusColor = AppColors.available;
-        statusLabel = 'Available';
         break;
       case 'busy':
         statusColor = AppColors.busy;
-        statusLabel = 'Currently Busy';
         break;
       default:
         statusColor = AppColors.offline;
-        statusLabel = 'Offline';
     }
 
     final avg = (_providerProfile?['average_rating'] as num?)?.toDouble() ?? 0.0;
@@ -410,32 +407,112 @@ class _ProviderPublicProfileScreenState
     final location = address.isNotEmpty ? address : (_profile?['location'] ?? '').toString();
     final isSelf = _isLoggedIn && supabase.auth.currentUser!.id == widget.providerId;
 
+    final title = (_providerProfile?['title'] ?? '').toString();
+    final subtitle = [
+      if (title.isNotEmpty) title,
+      status == 'available' ? 'Available today' : status == 'busy' ? 'Busy right now' : 'Offline',
+    ].join(' · ');
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            actions: [
-              if (_providerProfile?['slug'] != null)
-                IconButton(
-                  icon: const Icon(Icons.ios_share_rounded),
-                  tooltip: 'Share',
-                  onPressed: () => _share(name),
-                ),
-              if (!isSelf)
-                ScaleTransition(
-                  scale: _heartScale,
-                  child: IconButton(
-                    icon: Icon(
-                      _isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _isFavorited ? AppColors.accent : AppColors.textPrimary,
+          SliverToBoxAdapter(
+            child: ForestHeader(
+              padding: const EdgeInsets.fromLTRB(4, 4, 8, 20),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      if (Navigator.of(context).canPop())
+                        IconButton(
+                          icon: const Icon(TablerIcons.arrow_left, color: Colors.white),
+                          tooltip: 'Back',
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      else
+                        const SizedBox(width: 48),
+                      const Spacer(),
+                      if (_providerProfile?['slug'] != null)
+                        IconButton(
+                          icon: const Icon(TablerIcons.share_2, color: Colors.white),
+                          tooltip: 'Share',
+                          onPressed: () => _share(name),
+                        ),
+                      if (!isSelf)
+                        ScaleTransition(
+                          scale: _heartScale,
+                          child: IconButton(
+                            icon: Icon(
+                              _isFavorited ? TablerIcons.heart_filled : TablerIcons.heart,
+                              color: _isFavorited ? AppColors.gold : Colors.white,
+                            ),
+                            tooltip: _isFavorited ? 'Remove from favourites' : 'Save to favourites',
+                            onPressed: _toggleFavorite,
+                          ),
+                        ),
+                    ]),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      child: Row(children: [
+                        Stack(children: [
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                            child: Container(
+                              decoration: const BoxDecoration(color: AppColors.pine, shape: BoxShape.circle),
+                              child: _profile?['avatar_url'] != null
+                                  ? PersonAvatar(name: name, url: _profile?['avatar_url'], size: 76)
+                                  : SizedBox(
+                                      width: 76,
+                                      height: 76,
+                                      child: Center(
+                                        child: Text(
+                                          name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0]).join().toUpperCase(),
+                                          style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 2,
+                            bottom: 4,
+                            child: Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.primary, width: 2.5),
+                              ),
+                            ),
+                          ),
+                        ]),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(name,
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.24)),
+                            const SizedBox(height: 2),
+                            Text(subtitle, style: const TextStyle(color: Color(0xFFD5E2DC), fontSize: 15)),
+                          ]),
+                        ),
+                      ]),
                     ),
-                    tooltip: _isFavorited ? 'Remove from favourites' : 'Save to favourites',
-                    onPressed: _toggleFavorite,
-                  ),
+                    if (idVerified || bizVerified)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+                        child: Wrap(spacing: 6, runSpacing: 6, children: [
+                          if (idVerified) const _DarkBadge(icon: TablerIcons.id_badge_2, label: 'ID verified'),
+                          if (bizVerified) const _DarkBadge(icon: TablerIcons.building_store, label: 'Business verified'),
+                        ]),
+                      ),
+                  ]),
                 ),
-              const SizedBox(width: 8),
-            ],
+              ),
+            ),
           ),
 
           SliverToBoxAdapter(
@@ -443,79 +520,36 @@ class _ProviderPublicProfileScreenState
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Column(children: [
-                    Stack(children: [
-                      PersonAvatar(name: name, url: _profile?['avatar_url'], size: 104),
-                      Positioned(
-                        right: 6,
-                        bottom: 6,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.surfaceLight, width: 3),
+                    IntrinsicHeight(
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(
+                          child: _InfoTile(
+                            onTap: total == 0 ? null : () => context.push('/provider/${widget.providerId}/reviews'),
+                            top: Row(children: [
+                              const Icon(TablerIcons.star_filled, size: 20, color: Color(0xFFA8822F)),
+                              const SizedBox(width: 4),
+                              Text(total == 0 ? 'New' : avg.toStringAsFixed(1),
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                            ]),
+                            bottom: total == 0 ? 'No reviews yet' : '$total ${total == 1 ? 'review' : 'reviews'}',
                           ),
                         ),
-                      ),
-                    ]),
-                    const SizedBox(height: 14),
-                    Text(name, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
-                    if (location.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textTertiary),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(location,
-                              style: Theme.of(context).textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _InfoTile(
+                            top: Text(location.isEmpty ? 'Zimbabwe' : location.split(',').first,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                            bottom: location.contains(',') ? location.split(',').skip(1).join(',').trim() : 'Service area',
+                          ),
                         ),
                       ]),
-                    ],
-                    const SizedBox(height: 12),
-                    Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
-                      Pill(label: statusLabel, color: statusColor),
-                      if (idVerified) const Pill(label: 'ID verified', color: AppColors.info, icon: Icons.verified_rounded),
-                      if (bizVerified)
-                        const Pill(label: 'Verified business', color: AppColors.success, icon: Icons.storefront_rounded),
-                    ]),
-                    const SizedBox(height: 20),
-
-                    // Stats
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: AppRadius.lgAll,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: IntrinsicHeight(
-                        child: Row(children: [
-                          Expanded(
-                            child: _Stat(
-                              value: total == 0 ? '—' : avg.toStringAsFixed(1),
-                              label: 'Rating',
-                              icon: Icons.star_rounded,
-                              onTap: total == 0 ? null : () => context.push('/provider/${widget.providerId}/reviews'),
-                            ),
-                          ),
-                          const VerticalDivider(width: 1),
-                          Expanded(
-                            child: _Stat(
-                              value: '$total',
-                              label: total == 1 ? 'Review' : 'Reviews',
-                              onTap: total == 0 ? null : () => context.push('/provider/${widget.providerId}/reviews'),
-                            ),
-                          ),
-                          const VerticalDivider(width: 1),
-                          Expanded(child: _Stat(value: '${_services.length}', label: 'Services')),
-                        ]),
-                      ),
                     ),
                     if (_loyalty?['enabled'] == true) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       _LoyaltyCard(status: _loyalty!),
                     ],
                   ]),
@@ -529,13 +563,13 @@ class _ProviderPublicProfileScreenState
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (!_isLoggedIn) ...[
                     SoftBanner(
-                      icon: Icons.person_outline_rounded,
+                      icon: TablerIcons.user,
                       color: AppColors.primary,
                       title: 'Sign in to book',
                       message: 'Create a free account to book, save favourites and chat.',
@@ -557,80 +591,59 @@ class _ProviderPublicProfileScreenState
                   ],
 
                   // Services
-                  Text('Services & Prices', style: Theme.of(context).textTheme.titleMedium),
+                  Text('Services', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: AppSpacing.md),
                   if (_services.isEmpty)
-                    Text(
-                      'No services listed yet.',
-                      style: TextStyle(color: AppColors.textTertiary),
-                    )
+                    const Text('No services listed yet.', style: TextStyle(color: AppColors.textSecondary))
                   else
-                    ..._services.map((s) {
-                      final cat = s['service_categories'] as Map?;
-                      return GestureDetector(
-                        onTap: () => _showServiceDetails(s),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardLight,
-                            border: Border.all(color: AppColors.border),
-                            borderRadius: AppRadius.mdAll,
-                          ),
-                          child: Row(
-                            children: [
-                              if (s['image_url'] != null)
-                                ClipRRect(
-                                  borderRadius: AppRadius.smAll,
-                                  child: Image.network(s['image_url'], width: 48, height: 48, fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => const SizedBox(width: 48, height: 48)),
-                                )
-                              else
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: AppRadius.smAll,
-                                ),
-                                child: Center(
-                                  child: Icon(categoryIcon(cat?['name']),
-                                      size: 20, color: AppColors.primary),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      s['service_name'],
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: AppRadius.mdAll,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(children: [
+                        for (var k = 0; k < _services.length; k++) ...[
+                          if (k > 0) const Divider(height: 1),
+                          Builder(builder: (context) {
+                            final sv = _services[k];
+                            final tiers = (sv['service_tiers'] as List? ?? []).where((t) => t['is_active'] == true).length;
+                            final mins = (sv['duration_minutes'] as num?)?.toInt() ?? 60;
+                            final dur = mins >= 60
+                                ? '${mins ~/ 60} h${mins % 60 > 0 ? ' ${mins % 60} min' : ''}'
+                                : '$mins min';
+                            return InkWell(
+                              onTap: () => _showServiceDetails(sv),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                child: Row(children: [
+                                  if (sv['image_url'] != null) ...[
+                                    ClipRRect(
+                                      borderRadius: AppRadius.smAll,
+                                      child: Image.network(sv['image_url'], width: 44, height: 44, fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => const SizedBox(width: 44, height: 44)),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${cat?['name'] ?? ''} · ${s['duration_minutes']} min',
-                                      style: const TextStyle(fontSize: 13, color: AppColors.textTertiary),
-                                    ),
+                                    const SizedBox(width: 12),
                                   ],
-                                ),
+                                  Expanded(
+                                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                      Text(sv['service_name'] ?? '',
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                                      const SizedBox(height: 2),
+                                      Text('$dur${tiers > 0 ? ' · $tiers options' : ''}',
+                                          style: Theme.of(context).textTheme.bodySmall),
+                                    ]),
+                                  ),
+                                  Text(_priceLabel(sv),
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                                ]),
                               ),
-                              Text(
-                                _priceLabel(s),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 17,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-
+                            );
+                          }),
+                        ],
+                      ]),
+                    ),
 
                   const SizedBox(height: AppSpacing.xxl),
 
@@ -663,7 +676,7 @@ class _ProviderPublicProfileScreenState
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 color: AppColors.surfaceLight,
-                                child: Icon(Icons.broken_image, color: AppColors.textTertiary),
+                                child: Icon(TablerIcons.photo_off, color: AppColors.textTertiary),
                               ),
                             ),
                           ),
@@ -702,7 +715,7 @@ class _ProviderPublicProfileScreenState
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Share $name', style: Theme.of(ctx).textTheme.headlineSmall),
           const SizedBox(height: 4),
-          Text(link, style: Theme.of(ctx).textTheme.bodyMedium),
+          Text(link, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: () {
@@ -710,7 +723,7 @@ class _ProviderPublicProfileScreenState
               launchUrl(Uri.parse('https://wa.me/?text=${Uri.encodeComponent('Book $name on BeauTap: $link')}'),
                   mode: LaunchMode.externalApplication);
             },
-            icon: const Icon(Icons.chat_rounded, size: 18),
+            icon: const Icon(TablerIcons.message_circle, size: 18),
             label: const Text('Share on WhatsApp'),
           ),
           const SizedBox(height: 8),
@@ -722,7 +735,7 @@ class _ProviderPublicProfileScreenState
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
               }
             },
-            icon: const Icon(Icons.copy_rounded, size: 18),
+            icon: const Icon(TablerIcons.copy, size: 18),
             label: const Text('Copy link'),
           ),
         ]),
@@ -794,7 +807,7 @@ class _ProviderPublicProfileScreenState
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                      const Icon(TablerIcons.circle_check_filled, size: 18, color: AppColors.success),
                       const SizedBox(width: 8),
                       Expanded(child: Text(l, style: const TextStyle(fontSize: 14.5))),
                     ]),
@@ -807,7 +820,7 @@ class _ProviderPublicProfileScreenState
                   decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Row(children: [
-                      Icon(Icons.spa_outlined, size: 18, color: AppColors.primary),
+                      Icon(TablerIcons.leaf, size: 18, color: AppColors.primary),
                       SizedBox(width: 6),
                       Text('Aftercare', style: TextStyle(fontWeight: FontWeight.w700)),
                     ]),
@@ -844,64 +857,40 @@ class _ProviderPublicProfileScreenState
   }
 
   Widget _buildBottomBar(BuildContext context, String status) {
+    num? minPrice;
+    for (final sv in _services) {
+      final tiers = (sv['service_tiers'] as List? ?? []).where((t) => t['is_active'] == true);
+      for (final p in [sv['price'], ...tiers.map((t) => t['price'])]) {
+        if (p is num && (minPrice == null || p < minPrice)) minPrice = p;
+      }
+    }
+    final canBook = status != 'offline' && _services.isNotEmpty;
     return Container(
-      padding: EdgeInsets.only(
-        left: AppSpacing.xl,
-        right: AppSpacing.xl,
-        top: AppSpacing.md,
-        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.cardLight,
+      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: status == 'available'
-          ? FilledButton.icon(
-              onPressed: _services.isEmpty ? null : () => _showServicePicker(context),
-              icon: const Icon(Icons.calendar_month_outlined),
-              label: Text(_isLoggedIn ? 'Book Appointment' : 'Sign In to Book'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-              ),
-            )
-          : Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: status == 'busy'
-                    ? AppColors.busy.withValues(alpha: 0.1)
-                    : AppColors.surfaceLight,
-                borderRadius: AppRadius.mdAll,
-                border: Border.all(
-                  color: status == 'busy'
-                      ? AppColors.busy.withValues(alpha: 0.3)
-                      : AppColors.border,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: status == 'busy' ? AppColors.busy : AppColors.offline,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    status == 'busy'
-                        ? 'This provider is currently busy'
-                        : 'This provider is currently offline',
-                    style: TextStyle(
-                      color: status == 'busy' ? AppColors.busy : AppColors.textTertiary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      child: Row(children: [
+        if (minPrice != null) ...[
+          Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('From', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text('\$${minPrice.toStringAsFixed(minPrice % 1 == 0 ? 0 : 2)}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(width: 16),
+        ],
+        Expanded(
+          child: FilledButton(
+            onPressed: canBook ? () => _showServicePicker(context) : null,
+            child: Text(!canBook
+                ? (_services.isEmpty ? 'No services yet' : 'Not taking bookings right now')
+                : _isLoggedIn
+                    ? 'Book'
+                    : 'Sign in to book'),
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -964,7 +953,7 @@ class _GalleryViewerScreenState extends State<_GalleryViewerScreen> {
                       widget.images[i]['image_url'],
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Icon(
-                        Icons.broken_image,
+                        TablerIcons.photo_off,
                         color: Colors.white38,
                         size: 64,
                       ),
@@ -1012,29 +1001,52 @@ class _GalleryViewerScreenState extends State<_GalleryViewerScreen> {
   }
 }
 
-class _Stat extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData? icon;
+class _InfoTile extends StatelessWidget {
+  final Widget top;
+  final String bottom;
   final VoidCallback? onTap;
-  const _Stat({required this.value, required this.label, this.icon, this.onTap});
+  const _InfoTile({required this.top, required this.bottom, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 18, color: AppColors.secondary), const SizedBox(width: 3)],
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-        ]),
-        const SizedBox(height: 2),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ]),
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: const BorderSide(color: AppColors.border)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.mdAll,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            top,
+            const SizedBox(height: 4),
+            Text(bottom, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+          ]),
+        ),
+      ),
     );
   }
 }
 
+/// Verified badge on the dark header: gold text on 18% gold.
+class _DarkBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _DarkBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.18), borderRadius: AppRadius.xsAll),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 15, color: AppColors.goldLight),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.goldLight)),
+      ]),
+    );
+  }
+}
 
 class _LoyaltyCard extends StatelessWidget {
   final Map<String, dynamic> status;
@@ -1047,53 +1059,42 @@ class _LoyaltyCard extends StatelessWidget {
     final pct = (status['percent'] as num).toInt();
     final available = status['available'] == true;
     final stamps = needed - 1;
+    final done = available ? stamps : progress;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: available ? AppColors.success.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.05),
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: available ? AppColors.success.withValues(alpha: 0.4) : AppColors.border),
-      ),
+      decoration: BoxDecoration(color: AppColors.cream, borderRadius: AppRadius.mdAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.loyalty_rounded, size: 18, color: available ? AppColors.success : AppColors.primary),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              available ? 'Your next booking is $pct% off' : 'Loyalty card: every ${needed}th visit $pct% off'
-                  .replaceFirst('every 2th', 'every 2nd').replaceFirst('every 3th', 'every 3rd'),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-            ),
+          const Expanded(
+            child: Text('Loyalty card', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           ),
+          Text(available ? 'Next booking $pct% off' : '$done of $needed · $pct% off',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.goldText)),
         ]),
-        const SizedBox(height: 10),
-        Wrap(spacing: 6, runSpacing: 6, children: [
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: [
           for (var i = 0; i < stamps; i++)
             Container(
-              width: 22,
-              height: 22,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: i < progress || available ? AppColors.primary : Colors.white,
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                color: i < done ? AppColors.primary : Colors.transparent,
+                borderRadius: AppRadius.smAll,
+                border: i < done ? null : Border.all(color: AppColors.gold, width: 1.2),
               ),
-              child: i < progress || available ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
+              child: i < done ? const Icon(TablerIcons.check, size: 18, color: AppColors.goldLight) : null,
             ),
           Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: available ? AppColors.success : Colors.white,
-              border: Border.all(color: AppColors.success),
-            ),
-            child: Icon(Icons.card_giftcard_rounded, size: 13, color: available ? Colors.white : AppColors.success),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: AppColors.gold, borderRadius: AppRadius.smAll),
+            child: const Icon(TablerIcons.gift, size: 20, color: AppColors.textPrimary),
           ),
         ]),
         if (!available) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text('${stamps - progress} more ${stamps - progress == 1 ? 'visit' : 'visits'} to your reward. Applied automatically.',
-              style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         ],
       ]),
     );

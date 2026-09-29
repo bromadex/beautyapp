@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
@@ -209,7 +210,7 @@ class _ServiceRequestQuoteScreenState
                   if (r['description'] != null) ...[
                     const SizedBox(height: AppSpacing.md),
                     Text(r['description'],
-                        style: Theme.of(context).textTheme.bodyMedium),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                   ],
                   const SizedBox(height: AppSpacing.md),
                   Wrap(
@@ -217,7 +218,7 @@ class _ServiceRequestQuoteScreenState
                     runSpacing: AppSpacing.sm,
                     children: [
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.location_on_outlined,
+                        const Icon(TablerIcons.map_pin,
                             size: 16, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(r['location'] ?? '',
@@ -227,7 +228,7 @@ class _ServiceRequestQuoteScreenState
                         Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.attach_money_rounded,
+                              const Icon(TablerIcons.currency_dollar,
                                   size: 16,
                                   color: AppColors.textTertiary),
                               Text(
@@ -240,7 +241,7 @@ class _ServiceRequestQuoteScreenState
                               ),
                             ]),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.person_outline,
+                        const Icon(TablerIcons.user,
                             size: 16, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(r['client']?['full_name'] ?? 'Client',
@@ -339,7 +340,7 @@ class _ServiceRequestQuoteScreenState
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Your Price (\$)',
-                  prefixIcon: const Icon(Icons.attach_money_rounded),
+                  prefixIcon: const Icon(TablerIcons.currency_dollar),
                   border:
                       OutlineInputBorder(borderRadius: AppRadius.mdAll),
                 ),
@@ -350,7 +351,7 @@ class _ServiceRequestQuoteScreenState
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Estimated Duration (min)',
-                  prefixIcon: const Icon(Icons.timer_outlined),
+                  prefixIcon: const Icon(TablerIcons.clock_hour_4),
                   border:
                       OutlineInputBorder(borderRadius: AppRadius.mdAll),
                 ),
@@ -374,7 +375,7 @@ class _ServiceRequestQuoteScreenState
                         width: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.send_rounded),
+                    : const Icon(TablerIcons.send),
                 label: Text(
                     _submitting ? 'Sending...' : 'Send Quote'),
               ),
@@ -391,7 +392,7 @@ class _ServiceRequestQuoteScreenState
                       color: AppColors.success.withValues(alpha: 0.2)),
                 ),
                 child: Row(children: [
-                  const Icon(Icons.check_circle_rounded,
+                  const Icon(TablerIcons.circle_check_filled,
                       color: AppColors.success, size: 22),
                   const SizedBox(width: AppSpacing.sm),
                   const Expanded(

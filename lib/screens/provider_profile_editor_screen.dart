@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
@@ -259,7 +260,7 @@ class _ProviderProfileEditorScreenState
               const SizedBox(height: AppSpacing.xxl),
 
               // -- Bio Section --
-              _buildSectionHeader('About You', Icons.person_outline_rounded),
+              _buildSectionHeader('About You', TablerIcons.user),
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.cardLight,
@@ -293,13 +294,13 @@ class _ProviderProfileEditorScreenState
               _buildSectionDivider(),
 
               // -- Location Section --
-              _buildSectionHeader('Location', Icons.location_on_outlined),
+              _buildSectionHeader('Location', TablerIcons.map_pin),
               TextFormField(
                 controller: _addressCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Service Area / Address',
                   hintText: 'e.g. Borrowdale, Harare',
-                  prefixIcon: Icon(Icons.map_outlined),
+                  prefixIcon: Icon(TablerIcons.map),
                 ),
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Please add your address' : null,
@@ -317,7 +318,7 @@ class _ProviderProfileEditorScreenState
                             strokeWidth: 2, color: AppColors.primary,
                           ),
                         )
-                      : const Icon(Icons.my_location_rounded, size: 18),
+                      : const Icon(TablerIcons.current_location, size: 18),
                   label: Text(_locating
                       ? 'Detecting...'
                       : _latCtrl.text.isNotEmpty
@@ -344,7 +345,7 @@ class _ProviderProfileEditorScreenState
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline_rounded,
+                      Icon(TablerIcons.circle_check,
                           size: 14, color: AppColors.success),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -362,7 +363,7 @@ class _ProviderProfileEditorScreenState
                 _buildSectionDivider(),
 
                 // -- Service Radius --
-                _buildSectionHeader('Service Radius', Icons.radar_rounded),
+                _buildSectionHeader('Service Radius', TablerIcons.radar),
                 Container(
                   padding: AppSpacing.cardPadding,
                   decoration: BoxDecoration(
@@ -435,7 +436,7 @@ class _ProviderProfileEditorScreenState
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.save_rounded),
+                      : const Icon(TablerIcons.device_floppy),
                   label: Text(_saving ? 'Saving...' : 'Save Profile'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.transparent,

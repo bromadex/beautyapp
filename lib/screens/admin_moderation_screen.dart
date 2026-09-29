@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -110,7 +111,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
       return ListView(children: const [
         SizedBox(height: 80),
         EmptyState(
-          icon: Icons.verified_user_outlined,
+          icon: TablerIcons.shield_check,
           title: 'Nothing to review',
           message: 'Reviews that clients or stylists report will appear here.',
         ),
@@ -185,7 +186,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
       return ListView(children: const [
         SizedBox(height: 80),
         EmptyState(
-          icon: Icons.map_outlined,
+          icon: TablerIcons.map,
           title: 'No requests yet',
           message: 'When clients can\'t find a stylist nearby they can ask for their area. Requests from the last 90 days show here.',
         ),

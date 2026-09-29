@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -77,7 +78,7 @@ class _AdminVerificationScreenState
                 borderRadius: AppRadius.smAll,
               ),
               child: const Icon(
-                Icons.block_rounded,
+                TablerIcons.ban,
                 color: AppColors.error,
                 size: 20,
               ),
@@ -111,7 +112,7 @@ class _AdminVerificationScreenState
               _review(verificationId, userId, false,
                   note: noteCtrl.text.trim());
             },
-            icon: const Icon(Icons.close_rounded, size: 18),
+            icon: const Icon(TablerIcons.x, size: 18),
             label: const Text('Reject'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.error,
@@ -160,7 +161,7 @@ class _AdminVerificationScreenState
                 borderRadius: AppRadius.smAll,
               ),
               child: const Icon(
-                Icons.photo_library_rounded,
+                TablerIcons.photo,
                 color: AppColors.info,
                 size: 20,
               ),
@@ -173,14 +174,14 @@ class _AdminVerificationScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDocLabel('Selfie Photo', Icons.camera_front_rounded),
+              _buildDocLabel('Selfie Photo', TablerIcons.camera_selfie),
               const SizedBox(height: AppSpacing.sm),
               ClipRRect(
                 borderRadius: AppRadius.mdAll,
                 child: Image.network(selfieUrl),
               ),
               const SizedBox(height: AppSpacing.xl),
-              _buildDocLabel('ID Document', Icons.credit_card_rounded),
+              _buildDocLabel('ID Document', TablerIcons.credit_card),
               const SizedBox(height: AppSpacing.sm),
               ClipRRect(
                 borderRadius: AppRadius.mdAll,
@@ -246,7 +247,7 @@ class _AdminVerificationScreenState
               ),
             ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(TablerIcons.refresh),
             onPressed: _load,
           ),
         ],
@@ -279,7 +280,7 @@ class _AdminVerificationScreenState
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.check_circle_outline_rounded,
+              TablerIcons.circle_check,
               size: 56,
               color: AppColors.success,
             ),
@@ -428,7 +429,7 @@ class _AdminVerificationScreenState
               child: Row(
                 children: [
                   const Icon(
-                    Icons.schedule_rounded,
+                    TablerIcons.clock,
                     size: 14,
                     color: AppColors.textTertiary,
                   ),
@@ -461,7 +462,7 @@ class _AdminVerificationScreenState
                     onPressed: () => _showDocuments(
                         v['selfie_url'], v['id_document_url']),
                     icon: const Icon(
-                      Icons.visibility_outlined,
+                      TablerIcons.eye,
                       size: 18,
                     ),
                     label: const Text('View Documents'),
@@ -487,7 +488,7 @@ class _AdminVerificationScreenState
                       child: OutlinedButton.icon(
                         onPressed: () =>
                             _showRejectDialog(v['id'], v['user_id']),
-                        icon: const Icon(Icons.close_rounded, size: 18),
+                        icon: const Icon(TablerIcons.x, size: 18),
                         label: const Text('Reject'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
@@ -506,7 +507,7 @@ class _AdminVerificationScreenState
                       child: FilledButton.icon(
                         onPressed: () =>
                             _review(v['id'], v['user_id'], true),
-                        icon: const Icon(Icons.check_rounded, size: 18),
+                        icon: const Icon(TablerIcons.check, size: 18),
                         label: const Text('Approve'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.success,

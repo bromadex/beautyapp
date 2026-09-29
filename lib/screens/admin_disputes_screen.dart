@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -100,7 +101,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
             const SizedBox(height: AppSpacing.xs),
             Text(
               '${d['reporter']?['full_name'] ?? 'User'} reported ${d['reported']?['full_name'] ?? 'the other party'}',
-              style: Theme.of(ctx).textTheme.bodyMedium,
+              style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(d['description'] ?? '', style: Theme.of(ctx).textTheme.bodyLarge),
@@ -181,7 +182,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
               : _disputes.isEmpty
                   ? Center(
                       child: Text('No ${_filters[_filter]!.toLowerCase()} disputes',
-                          style: Theme.of(context).textTheme.bodyMedium))
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.separated(
@@ -196,7 +197,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                               onTap: () => _open(d),
                               leading: const CircleAvatar(
                                 backgroundColor: Color(0x1AE5484D),
-                                child: Icon(Icons.flag_rounded, color: AppColors.error),
+                                child: Icon(TablerIcons.flag, color: AppColors.error),
                               ),
                               title: Text(_categories[d['category']] ?? 'Report'),
                               subtitle: Text(
@@ -206,7 +207,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              trailing: const Icon(Icons.chevron_right_rounded),
+                              trailing: const Icon(TablerIcons.chevron_right),
                             ),
                           );
                         },

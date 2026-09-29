@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
@@ -18,7 +19,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   bool _isAdmin = false;
   bool _loading = true;
   int _unreadNotifications = 0;
-  List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _topStylists = [];
   Map<String, dynamic>? _nextBooking;
   late AnimationController _animCtrl;
@@ -66,12 +66,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
       unreadNotifs = await NotificationService.unreadCount(userId);
     } catch (_) {}
 
-    List<Map<String, dynamic>> categories = [];
     List<Map<String, dynamic>> stylists = [];
     Map<String, dynamic>? nextBooking;
     try {
       final results = await Future.wait([
-        supabase.from('service_categories').select('id, name, icon, sort_order').order('sort_order', ascending: true),
         SmartMatchService.getTopRated(location: profile['location'], limit: 8),
         supabase
             .from('bookings')
@@ -82,12 +80,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
             .order('booking_time')
             .limit(1),
       ]);
-      categories = List<Map<String, dynamic>>.from(results[0] as List);
-      stylists = List<Map<String, dynamic>>.from(results[1] as List);
+      stylists = List<Map<String, dynamic>>.from(results[0] as List);
       bool featured(Map<String, dynamic> p) =>
           DateTime.tryParse((p['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
       stylists.sort((a, b) => (featured(b) ? 1 : 0).compareTo(featured(a) ? 1 : 0));
-      final nb = results[2] as List;
+      final nb = results[1] as List;
       nextBooking = nb.isNotEmpty ? nb.first as Map<String, dynamic> : null;
     } catch (_) {}
 
@@ -96,25 +93,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
         _profile = profile;
         _isAdmin = isAdmin;
         _unreadNotifications = unreadNotifs;
-        _categories = categories;
         _topStylists = stylists;
         _nextBooking = nextBooking;
         _loading = false;
       });
       _animCtrl.forward();
     }
-  }
-
-  Future<void> _signOut() async {
-    await supabase.auth.signOut();
-    if (mounted) context.go('/login');
-  }
-
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
   }
 
   @override
@@ -127,226 +111,171 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     final firstName = name.split(' ').first;
     final isGuest = supabase.auth.currentUser?.isAnonymous ?? false;
 
+    final town = (_profile?['location'] ?? '').toString().split(',').first.trim();
+
     return Scaffold(
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadData,
-          child: FadeTransition(
-            opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                  children: [
-                    // Header
-                    Row(children: [
-                      GestureDetector(
-                        onTap: () => context.push('/account/settings'),
-                        child: PersonAvatar(name: name, url: _profile?['avatar_url'], size: 46),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(_greeting, style: Theme.of(context).textTheme.bodyMedium),
-                          Text(
-                            firstName.isEmpty || isGuest || firstName == 'User' ? 'Welcome' : firstName,
-                            style: Theme.of(context).textTheme.titleLarge,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ]),
-                      ),
-                      if (_isAdmin)
-                        _RoundIcon(
-                          icon: Icons.admin_panel_settings_outlined,
-                          tooltip: 'Admin',
-                          onTap: () => context.push('/admin/dashboard'),
-                        ),
-                      const SizedBox(width: 8),
-                      _RoundIcon(
-                        icon: Icons.notifications_none_rounded,
-                        tooltip: 'Notifications',
-                        badge: _unreadNotifications,
-                        onTap: () async {
-                          await context.push('/notifications');
-                          _loadData();
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        tooltip: 'Menu',
-                        icon: const Icon(Icons.more_horiz_rounded),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                        onSelected: (v) {
-                          if (v == 'settings') context.push('/account/settings');
-                          if (v == 'signout') _signOut();
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'settings', child: Text('Account settings')),
-                          PopupMenuItem(value: 'signout', child: Text('Sign out')),
-                        ],
-                      ),
-                    ]),
-                    const SizedBox(height: 24),
-
-                    Text('What would you like\ndone today?',
-                        style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 16),
-
-                    // Search
-                    Material(
-                      color: Colors.white,
-                      borderRadius: AppRadius.lgAll,
-                      child: InkWell(
-                        borderRadius: AppRadius.lgAll,
-                        onTap: () => context.go('/browse'),
-                        child: Container(
-                          height: 56,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            borderRadius: AppRadius.lgAll,
-                            border: Border.all(color: AppColors.border),
-                            boxShadow: AppShadows.soft,
-                          ),
-                          child: Row(children: [
-                            const Icon(Icons.search_rounded, color: AppColors.primary),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text('Search braids, nails, makeup…',
-                                  style: Theme.of(context).textTheme.bodyMedium),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primarySoft,
-                                borderRadius: AppRadius.smAll,
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              ForestHeader(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            InkWell(
+                              onTap: () => context.go('/browse'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(TablerIcons.map_pin, color: AppColors.goldLight, size: 18),
+                                  const SizedBox(width: 4),
+                                  Text(town.isEmpty ? 'Zimbabwe' : town,
+                                      style: const TextStyle(
+                                          color: AppColors.goldLight, fontSize: 15, fontWeight: FontWeight.w700)),
+                                  const SizedBox(width: 2),
+                                  const Icon(TablerIcons.chevron_down, color: AppColors.goldLight, size: 16),
+                                ]),
                               ),
-                              child: const Icon(Icons.tune_rounded, size: 18, color: AppColors.primary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              firstName.isEmpty || isGuest || firstName == 'User' ? 'Welcome' : 'Hi $firstName',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ]),
                         ),
-                      ),
-                    ),
-
-                    if (isGuest) ...[
-                      const SizedBox(height: 16),
-                      SoftBanner(
-                        icon: Icons.bookmark_add_outlined,
-                        color: AppColors.primary,
-                        title: 'You\'re browsing as a guest',
-                        message: 'Create a free account to keep your bookings on any phone.',
-                        actionLabel: 'Create',
-                        onTap: () => context.push('/account/settings'),
-                      ),
-                    ],
-
-                    // Next appointment
-                    if (_nextBooking != null) ...[
-                      const SizedBox(height: 24),
-                      const SectionHeader(title: 'Your next appointment'),
-                      _NextBookingCard(booking: _nextBooking!),
-                    ],
-
-                    // Categories
-                    if (_categories.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      SectionHeader(
-                        title: 'Categories',
-                        actionLabel: 'See all',
-                        onAction: () => context.go('/browse'),
-                      ),
-                      SizedBox(
-                        height: 96,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _categories.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (_, i) {
-                            final c = _categories[i];
-                            return _CategoryChip(
-                              icon: categoryIcon(c['name']),
-                              label: c['name'] ?? '',
-                              onTap: () {
-                                BrowseIntent.category.value = c['id'];
-                                context.go('/browse');
-                              },
-                            );
+                        if (_isAdmin) ...[
+                          _RoundIcon(
+                            icon: TablerIcons.shield_lock,
+                            tooltip: 'Admin',
+                            onTap: () => context.push('/admin/dashboard'),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        _RoundIcon(
+                          icon: TablerIcons.bell,
+                          tooltip: 'Notifications',
+                          badge: _unreadNotifications,
+                          onTap: () async {
+                            await context.push('/notifications');
+                            _loadData();
                           },
                         ),
-                      ),
-                    ],
-
-                    // Shortcuts
-                    const SizedBox(height: 24),
-                    Row(children: [
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.person_outline_rounded,
-                          label: 'Account',
+                        const SizedBox(width: 8),
+                        _RoundIcon(
+                          icon: TablerIcons.user,
+                          tooltip: 'Account',
                           onTap: () => context.push('/account/settings'),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.event_note_rounded,
-                          label: 'Bookings',
-                          onTap: () => context.go('/client/bookings'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.favorite_border_rounded,
-                          label: 'Saved',
-                          onTap: () => context.go('/favorites'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _Shortcut(
-                          icon: Icons.campaign_outlined,
-                          label: 'Requests',
-                          onTap: () => context.push('/service-requests'),
+                      ]),
+                      const SizedBox(height: 16),
+                      Material(
+                        color: Colors.white,
+                        borderRadius: AppRadius.mdAll,
+                        child: InkWell(
+                          borderRadius: AppRadius.mdAll,
+                          onTap: () => context.go('/browse'),
+                          child: const SizedBox(
+                            height: 52,
+                            child: Row(children: [
+                              SizedBox(width: 14),
+                              Icon(TablerIcons.search, color: AppColors.textPrimary, size: 22),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text('Braids, fade, gel nails…',
+                                    style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                              ),
+                            ]),
+                          ),
                         ),
                       ),
                     ]),
-
-                    // Request card
-                    const SizedBox(height: 24),
-                    _RequestCard(
-                      onTap: () => context.push('/service-request/create'),
-                    ),
-
-                    // Top stylists
-                    if (_topStylists.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      SectionHeader(
-                        title: 'Top rated near you',
-                        actionLabel: 'Browse',
-                        onAction: () => context.go('/browse'),
-                      ),
-                      SizedBox(
-                        height: 204,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _topStylists.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (_, i) => _StylistCard(provider: _topStylists[i]),
-                        ),
-                      ),
-                    ],
-
-                    if (_nextBooking == null) ...[
-                      const SizedBox(height: 28),
-                      const SectionHeader(title: 'How BeauTap works'),
-                      const _HowItWorks(),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      if (isGuest) ...[
+                        SoftBanner(
+                          icon: TablerIcons.bookmark_plus,
+                          color: AppColors.primary,
+                          title: 'You\'re browsing as a guest',
+                          message: 'Create a free account to keep your bookings on any phone.',
+                          actionLabel: 'Create',
+                          onTap: () => context.push('/account/settings'),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      if (_nextBooking != null) ...[
+                        const SectionHeader(title: 'Your next appointment'),
+                        _NextBookingCard(booking: _nextBooking!),
+                        const SizedBox(height: 20),
+                      ],
+                      const SectionHeader(title: 'Services'),
+                      LayoutBuilder(builder: (context, c) {
+                        final cols = c.maxWidth > 520 ? 6 : 4;
+                        return Wrap(
+                          runSpacing: 14,
+                          children: [
+                            for (final g in ServiceGroup.all)
+                              SizedBox(
+                                width: c.maxWidth / cols,
+                                child: _CategoryChip(
+                                  icon: g.icon,
+                                  label: g.name,
+                                  onTap: () {
+                                    BrowseIntent.group.value = g.name;
+                                    context.go('/browse');
+                                  },
+                                ),
+                              ),
+                          ],
+                        );
+                      }),
+                      if (_topStylists.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        SectionHeader(
+                          title: 'Featured near you',
+                          actionLabel: 'See all',
+                          onAction: () => context.go('/browse'),
+                        ),
+                        SizedBox(
+                          height: 236,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _topStylists.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            itemBuilder: (_, i) => _StylistCard(provider: _topStylists[i]),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      _RequestCard(onTap: () => context.push('/service-request/create')),
+                      if (_nextBooking == null) ...[
+                        const SizedBox(height: 24),
+                        const SectionHeader(title: 'How BeauTap works'),
+                        const _HowItWorks(),
+                      ],
+                    ]),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -354,6 +283,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   }
 }
 
+/// Square tile on the forest header (notifications, account).
 class _RoundIcon extends StatelessWidget {
   final IconData icon;
   final String tooltip;
@@ -366,20 +296,31 @@ class _RoundIcon extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white,
-        shape: const CircleBorder(side: BorderSide(color: AppColors.border)),
+        color: AppColors.pine,
+        borderRadius: AppRadius.mdAll,
         child: InkWell(
-          customBorder: const CircleBorder(),
+          borderRadius: AppRadius.mdAll,
           onTap: onTap,
           child: SizedBox(
-            width: 44,
-            height: 44,
-            child: Badge(
-              isLabelVisible: badge > 0,
-              label: Text(badge > 9 ? '9+' : '$badge'),
-              offset: const Offset(4, -4),
-              child: Icon(icon, size: 22, color: AppColors.textPrimary),
-            ),
+            width: 48,
+            height: 48,
+            child: Stack(alignment: Alignment.center, children: [
+              Icon(icon, size: 22, color: Colors.white),
+              if (badge > 0)
+                Positioned(
+                  right: 11,
+                  top: 11,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: AppColors.gold,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.pine, width: 1.5),
+                    ),
+                  ),
+                ),
+            ]),
           ),
         ),
       ),
@@ -397,61 +338,21 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: AppRadius.lgAll,
-      child: SizedBox(
-        width: 76,
-        child: Column(children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: AppRadius.lgAll,
-              border: Border.all(color: AppColors.border),
-            ),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 26, color: AppColors.primary),
-          ),
-          const SizedBox(height: 8),
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _Shortcut extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _Shortcut({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: AppRadius.lgAll,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.lgAll,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.lgAll,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(children: [
-            Icon(icon, color: AppColors.primary, size: 24),
-            const SizedBox(height: 6),
-            Text(label,
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          ]),
+      borderRadius: AppRadius.mdAll,
+      child: Column(children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(14)),
+          alignment: Alignment.center,
+          child: Icon(icon, size: 24, color: AppColors.primary),
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(label,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+      ]),
     );
   }
 }
@@ -497,7 +398,7 @@ class _RequestCard extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 32),
+          child: const Icon(TablerIcons.speakerphone, color: Colors.white, size: 32),
         ),
       ]),
     );
@@ -540,7 +441,7 @@ class _NextBookingCard extends StatelessWidget {
                 Text(
                   '${dt != null ? '${days[dt.weekday - 1]} · ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}' : ''}'
                   ' with ${booking['profiles']?['full_name'] ?? 'your stylist'}',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
@@ -550,7 +451,7 @@ class _NextBookingCard extends StatelessWidget {
                 ),
               ]),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+            const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
           ]),
         ),
       ),
@@ -564,52 +465,66 @@ class _StylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = provider['profiles']?['full_name'] ?? 'Stylist';
+    final name = provider['profiles']?['full_name'] ?? 'Beauty pro';
     final location = (provider['profiles']?['location'] ?? '').toString();
     final rating = (provider['average_rating'] as num?)?.toDouble() ?? 0;
     final reviews = (provider['total_reviews'] as num?)?.toInt() ?? 0;
-    final available = provider['availability_status'] == 'available';
+    final featured = DateTime.tryParse((provider['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
+    final avatar = provider['profiles']?['avatar_url'] as String?;
     return SizedBox(
-      width: 156,
-      child: Card(
+      width: 200,
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: const BorderSide(color: AppColors.border)),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/provider/${provider['provider_id']}'),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Stack(children: [
-                PersonAvatar(name: name, url: provider['profiles']?['avatar_url'], size: 56),
-                if (available)
-                  Positioned(
-                    right: 2,
-                    bottom: 2,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: AppColors.available,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(
+              height: 128,
+              width: double.infinity,
+              child: Stack(fit: StackFit.expand, children: [
+                if (avatar != null && avatar.isNotEmpty)
+                  Image.network(avatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const _PhotoPlaceholder())
+                else
+                  const _PhotoPlaceholder(),
+                if (featured)
+                  const Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Pill(label: 'Featured', color: AppColors.gold, solid: true),
                   ),
               ]),
-              const SizedBox(height: 12),
-              Text(name, style: Theme.of(context).textTheme.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 2),
-              Text(location.isEmpty ? 'Zimbabwe' : location,
-                  style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              const Spacer(),
-              if (DateTime.tryParse((provider['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 6),
-                  child: Pill(label: 'Featured', color: AppColors.secondary, icon: Icons.star_rounded),
-                ),
-              RatingPill(rating: rating, reviews: reviews),
-            ]),
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(location.isEmpty ? 'Zimbabwe' : location,
+                    style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 6),
+                RatingPill(rating: rating, reviews: reviews),
+              ]),
+            ),
+          ]),
         ),
       ),
+    );
+  }
+}
+
+class _PhotoPlaceholder extends StatelessWidget {
+  const _PhotoPlaceholder();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primarySoft,
+      alignment: Alignment.center,
+      child: const Icon(TablerIcons.photo, color: AppColors.textTertiary, size: 28),
     );
   }
 }
@@ -620,9 +535,9 @@ class _HowItWorks extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const steps = [
-      (Icons.search_rounded, 'Find a stylist', 'Browse verified stylists, prices and real reviews.'),
-      (Icons.event_available_rounded, 'Book a time', 'Pick a slot that suits you — pay cash, EcoCash or card.'),
-      (Icons.home_rounded, 'Relax at home', 'Your stylist comes to you. Rate them afterwards.'),
+      (TablerIcons.search, 'Find a beauty pro', 'Browse verified pros, prices and real reviews.'),
+      (TablerIcons.calendar_check, 'Book a time', 'Pick a slot that suits you — pay cash, EcoCash or card.'),
+      (TablerIcons.home, 'Get it done', 'At home or at their studio. Rate them afterwards.'),
     ];
     return Card(
       child: Padding(
@@ -643,7 +558,7 @@ class _HowItWorks extends StatelessWidget {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(steps[i].$2, style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 2),
-                    Text(steps[i].$3, style: Theme.of(context).textTheme.bodyMedium),
+                    Text(steps[i].$3, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                   ]),
                 ),
               ]),

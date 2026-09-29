@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../supabase_client.dart';
@@ -93,7 +94,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
       appBar: AppBar(
         title: const Text('Verify Identity'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(TablerIcons.arrow_left),
           onPressed: () => context.pop(),
         ),
       ),
@@ -121,7 +122,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                           color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.shield_rounded, color: Colors.white, size: 26),
+                        child: const Icon(TablerIcons.shield, color: Colors.white, size: 26),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -152,7 +153,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                 _UploadCard(
                   title: 'Selfie Photo',
                   subtitle: 'A clear photo of your face. Good lighting, no sunglasses.',
-                  icon: Icons.face_rounded,
+                  icon: TablerIcons.mood_smile,
                   imageBytes: _selfieBytes,
                   onTap: () => _pick(true),
                   accentColor: AppColors.primary,
@@ -164,7 +165,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                 _UploadCard(
                   title: 'ID Document',
                   subtitle: 'National ID, Passport, or Driver\'s Licence. All text must be readable.',
-                  icon: Icons.badge_rounded,
+                  icon: TablerIcons.id_badge_2,
                   imageBytes: _idBytes,
                   onTap: () => _pick(false),
                   accentColor: AppColors.info,
@@ -183,7 +184,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.lightbulb_outline_rounded, color: AppColors.warning, size: 18),
+                      Icon(TablerIcons.bulb, color: AppColors.warning, size: 18),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -220,7 +221,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(_bothSelected ? Icons.send_rounded : Icons.photo_camera_rounded, size: 18),
+                              Icon(_bothSelected ? TablerIcons.send : TablerIcons.camera, size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 _bothSelected ? 'Submit for Review' : 'Upload Both Photos to Continue',
@@ -280,7 +281,7 @@ class _ProgressBar extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle_rounded, size: 14, color: AppColors.success),
+                    Icon(TablerIcons.circle_check_filled, size: 14, color: AppColors.success),
                     const SizedBox(width: 4),
                     Text('Ready', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success)),
                   ],
@@ -385,7 +386,7 @@ class _UploadCard extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                        Icon(TablerIcons.check, color: Colors.white, size: 14),
                         SizedBox(width: 4),
                         Text('Uploaded', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                       ],
@@ -400,7 +401,7 @@ class _UploadCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+              Icon(TablerIcons.circle_check_filled, color: AppColors.success, size: 18),
               const SizedBox(width: 8),
               Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               const Spacer(),
@@ -450,7 +451,7 @@ class _UploadCard extends StatelessWidget {
               color: accentColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.add_a_photo_rounded, color: accentColor, size: 20),
+            child: Icon(TablerIcons.camera_plus, color: accentColor, size: 20),
           ),
         ],
       ),

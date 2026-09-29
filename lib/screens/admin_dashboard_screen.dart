@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -144,7 +145,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadStats),
+          IconButton(icon: const Icon(TablerIcons.refresh), onPressed: _loadStats),
         ],
       ),
       body: _loading
@@ -206,7 +207,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       childAspectRatio: 1.5,
       children: [
         _StatCard(
-          icon: Icons.people_rounded,
+          icon: TablerIcons.users,
           label: 'Total Users',
           value: '$_totalUsers',
           subtitle: '$_totalProviders providers, $_totalClients clients',
@@ -214,7 +215,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: () => context.push('/admin/users'),
         ),
         _StatCard(
-          icon: Icons.calendar_today_rounded,
+          icon: TablerIcons.calendar,
           label: 'Bookings',
           value: '$_totalBookings',
           subtitle: '$_completedBookings completed',
@@ -222,7 +223,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: () => context.push('/admin/bookings'),
         ),
         _StatCard(
-          icon: Icons.attach_money_rounded,
+          icon: TablerIcons.currency_dollar,
           label: 'Bookings Volume',
           value: '\$${_totalRevenue.toStringAsFixed(0)}',
           subtitle: '\$${_subscriptionRevenue.toStringAsFixed(0)} subscription revenue',
@@ -230,7 +231,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: () => context.push('/admin/analytics'),
         ),
         _StatCard(
-          icon: Icons.verified_user_rounded,
+          icon: TablerIcons.shield_check,
           label: 'Verifications',
           value: '$_pendingVerifications',
           subtitle: 'pending review',
@@ -243,14 +244,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildActionTiles() {
     final actions = [
-      _ActionItem(Icons.people_outline_rounded, 'Users', AppColors.info, () => context.push('/admin/users')),
-      _ActionItem(Icons.calendar_month_rounded, 'Bookings', AppColors.secondary, () => context.push('/admin/bookings')),
-      _ActionItem(Icons.verified_rounded, 'Verifications', AppColors.warning, () => context.push('/admin/verify')),
-      _ActionItem(Icons.bar_chart_rounded, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),
-      _ActionItem(Icons.flag_rounded, 'Disputes', AppColors.error, () => context.push('/admin/disputes')),
-      _ActionItem(Icons.storefront_rounded, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
-      _ActionItem(Icons.rate_review_outlined, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation')),
-      _ActionItem(Icons.map_outlined, 'Area demand', AppColors.info, () => context.push('/admin/moderation?tab=demand')),
+      _ActionItem(TablerIcons.users, 'Users', AppColors.info, () => context.push('/admin/users')),
+      _ActionItem(TablerIcons.calendar_month, 'Bookings', AppColors.secondary, () => context.push('/admin/bookings')),
+      _ActionItem(TablerIcons.rosette_discount_check, 'Verifications', AppColors.warning, () => context.push('/admin/verify')),
+      _ActionItem(TablerIcons.chart_bar, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),
+      _ActionItem(TablerIcons.flag, 'Disputes', AppColors.error, () => context.push('/admin/disputes')),
+      _ActionItem(TablerIcons.building_store, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
+      _ActionItem(TablerIcons.message_star, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation')),
+      _ActionItem(TablerIcons.map, 'Area demand', AppColors.info, () => context.push('/admin/moderation?tab=demand')),
     ];
 
     return GridView.count(
@@ -342,7 +343,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star_rounded, color: AppColors.warning, size: 16),
+                        const Icon(TablerIcons.star_filled, color: AppColors.warning, size: 16),
                         const SizedBox(width: 2),
                         Text(
                           (p['rating'] as double).toStringAsFixed(1),
@@ -411,7 +412,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           borderRadius: AppRadius.mdAll,
                         ),
                         child: Icon(
-                          Icons.calendar_today_rounded,
+                          TablerIcons.calendar,
                           color: StatusColors.foreground(status),
                           size: 18,
                         ),
@@ -517,7 +518,7 @@ class _StatCard extends StatelessWidget {
                   child: Icon(icon, color: color, size: 18),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textTertiary),
+                Icon(TablerIcons.chevron_right, size: 12, color: AppColors.textTertiary),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),

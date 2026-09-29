@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -266,7 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       IconButton(
                         onPressed: () => context.go('/login'),
-                        icon: const Icon(Icons.arrow_back_rounded),
+                        icon: const Icon(TablerIcons.arrow_left),
                         tooltip: 'Back to sign in',
                       ),
                       const Spacer(),
@@ -326,7 +327,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             children: [
                               Expanded(
                                 child: _RoleCard(
-                                  icon: Icons.person_rounded,
+                                  icon: TablerIcons.user,
                                   label: 'Client',
                                   subtitle: 'Book services',
                                   selected: _userType == 'client',
@@ -337,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               const SizedBox(width: AppSpacing.md),
                               Expanded(
                                 child: _RoleCard(
-                                  icon: Icons.auto_awesome_rounded,
+                                  icon: TablerIcons.sparkles,
                                   label: 'Provider',
                                   subtitle: 'Offer services',
                                   selected: _userType == 'provider',
@@ -369,7 +370,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     width: 20,
                                     height: 20,
                                     errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.g_mobiledata_rounded,
+                                      TablerIcons.brand_google,
                                       size: 24,
                                     ),
                                   ),
@@ -494,7 +495,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _nameCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Full Name',
-                              prefixIcon: Icon(Icons.person_outline),
+                              prefixIcon: Icon(TablerIcons.user),
                             ),
                             textCapitalization: TextCapitalization.words,
                             textInputAction: TextInputAction.next,
@@ -509,7 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             decoration: const InputDecoration(
                               labelText: 'Phone Number',
                               hintText: '077XXXXXXX',
-                              prefixIcon: Icon(Icons.phone_outlined),
+                              prefixIcon: Icon(TablerIcons.phone),
                             ),
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,
@@ -527,7 +528,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ? 'e.g. Borrowdale, Harare'
                                   : 'e.g. Harare, Zimbabwe',
                               prefixIcon: const Icon(
-                                Icons.location_on_outlined,
+                                TablerIcons.map_pin,
                               ),
                             ),
                             textCapitalization: TextCapitalization.words,
@@ -546,7 +547,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _emailCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              prefixIcon: Icon(TablerIcons.mail),
                             ),
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -560,12 +561,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _passwordCtrl,
                             decoration: InputDecoration(
                               labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(TablerIcons.lock),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscurePassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
+                                      ? TablerIcons.eye_off
+                                      : TablerIcons.eye,
                                   size: 20,
                                 ),
                                 onPressed: () => setState(
@@ -585,12 +586,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _confirmPasswordCtrl,
                             decoration: InputDecoration(
                               labelText: 'Confirm Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(TablerIcons.lock),
                               suffixIcon: IconButton(
                                 icon: Icon(
                                   _obscureConfirm
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
+                                      ? TablerIcons.eye_off
+                                      : TablerIcons.eye,
                                   size: 20,
                                 ),
                                 onPressed: () => setState(
@@ -644,7 +645,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: Row(
                                 children: [
                                   Icon(
-                                    Icons.check_circle_outline_rounded,
+                                    TablerIcons.circle_check,
                                     size: 16,
                                     color: AppColors.success,
                                   ),

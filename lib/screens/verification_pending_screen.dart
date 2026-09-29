@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
@@ -68,7 +69,7 @@ class _VerificationPendingScreenState
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.verified_rounded,
+          child: const Icon(TablerIcons.rosette_discount_check,
               color: AppColors.success, size: 48),
         ),
         title: const Text('Well Done!'),
@@ -112,8 +113,8 @@ class _VerificationPendingScreenState
 
     final statusColor = isRejected ? AppColors.error : AppColors.warning;
     final statusIcon = isRejected
-        ? Icons.cancel_rounded
-        : Icons.hourglass_top_rounded;
+        ? TablerIcons.circle_x
+        : TablerIcons.hourglass_high;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Verification Status')),
@@ -185,7 +186,7 @@ class _VerificationPendingScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        Icons.info_outline_rounded,
+                        TablerIcons.info_circle,
                         size: 18,
                         color: AppColors.error,
                       ),
@@ -237,7 +238,7 @@ class _VerificationPendingScreenState
                           borderRadius: AppRadius.smAll,
                         ),
                         child: const Icon(
-                          Icons.schedule_rounded,
+                          TablerIcons.clock,
                           size: 20,
                           color: AppColors.info,
                         ),
@@ -275,7 +276,7 @@ class _VerificationPendingScreenState
               if (isRejected)
                 FilledButton.icon(
                   onPressed: () => context.go('/verify'),
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: const Icon(TablerIcons.refresh),
                   label: const Text('Re-Submit Documents'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,

@@ -46,6 +46,7 @@ dependencies:
   firebase_messaging: ^16.1.0
   shared_preferences: ^2.3.0
   google_sign_in: ^6.2.2
+  flutter_tabler_icons: ^1.43.0
 
 dev_dependencies:
   flutter_test:
@@ -97,18 +98,22 @@ flutter:
     - assets/branding/
 
   fonts:
-    - family: Jakarta
+    - family: Manrope
       fonts:
-        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+        - asset: assets/fonts/Manrope-Regular.ttf
           weight: 400
-        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+        - asset: assets/fonts/Manrope-Medium.ttf
           weight: 500
-        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+        - asset: assets/fonts/Manrope-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+        - asset: assets/fonts/Manrope-Bold.ttf
           weight: 700
-        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+        - asset: assets/fonts/Manrope-ExtraBold.ttf
           weight: 800
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
 
   # To add assets to your application, add an assets section, like this:
   # assets:

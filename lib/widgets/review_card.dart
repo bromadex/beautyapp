@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
 import 'star_rating_widget.dart';
 
@@ -104,7 +105,7 @@ class ReviewCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.reply_rounded,
+                        Icon(TablerIcons.arrow_back_up,
                             size: 14, color: AppColors.primary),
                         const SizedBox(width: 4),
                         Text(

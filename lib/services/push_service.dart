@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/firebase_config.dart';
@@ -115,7 +116,7 @@ class PushService {
             color: AppColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.notifications_active_rounded,
+          child: const Icon(TablerIcons.bell_ringing,
               color: AppColors.primary, size: 32),
         ),
         title: const Text('Never miss an appointment', textAlign: TextAlign.center),

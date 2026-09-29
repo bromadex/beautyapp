@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -60,7 +61,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> {
                 await context.push('/service-request/create');
                 _load();
               },
-              icon: const Icon(Icons.add),
+              icon: const Icon(TablerIcons.plus),
               label: const Text('New Request'),
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -72,7 +73,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.search_off_rounded,
+                      Icon(TablerIcons.search_off,
                           size: 64, color: AppColors.textTertiary),
                       const SizedBox(height: AppSpacing.lg),
                       Text(
@@ -179,19 +180,19 @@ class _RequestCard extends StatelessWidget {
                 children: [
                   if (request['location'] != null)
                     _InfoChip(
-                      icon: Icons.location_on_outlined,
+                      icon: TablerIcons.map_pin,
                       label: request['location'],
                     ),
                   if (budgetMin != null || budgetMax != null)
                     _InfoChip(
-                      icon: Icons.attach_money_rounded,
+                      icon: TablerIcons.currency_dollar,
                       label: budgetMin != null && budgetMax != null
                           ? '\$${budgetMin.toStringAsFixed(0)}-\$${budgetMax.toStringAsFixed(0)}'
                           : budgetMax != null
                               ? 'Up to \$${budgetMax.toStringAsFixed(0)}'
                               : 'From \$${budgetMin!.toStringAsFixed(0)}',
                     ),
-                  _InfoChip(icon: Icons.calendar_today_outlined, label: dateStr),
+                  _InfoChip(icon: TablerIcons.calendar, label: dateStr),
                 ],
               ),
               if (isProvider && request['client']?['full_name'] != null) ...[

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -104,7 +105,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    Icons.favorite_border_rounded,
+                                    TablerIcons.heart,
                                     size: 40,
                                     color: AppColors.primary.withValues(alpha: 0.5),
                                   ),
@@ -122,7 +123,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 const SizedBox(height: AppSpacing.xxl),
                                 FilledButton.icon(
                                   onPressed: () => context.go('/browse'),
-                                  icon: const Icon(Icons.search_rounded),
+                                  icon: const Icon(TablerIcons.search),
                                   label: const Text('Browse Stylists'),
                                 ),
                               ],
@@ -191,7 +192,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                               const SizedBox(height: 2),
                                               Row(
                                                 children: [
-                                                  Icon(Icons.location_on_outlined, size: 14, color: AppColors.textTertiary),
+                                                  Icon(TablerIcons.map_pin, size: 14, color: AppColors.textTertiary),
                                                   const SizedBox(width: 2),
                                                   Expanded(
                                                     child: Text(
@@ -225,7 +226,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                                 ),
                                                 if (totalReviews > 0) ...[
                                                   const SizedBox(width: AppSpacing.md),
-                                                  Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                                                  Icon(TablerIcons.star_filled, size: 14, color: AppColors.warning),
                                                   const SizedBox(width: 2),
                                                   Text(
                                                     '${rating.toStringAsFixed(1)} ($totalReviews)',
@@ -242,7 +243,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                       ),
                                       // Favorite heart button
                                       IconButton(
-                                        icon: Icon(Icons.favorite_rounded, color: AppColors.accent, size: 26),
+                                        icon: Icon(TablerIcons.heart_filled, color: AppColors.accent, size: 26),
                                         tooltip: 'Remove from favourites',
                                         onPressed: () => _removeFavorite(providerId),
                                       ),
@@ -280,7 +281,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                       onPressed: canBook
                                           ? () => context.push('/provider/$providerId')
                                           : null,
-                                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                                      icon: const Icon(TablerIcons.calendar_month, size: 18),
                                       label: const Text('Book Again'),
                                     ),
                                   ),

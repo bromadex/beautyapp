@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/app_config.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
@@ -33,13 +32,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   double _prevWeekEarnings = 0;
   int _weeklyBookingsCount = 0;
   int _pendingBookingsCount = 0;
-  int _totalBookingsCount = 0;
   int _totalReviews = 0;
   double _avgRating = 0;
-  int _unreadMessages = 0;
   int _unreadNotifications = 0;
   List<Map<String, dynamic>> _todayBookings = [];
   List<Map<String, dynamic>> _requests = [];
+  Map<String, dynamic>? _plan;
 
   @override
   void initState() {
@@ -106,7 +104,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.verified_rounded,
+          child: const Icon(TablerIcons.rosette_discount_check,
               color: AppColors.success, size: 48),
         ),
         title: const Text('Well Done!'),
@@ -140,98 +138,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     super.dispose();
   }
 
-  void _shareProfile(BuildContext context) {
-    final uid = supabase.auth.currentUser!.id;
-    final profileUrl = '${AppConfig.webBaseUrl}/provider/$uid';
-    final name = _profile?['full_name'] ?? 'my';
 
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.borderStrong,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            const Text('Share Your Profile', style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-            )),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: AppRadius.mdAll,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      profileUrl,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 20),
-                    color: AppColors.primary,
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: profileUrl));
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Link copied to clipboard!'),
-                          backgroundColor: AppColors.success,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  SharePlus.instance.share(
-                    ShareParams(
-                      title: 'Book $name on BeauTap',
-                      uri: Uri.parse(profileUrl),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.share_rounded, size: 18),
-                label: const Text('Share to Apps'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _loadData() async {
     final userId = supabase.auth.currentUser?.id;
@@ -270,10 +177,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     double prevWeekEarnings = 0;
     int weeklyBookingsCount = 0;
     int pendingBookingsCount = 0;
-    int totalBookingsCount = 0;
     int totalReviews = 0;
     double avgRating = 0;
-    int unreadMessages = 0;
     int unreadNotifs = 0;
 
     try {
@@ -336,13 +241,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       pendingBookingsCount = bookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
     } catch (_) {}
 
-    try {
-      final allBookings = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('provider_id', userId);
-      totalBookingsCount = (allBookings as List).length;
-    } catch (_) {}
 
     try {
       final reviews = await supabase
@@ -358,18 +256,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       }
     } catch (_) {}
 
-    try {
-      final msgs = await supabase
-          .from('messages')
-          .select('id')
-          .eq('receiver_id', userId)
-          .eq('is_read', false);
-      unreadMessages = (msgs as List).length;
-    } catch (_) {}
 
 
     try {
       unreadNotifs = await NotificationService.unreadCount(userId);
+    } catch (_) {}
+
+    Map<String, dynamic>? plan;
+    try {
+      plan = Map<String, dynamic>.from(await supabase.rpc('my_plan') as Map);
     } catch (_) {}
 
     var todayBookings = <Map<String, dynamic>>[];
@@ -417,13 +312,12 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
         _prevWeekEarnings = prevWeekEarnings;
         _weeklyBookingsCount = weeklyBookingsCount;
         _pendingBookingsCount = pendingBookingsCount;
-        _totalBookingsCount = totalBookingsCount;
         _totalReviews = totalReviews;
         _avgRating = avgRating;
-        _unreadMessages = unreadMessages;
         _unreadNotifications = unreadNotifs;
         _todayBookings = todayBookings;
         _requests = requests;
+        _plan = plan;
         _loading = false;
       });
       _animCtrl.forward();
@@ -487,44 +381,92 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     final bool hasActiveSubscription = _subscription != null &&
         _subscription!['status'] == 'active';
 
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final now = DateTime.now();
+    final dateLabel = '${wd[now.weekday - 1]} ${now.day} ${mo[now.month - 1]}';
+    final availability = (_providerProfile?['availability_status'] ?? 'offline').toString();
+
     return Scaffold(
+      bottomNavigationBar: isVerified
+          ? Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/provider/calendar'),
+                    icon: const Icon(TablerIcons.calendar_event, size: 18),
+                    label: const Text('Calendar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll)),
+                    onPressed: () => context.push('/provider/add-booking').then((_) => _loadData()),
+                    icon: const Icon(TablerIcons.plus, size: 18),
+                    label: const Text('Add walk-in'),
+                  ),
+                ),
+              ]),
+            )
+          : null,
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
+            child: ForestHeader(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                    child: Row(children: [
+                  child: Column(children: [
+                    Row(children: [
                       GestureDetector(
-                        onTap: () => context.push('/provider/profile'),
-                        child: PersonAvatar(name: name, url: _profile?['avatar_url'], size: 48),
+                        onTap: () => context.go('/provider/profile'),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                          child: _profile?['avatar_url'] != null
+                              ? PersonAvatar(name: name, url: _profile?['avatar_url'], size: 44)
+                              : Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: const BoxDecoration(color: AppColors.pine, shape: BoxShape.circle),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(2).map((w) => w[0]).join().toUpperCase(),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                                  ),
+                                ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(name.split(' ').first, style: Theme.of(context).textTheme.titleLarge,
+                          Text(name,
+                              style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                               overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 2),
                           Row(children: [
                             if (_avgRating > 0) ...[
-                              const Icon(Icons.star_rounded, color: AppColors.secondary, size: 16),
-                              const SizedBox(width: 2),
-                              Text(_avgRating.toStringAsFixed(1), style: Theme.of(context).textTheme.labelMedium),
-                              const Text('  ·  ', style: TextStyle(color: AppColors.textTertiary)),
+                              const Icon(TablerIcons.star_filled, color: AppColors.gold, size: 15),
+                              const SizedBox(width: 3),
+                              Text('${_avgRating.toStringAsFixed(1)} · ',
+                                  style: const TextStyle(color: Color(0xFFD5E2DC), fontSize: 14)),
                             ],
-                            Text('$_totalBookingsCount bookings', style: Theme.of(context).textTheme.bodySmall),
+                            Text(dateLabel, style: const TextStyle(color: Color(0xFFD5E2DC), fontSize: 14)),
                           ]),
                         ]),
                       ),
                       if (_isAdmin)
                         IconButton(
                           tooltip: 'Admin',
-                          icon: const Icon(Icons.admin_panel_settings_outlined),
+                          icon: const Icon(TablerIcons.shield_lock, color: Colors.white),
                           onPressed: () => context.push('/admin/dashboard'),
                         ),
                       IconButton(
@@ -532,13 +474,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                         onPressed: () => context.push('/notifications'),
                         icon: Badge(
                           isLabelVisible: _unreadNotifications > 0,
+                          backgroundColor: AppColors.gold,
+                          textColor: AppColors.textPrimary,
                           label: Text(_unreadNotifications > 9 ? '9+' : '$_unreadNotifications'),
-                          child: const Icon(Icons.notifications_none_rounded),
+                          child: const Icon(TablerIcons.bell, color: Colors.white),
                         ),
                       ),
                       PopupMenuButton<String>(
                         tooltip: 'Menu',
-                        icon: const Icon(Icons.more_horiz_rounded),
+                        icon: const Icon(TablerIcons.menu_2, color: Colors.white),
                         shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                         onSelected: (v) {
                           if (v == 'settings') context.push('/account/settings');
@@ -552,7 +496,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                         ],
                       ),
                     ]),
-                  ),
+                    if (isVerified && _providerProfile != null) ...[
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _AvailabilitySegments(
+                          status: availability,
+                          onChanged: (newStatus) async {
+                            setState(() => _providerProfile!['availability_status'] = newStatus);
+                            await supabase
+                                .from('provider_profiles')
+                                .update({'availability_status': newStatus})
+                                .eq('provider_id', supabase.auth.currentUser!.id);
+                          },
+                        ),
+                      ),
+                    ],
+                  ]),
                 ),
               ),
             ),
@@ -565,7 +525,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -584,28 +544,10 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                         ],
 
                         if (isVerified) ...[
-                          if (_providerProfile != null) ...[
-                            _AvailabilityToggle(
-                              status: _providerProfile!['availability_status'],
-                              onChanged: (newStatus) async {
-                                await supabase
-                                    .from('provider_profiles')
-                                    .update({'availability_status': newStatus})
-                                    .eq('provider_id', supabase.auth.currentUser!.id);
-                                setState(() =>
-                                    _providerProfile!['availability_status'] = newStatus);
-                              },
-                            ),
-                            const SizedBox(height: 14),
-                          ],
-
                           if (!hasActiveSubscription) ...[
-                            SoftBanner(
-                              icon: Icons.rocket_launch_rounded,
-                              color: AppColors.primary,
-                              title: 'You\'re on the Free plan',
-                              message: '5 bookings a month free. Go Pro for unlimited — \$3 first month, then \$5. No commission.',
-                              actionLabel: 'Go Pro',
+                            _PlanBanner(
+                              used: (_plan?['free_used'] as num?)?.toInt() ?? 0,
+                              limit: (_plan?['free_limit'] as num?)?.toInt() ?? 5,
                               onTap: () => context.push('/provider/subscription'),
                             ),
                             const SizedBox(height: 14),
@@ -614,9 +556,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           if (_requests.isNotEmpty) ...[
                             _SectionTitle('Needs your answer', count: _requests.length),
                             for (final b in _requests)
-                              _AgendaRow(
+                              _RequestCard(
                                 booking: b,
-                                showDate: true,
                                 onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
                                 onAccept: () => _respond(b, true),
                                 onDecline: () => _respond(b, false),
@@ -628,7 +569,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             'Today',
                             trailing: _todayBookings.isEmpty
                                 ? null
-                                : money(_todayBookings.fold<num>(0, (s, b) => s + ((b['total_price'] as num?) ?? 0))),
+                                : '${_todayBookings.length} ${_todayBookings.length == 1 ? 'booking' : 'bookings'} · '
+                                    '${money(_todayBookings.fold<num>(0, (s, b) => s + ((b['total_price'] as num?) ?? 0)))}',
                           ),
                           if (_todayBookings.isEmpty) ...[
                             if (_nextBooking != null)
@@ -636,29 +578,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             else
                               _NoBookingCard(),
                           ] else
-                            for (final b in _todayBookings)
-                              _AgendaRow(
-                                booking: b,
-                                onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: AppRadius.mdAll,
+                                border: Border.all(color: AppColors.border),
                               ),
-                          const SizedBox(height: 10),
-                          Row(children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => context.push('/provider/add-booking').then((_) => _loadData()),
-                                icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                                label: const Text('Add walk-in'),
-                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(children: [
+                                for (var k = 0; k < _todayBookings.length; k++) ...[
+                                  if (k > 0) const Divider(height: 1),
+                                  _TodayRow(
+                                    booking: _todayBookings[k],
+                                    onTap: () => context.push('/booking/${_todayBookings[k]['id']}').then((_) => _loadData()),
+                                  ),
+                                ],
+                              ]),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => context.go('/provider/calendar'),
-                                icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                                label: const Text('Calendar'),
-                              ),
-                            ),
-                          ]),
                           const SizedBox(height: 20),
 
                           _StatsRow(
@@ -668,14 +604,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             pendingCount: _pendingBookingsCount,
                             avgRating: _avgRating,
                             totalReviews: _totalReviews,
-                          ),
-                          const SizedBox(height: 20),
-
-                          const SectionHeader(title: 'Quick actions'),
-                          _ProviderQuickActions(
-                            pendingBookings: _pendingBookingsCount,
-                            unreadMessages: _unreadMessages,
-                            onShareProfile: () => _shareProfile(context),
                           ),
                           const SizedBox(height: 20),
 
@@ -828,7 +756,7 @@ class _NextBookingCard extends StatelessWidget {
                     height: 40,
                     child: OutlinedButton.icon(
                       onPressed: () => context.push('/booking/$bookingId'),
-                      icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                      icon: const Icon(TablerIcons.receipt, size: 16),
                       label: const Text('Details'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
@@ -846,7 +774,7 @@ class _NextBookingCard extends StatelessWidget {
                     height: 40,
                     child: FilledButton.icon(
                       onPressed: () => context.push('/chat/$bookingId'),
-                      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                      icon: const Icon(TablerIcons.message_circle, size: 16),
                       label: const Text('Message'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -888,7 +816,7 @@ class _NoBookingCard extends StatelessWidget {
               color: AppColors.info.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.calendar_today_outlined, color: AppColors.info, size: 22),
+            child: Icon(TablerIcons.calendar, color: AppColors.info, size: 22),
           ),
           const SizedBox(height: 12),
           const Text('No Upcoming Bookings', style: TextStyle(
@@ -1011,328 +939,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _AvailabilityToggle extends StatelessWidget {
-  final String status;
-  final ValueChanged<String> onChanged;
-  const _AvailabilityToggle({required this.status, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final isAvailable = status == 'available';
-    final color = isAvailable ? AppColors.available : AppColors.offline;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isAvailable ? Icons.wifi_tethering_rounded : Icons.wifi_tethering_off_rounded,
-              color: color, size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isAvailable ? 'You\'re Available' : 'You\'re Offline',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 15),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isAvailable ? 'Clients can find and book you' : 'You won\'t appear in search results',
-                  style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-                ),
-              ],
-            ),
-          ),
-          Transform.scale(
-            scale: 1.1,
-            child: Switch(
-              value: isAvailable,
-              onChanged: (val) => onChanged(val ? 'available' : 'offline'),
-              activeColor: AppColors.available,
-              activeTrackColor: AppColors.available.withValues(alpha: 0.3),
-              inactiveThumbColor: AppColors.offline,
-              inactiveTrackColor: AppColors.offline.withValues(alpha: 0.2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderQuickActions extends StatelessWidget {
-  final int pendingBookings;
-  final int unreadMessages;
-  final VoidCallback onShareProfile;
-  const _ProviderQuickActions({
-    required this.pendingBookings,
-    required this.unreadMessages,
-    required this.onShareProfile,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final uid = supabase.auth.currentUser!.id;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _PrimaryActionTile(
-              icon: Icons.calendar_month_rounded,
-              label: 'Bookings',
-              color: AppColors.info,
-              badge: pendingBookings > 0 ? '$pendingBookings' : null,
-              onTap: () => context.push('/provider/bookings'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: _PrimaryActionTile(
-              icon: Icons.account_balance_wallet_rounded,
-              label: 'Earnings',
-              color: AppColors.success,
-              onTap: () => context.push('/earnings'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: _PrimaryActionTile(
-              icon: Icons.chat_bubble_outline_rounded,
-              label: 'Messages',
-              color: AppColors.warning,
-              badge: unreadMessages > 0 ? '$unreadMessages' : null,
-              onTap: () => context.push('/provider/bookings'),
-            )),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.person_outline,
-              label: 'Profile',
-              onTap: () => context.push('/provider/profile/edit'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.content_cut_rounded,
-              label: 'Services',
-              onTap: () => context.push('/provider/services'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.photo_library_outlined,
-              label: 'Gallery',
-              onTap: () => context.push('/provider/gallery'),
-            )),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.workspace_premium_rounded,
-              label: 'Subscription',
-              onTap: () => context.push('/provider/subscription'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.share_rounded,
-              label: 'Share Profile',
-              onTap: onShareProfile,
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.star_outline_rounded,
-              label: 'Reviews',
-              onTap: () => context.push('/provider/$uid/reviews'),
-            )),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.local_offer_outlined,
-              label: 'Promos',
-              onTap: () => context.push('/provider/promotions'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.schedule_rounded,
-              label: 'Schedule',
-              onTap: () => context.push('/provider/availability'),
-            )),
-            const SizedBox(width: 8),
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.request_page_outlined,
-              label: 'Requests',
-              onTap: () => context.push('/provider/service-requests'),
-            )),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _SecondaryActionTile(
-              icon: Icons.tune_rounded,
-              label: 'Settings',
-              onTap: () => context.push('/provider/settings'),
-            )),
-            const SizedBox(width: 8),
-            const Expanded(child: SizedBox()),
-            const SizedBox(width: 8),
-            const Expanded(child: SizedBox()),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _PrimaryActionTile extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final String? badge;
-  final VoidCallback onTap;
-  const _PrimaryActionTile({required this.icon, required this.label, required this.color, this.badge, required this.onTap});
-
-  @override
-  State<_PrimaryActionTile> createState() => _PrimaryActionTileState();
-}
-
-class _PrimaryActionTileState extends State<_PrimaryActionTile> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: _hovering ? widget.color.withValues(alpha: 0.06) : Colors.white,
-            borderRadius: AppRadius.lgAll,
-            border: Border.all(
-              color: _hovering ? widget.color.withValues(alpha: 0.3) : AppColors.border,
-            ),
-            boxShadow: _hovering
-                ? [BoxShadow(color: widget.color.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))]
-                : [],
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Center(
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: _hovering ? 50 : 46,
-                      height: _hovering ? 50 : 46,
-                      decoration: BoxDecoration(
-                        color: widget.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(widget.icon, color: widget.color, size: _hovering ? 26 : 24),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(widget.label, style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600,
-                      color: _hovering ? widget.color : AppColors.textPrimary,
-                    )),
-                  ],
-                ),
-              ),
-              if (widget.badge != null)
-                Positioned(
-                  top: -4, right: 16,
-                  child: Container(
-                    width: 20, height: 20,
-                    decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                    child: Center(
-                      child: Text(widget.badge!, style: const TextStyle(
-                        color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700,
-                      )),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SecondaryActionTile extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _SecondaryActionTile({required this.icon, required this.label, required this.onTap});
-
-  @override
-  State<_SecondaryActionTile> createState() => _SecondaryActionTileState();
-}
-
-class _SecondaryActionTileState extends State<_SecondaryActionTile> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: _hovering ? AppColors.surfaceLight : Colors.white,
-            borderRadius: AppRadius.mdAll,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceMuted,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(widget.icon, color: AppColors.textSecondary, size: 18),
-              ),
-              const SizedBox(height: 6),
-              Text(widget.label, style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w500,
-                color: _hovering ? AppColors.textPrimary : AppColors.textSecondary,
-              )),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SetupCard extends StatelessWidget {
   final VoidCallback onTap;
   const _SetupCard({required this.onTap});
@@ -1348,7 +954,7 @@ class _SetupCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          Icon(Icons.rocket_launch_rounded, size: 36, color: AppColors.info),
+          Icon(TablerIcons.rocket, size: 36, color: AppColors.info),
           const SizedBox(height: 10),
           const Text('Complete your provider profile to appear in search results.',
               textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
@@ -1374,15 +980,15 @@ class _VerificationBanner extends StatelessWidget {
       case 'pending':
         bannerColor = AppColors.warning;
         message = 'Verification under review. Tap to check status.';
-        icon = Icons.hourglass_top_rounded; break;
+        icon = TablerIcons.hourglass_high; break;
       case 'rejected':
         bannerColor = AppColors.error;
         message = 'Verification rejected. Tap to re-submit.';
-        icon = Icons.cancel_outlined; break;
+        icon = TablerIcons.circle_x; break;
       default:
         bannerColor = AppColors.info;
         message = 'Verify your identity to unlock all features.';
-        icon = Icons.verified_user_outlined;
+        icon = TablerIcons.shield_check;
     }
     return GestureDetector(
       onTap: onTap,
@@ -1397,7 +1003,7 @@ class _VerificationBanner extends StatelessWidget {
           Icon(icon, color: bannerColor, size: 18),
           const SizedBox(width: 8),
           Expanded(child: Text(message, style: TextStyle(fontSize: 13, color: bannerColor, fontWeight: FontWeight.w500))),
-          Icon(Icons.chevron_right, color: bannerColor, size: 18),
+          Icon(TablerIcons.chevron_right, color: bannerColor, size: 18),
         ]),
       ),
     );
@@ -1421,8 +1027,8 @@ class _SectionTitle extends StatelessWidget {
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(color: AppColors.warning, borderRadius: BorderRadius.circular(10)),
-            child: Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+            decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: AppRadius.xsAll),
+            child: Text('$count', style: const TextStyle(color: AppColors.warningText, fontWeight: FontWeight.w800, fontSize: 13)),
           ),
         ],
         const Spacer(),
@@ -1433,84 +1039,222 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _AgendaRow extends StatelessWidget {
-  final Map<String, dynamic> booking;
-  final bool showDate;
+class _AvailabilitySegments extends StatelessWidget {
+  final String status;
+  final ValueChanged<String> onChanged;
+  const _AvailabilitySegments({required this.status, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    const opts = [('available', 'Available'), ('busy', 'Busy'), ('offline', 'Offline')];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: AppColors.pine, borderRadius: AppRadius.mdAll),
+      child: Row(children: [
+        for (final o in opts)
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(o.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: status == o.$1 ? Colors.white : Colors.transparent,
+                  borderRadius: AppRadius.smAll,
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (status == o.$1) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: o.$1 == 'available'
+                            ? AppColors.available
+                            : o.$1 == 'busy'
+                                ? AppColors.warning
+                                : AppColors.offline,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(o.$2,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: status == o.$1 ? FontWeight.w800 : FontWeight.w600,
+                        color: status == o.$1 ? AppColors.primary : const Color(0xFFD5E2DC),
+                      )),
+                ]),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+class _PlanBanner extends StatelessWidget {
+  final int used;
+  final int limit;
   final VoidCallback onTap;
-  final VoidCallback? onAccept;
-  final VoidCallback? onDecline;
-  const _AgendaRow({required this.booking, required this.onTap, this.showDate = false, this.onAccept, this.onDecline});
+  const _PlanBanner({required this.used, required this.limit, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cream,
+      borderRadius: AppRadius.mdAll,
+      child: InkWell(
+        borderRadius: AppRadius.mdAll,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text.rich(TextSpan(children: [
+                  const TextSpan(text: 'Free plan', style: TextStyle(fontWeight: FontWeight.w800)),
+                  TextSpan(text: ' · $used of $limit app bookings'),
+                ]), style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: limit == 0 ? 0 : (used / limit).clamp(0, 1).toDouble(),
+                    minHeight: 4,
+                    backgroundColor: const Color(0xFFE6D8B8),
+                    color: AppColors.primary,
+                  ),
+                ),
+              ]),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              child: Text('Go Pro', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayRow extends StatelessWidget {
+  final Map<String, dynamic> booking;
+  final VoidCallback onTap;
+  const _TodayRow({required this.booking, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    final t = DateTime.parse(b['booking_time']).toLocal();
+    final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final done = b['status'] == 'completed';
+    final paid = b['payment_status'] == 'paid';
+    final service = b['service_tiers']?['name'] != null
+        ? '${b['services']?['service_name']} · ${b['service_tiers']['name']}'
+        : (b['services']?['service_name'] ?? 'Service');
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(children: [
+          SizedBox(
+            width: 60,
+            child: Text(hm,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: done ? AppColors.textSecondary : AppColors.textPrimary,
+                )),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(b['client']?['full_name'] ?? 'Client',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              Text(service,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ]),
+          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(money((b['total_price'] as num?) ?? 0), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            if (paid)
+              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Paid', color: AppColors.success))
+            else if (isManualBooking(b))
+              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Walk-in', color: Color(0xFF3E4A45)))
+            else if (done)
+              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Done', color: AppColors.success)),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
+class _RequestCard extends StatelessWidget {
+  final Map<String, dynamic> booking;
+  final VoidCallback onTap;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  const _RequestCard({required this.booking, required this.onTap, required this.onAccept, required this.onDecline});
 
   @override
   Widget build(BuildContext context) {
     final b = booking;
     final t = DateTime.parse(b['booking_time']).toLocal();
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    final status = b['status'] as String;
-    final done = status == 'completed';
-    final service = b['service_tiers']?['name'] != null
-        ? '${b['services']?['service_name']} · ${b['service_tiers']['name']}'
-        : (b['services']?['service_name'] ?? 'Service');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final when = '${days[t.weekday - 1]} ${t.day} ${months[t.month - 1]}, '
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final service = [b['services']?['service_name'], b['service_tiers']?['name']].where((x) => x != null).join(' · ');
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: AppRadius.mdAll,
-        border: Border.all(color: onAccept != null ? AppColors.warning.withValues(alpha: 0.5) : AppColors.border),
+        border: Border.all(color: AppColors.border),
       ),
-      child: InkWell(
-        borderRadius: AppRadius.mdAll,
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(children: [
-            Row(children: [
-              SizedBox(
-                width: 54,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(width: 4, color: AppColors.warning),
+          Expanded(
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if (showDate)
-                    Text('${days[t.weekday - 1]} ${t.day}',
-                        style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary, fontWeight: FontWeight.w600)),
-                  Text(hm,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: done ? AppColors.textTertiary : AppColors.textPrimary,
-                        decoration: done ? TextDecoration.lineThrough : null,
-                      )),
+                  Row(children: [
+                    Expanded(
+                      child: Text(b['client']?['full_name'] ?? 'Client',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    ),
+                    Text(money((b['total_price'] as num?) ?? 0),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  ]),
+                  const SizedBox(height: 2),
+                  Text('$service · $when', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: OutlinedButton(onPressed: onDecline, child: const Text('Decline'))),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll)),
+                        onPressed: onAccept,
+                        child: const Text('Accept'),
+                      ),
+                    ),
+                  ]),
                 ]),
               ),
-              Container(width: 1, height: 34, color: AppColors.border, margin: const EdgeInsets.only(right: 12)),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(b['client']?['full_name'] ?? 'Client',
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-                  Text(service,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
-                ]),
-              ),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(money((b['total_price'] as num?) ?? 0), style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (done)
-                  Text(b['payment_status'] == 'paid' ? 'Paid' : 'Done',
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.success, fontWeight: FontWeight.w700))
-                else if (isManualBooking(b))
-                  const Text('Walk-in', style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
-              ]),
-            ]),
-            if (onAccept != null) ...[
-              const SizedBox(height: 10),
-              Row(children: [
-                Expanded(child: OutlinedButton(onPressed: onDecline, child: const Text('Decline'))),
-                const SizedBox(width: 8),
-                Expanded(child: FilledButton(onPressed: onAccept, child: const Text('Accept'))),
-              ]),
-            ],
-          ]),
-        ),
+            ),
+          ),
+        ]),
       ),
     );
   }

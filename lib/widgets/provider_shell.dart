@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
-import '../theme.dart';
+import 'ui.dart';
 
 class ProviderShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -17,38 +18,17 @@ class ProviderShell extends StatelessWidget {
       },
       child: Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => navigationShell.goBranch(
+      bottomNavigationBar: BeauNavBar(
+        index: navigationShell.currentIndex,
+        onTap: (index) => navigationShell.goBranch(
           index,
           initialLocation: index == navigationShell.currentIndex,
         ),
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.1),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        height: 65,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.wb_sunny_outlined),
-            selectedIcon: Icon(Icons.wb_sunny_rounded, color: AppColors.primary),
-            label: 'Today',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month_rounded, color: AppColors.primary),
-            label: 'Calendar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline_rounded),
-            selectedIcon: Icon(Icons.people_rounded, color: AppColors.primary),
-            label: 'Clients',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person_rounded, color: AppColors.primary),
-            label: 'Me',
-          ),
+        items: const [
+          (icon: TablerIcons.sun, label: 'Today', badge: 0),
+          (icon: TablerIcons.calendar_event, label: 'Calendar', badge: 0),
+          (icon: TablerIcons.users, label: 'Clients', badge: 0),
+          (icon: TablerIcons.user_circle, label: 'Me', badge: 0),
         ],
       ),
       ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
 
-/// Rounded mulberry square with a "B" and a honey dot — the app mark.
+/// Rounded forest square with a "B" and a honey dot — the app mark.
 class BrandMark extends StatelessWidget {
   final double size;
   const BrandMark({super.key, this.size = 48});
@@ -13,14 +14,7 @@ class BrandMark extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(size * 0.3),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: size * 0.4,
-            offset: Offset(0, size * 0.12),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(size * 0.28),
       ),
       child: Stack(children: [
         Center(
@@ -120,25 +114,20 @@ class SoftBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: AppRadius.lgAll,
+      color: color == AppColors.primary ? AppColors.primarySoft : color.withValues(alpha: 0.12),
+      borderRadius: AppRadius.mdAll,
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadius.lgAll,
+        borderRadius: AppRadius.mdAll,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 20),
-            ),
+            Icon(icon, color: color == AppColors.primary ? AppColors.primary : color, size: 22),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title,
-                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                 if (message != null) ...[
                   const SizedBox(height: 2),
                   Text(message!, style: const TextStyle(fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
@@ -147,9 +136,9 @@ class SoftBanner extends StatelessWidget {
             ),
             if (actionLabel != null) ...[
               const SizedBox(width: AppSpacing.sm),
-              Text(actionLabel!, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
+              Text(actionLabel!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
             ] else if (onTap != null)
-              Icon(Icons.chevron_right_rounded, color: color),
+              Icon(TablerIcons.chevron_right, color: color),
           ]),
         ),
       ),
@@ -171,12 +160,12 @@ class Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: solid ? color : color.withValues(alpha: 0.1),
-        borderRadius: AppRadius.pill,
+        color: solid ? color : color.withValues(alpha: 0.12),
+        borderRadius: AppRadius.xsAll,
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: fg), const SizedBox(width: 4)],
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+        if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 4)],
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: fg)),
       ]),
     );
   }
@@ -190,10 +179,10 @@ class RatingPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (reviews == 0) {
-      return const Pill(label: 'New', color: AppColors.info, icon: Icons.auto_awesome_rounded);
+      return const Pill(label: 'New', color: AppColors.primary, solid: true);
     }
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.star_rounded, size: 16, color: AppColors.secondary),
+      const Icon(TablerIcons.star_filled, size: 16, color: Color(0xFFA8822F)),
       const SizedBox(width: 3),
       Text(rating.toStringAsFixed(1),
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -211,10 +200,13 @@ class PersonAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?';
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final initial = parts.isEmpty
+        ? '?'
+        : (parts.first[0] + (parts.length > 1 ? parts.last[0] : '')).toUpperCase();
     final fallback = Center(
       child: Text(initial,
-          style: TextStyle(fontSize: size * 0.4, fontWeight: FontWeight.w800, color: AppColors.primary)),
+          style: TextStyle(fontSize: size * 0.34, fontWeight: FontWeight.w800, color: AppColors.primary)),
     );
     return Container(
       width: size,
@@ -250,17 +242,19 @@ class EmptyState extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.xxxl),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 88,
-            height: 88,
-            decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
-            child: Icon(icon, size: 38, color: AppColors.primary),
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(20)),
+            child: Icon(icon, size: 32, color: AppColors.primary),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(title, style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          Text(title,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
-          Text(message, style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+          Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
           if (actionLabel != null) ...[
-            const SizedBox(height: AppSpacing.xxl),
+            const SizedBox(height: 20),
             FilledButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ]),
@@ -272,27 +266,11 @@ class EmptyState extends StatelessWidget {
 /// Lets other screens pre-select a category on the Browse tab.
 class BrowseIntent {
   static final ValueNotifier<String?> category = ValueNotifier(null);
+  static final ValueNotifier<String?> group = ValueNotifier(null);
 }
 
 /// Built-in icon for a service category (avoids downloading an emoji font on web).
-IconData categoryIcon(String? name) {
-  final n = (name ?? '').toLowerCase();
-  if (n.contains('barber')) return Icons.content_cut_rounded;
-  if (n.contains('braid') || n.contains('locs') || n.contains('weave') || n.contains('wig')) {
-    return Icons.face_retouching_natural_rounded;
-  }
-  if (n.contains('natural') || n.contains('relaxed') || n.contains('hair')) return Icons.spa_rounded;
-  if (n.contains('kid')) return Icons.child_care_rounded;
-  if (n.contains('bridal')) return Icons.favorite_rounded;
-  if (n.contains('colour') || n.contains('color')) return Icons.palette_rounded;
-  if (n.contains('lash') || n.contains('brow')) return Icons.visibility_rounded;
-  if (n.contains('makeup')) return Icons.brush_rounded;
-  if (n.contains('massage')) return Icons.self_improvement_rounded;
-  if (n.contains('nail')) return Icons.back_hand_rounded;
-  if (n.contains('skin')) return Icons.water_drop_rounded;
-  if (n.contains('tattoo') || n.contains('pierc')) return Icons.draw_rounded;
-  return Icons.auto_awesome_rounded;
-}
+IconData categoryIcon(String? name) => ServiceGroup.of(name)?.icon ?? TablerIcons.sparkles;
 
 class CategoryBadge extends StatelessWidget {
   final String? name;
@@ -304,8 +282,138 @@ class CategoryBadge extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(size * 0.3)),
+      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(size * 0.28)),
       child: Icon(categoryIcon(name), size: size * 0.5, color: AppColors.primary),
+    );
+  }
+}
+
+/// The 11 service groups clients browse by. Categories map into them by name
+/// until groups live in the database.
+class ServiceGroup {
+  final String name;
+  final IconData icon;
+  final List<String> keywords;
+  const ServiceGroup(this.name, this.icon, this.keywords);
+
+  bool matches(String? categoryName) {
+    final n = (categoryName ?? '').toLowerCase();
+    return keywords.any(n.contains);
+  }
+
+  static const all = [
+    ServiceGroup('Hair', TablerIcons.ripple, ['braid', 'wig', 'natural', 'kid', 'loc', 'relax', 'weave', 'colour', 'color', 'hair']),
+    ServiceGroup('Barbering', TablerIcons.scissors, ['barber', 'fade', 'beard', 'groom']),
+    ServiceGroup('Nails', TablerIcons.hand_finger, ['nail', 'manicure', 'pedicure']),
+    ServiceGroup('Lashes & Brows', TablerIcons.eye, ['lash', 'brow']),
+    ServiceGroup('Makeup', TablerIcons.brush, ['makeup', 'make-up']),
+    ServiceGroup('Skin', TablerIcons.droplet, ['skin', 'facial']),
+    ServiceGroup('Hair Removal', TablerIcons.feather, ['wax', 'thread', 'sugar', 'removal']),
+    ServiceGroup('Body & Spa', TablerIcons.leaf, ['massage', 'spa', 'body', 'scrub']),
+    ServiceGroup('Glow', TablerIcons.sun_high, ['tan', 'whiten', 'glow']),
+    ServiceGroup('Body Art', TablerIcons.palette, ['tattoo', 'pierc', 'henna']),
+    ServiceGroup('Bridal & Events', TablerIcons.diamond, ['bridal', 'event', 'wedding']),
+  ];
+
+  static ServiceGroup? of(String? categoryName) {
+    final n = (categoryName ?? '').toLowerCase();
+    // More specific groups first so "Hair Removal" and "Body Art" are not caught by broader words.
+    for (final g in [all[6], all[9], all[10], all[1], all[2], all[3], all[4], all[5], all[7], all[8], all[0]]) {
+      if (g.keywords.any(n.contains)) return g;
+    }
+    return null;
+  }
+}
+
+/// Bottom tab bar from the design: white bar, gold marker above the active tab.
+class BeauNavBar extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onTap;
+  final List<({IconData icon, String label, int badge})> items;
+  const BeauNavBar({super.key, required this.index, required this.onTap, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(children: [
+            for (var i = 0; i < items.length; i++)
+              Expanded(
+                child: InkWell(
+                  onTap: () => onTap(i),
+                  child: Stack(alignment: Alignment.center, children: [
+                    if (i == index)
+                      Positioned(
+                        top: 0,
+                        child: Container(
+                          width: 32,
+                          height: 3,
+                          decoration: const BoxDecoration(
+                            color: AppColors.gold,
+                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(3)),
+                          ),
+                        ),
+                      ),
+                    Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Badge(
+                        isLabelVisible: items[i].badge > 0,
+                        label: Text('${items[i].badge}'),
+                        child: Icon(items[i].icon,
+                            size: 24, color: i == index ? AppColors.primary : AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(items[i].label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: i == index ? FontWeight.w800 : FontWeight.w600,
+                            color: i == index ? AppColors.primary : AppColors.textSecondary,
+                          )),
+                    ]),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Status label in the booking colours from the design.
+class StatusPill extends StatelessWidget {
+  final String status;
+  final String? label;
+  const StatusPill(this.status, {super.key, this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: StatusColors.background(status), borderRadius: AppRadius.xsAll),
+      child: Text(label ?? StatusColors.label(status),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: StatusColors.foreground(status))),
+    );
+  }
+}
+
+/// Dark forest header block used at the top of key screens.
+class ForestHeader extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  const ForestHeader({super.key, required this.child, this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 20)});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primary,
+      child: SafeArea(bottom: false, child: Padding(padding: padding, child: child)),
     );
   }
 }

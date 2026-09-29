@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
@@ -30,6 +31,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   // Search & filters
   final _searchCtrl = TextEditingController();
   final Set<String> _selectedCategoryIds = {};
+  String? _group;
   double _minRating = 0;
   RangeValues _priceRange = const RangeValues(0, 500);
   String _sortBy = 'rating'; // rating | distance | price_low | newest
@@ -42,9 +44,18 @@ class _BrowseScreenState extends State<BrowseScreen> {
     _loadProviders();
     _consumeIntent();
     BrowseIntent.category.addListener(_consumeIntent);
+    BrowseIntent.group.addListener(_consumeIntent);
   }
 
   void _consumeIntent() {
+    final g = BrowseIntent.group.value;
+    if (g != null) {
+      BrowseIntent.group.value = null;
+      setState(() {
+        _group = g;
+        _selectedCategoryIds.clear();
+      });
+    }
     final id = BrowseIntent.category.value;
     if (id == null) return;
     BrowseIntent.category.value = null;
@@ -58,6 +69,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   @override
   void dispose() {
     BrowseIntent.category.removeListener(_consumeIntent);
+    BrowseIntent.group.removeListener(_consumeIntent);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -230,6 +242,15 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
       // Minimum rating filter
       if (_minRating > 0 && rating < _minRating) return false;
+
+      // Service group
+      if (_group != null) {
+        final grp = ServiceGroup.all.firstWhere((g) => g.name == _group);
+        final names = {for (final c in _categories) c['id']: c['name']};
+        if (!services.any((s) => s['is_active'] == true && ServiceGroup.of(names[s['category_id']]) == grp)) {
+          return false;
+        }
+      }
 
       // Category filter (multi-select)
       if (_selectedCategoryIds.isNotEmpty) {
@@ -450,7 +471,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.star_rounded,
+                              Icon(TablerIcons.star_filled,
                                   size: 20,
                                   color: tempMinRating >= i
                                       ? AppColors.warning
@@ -534,11 +555,11 @@ class _BrowseScreenState extends State<BrowseScreen> {
             showCheckmark: false,
             onSelected: (_) => onTap(),
             labelStyle: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected ? AppColors.primary : AppColors.textSecondary,
+              fontSize: 14,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? AppColors.primary : AppColors.textPrimary,
             ),
-            side: BorderSide(color: selected ? AppColors.primary.withValues(alpha: 0.35) : AppColors.border),
+            side: BorderSide(color: selected ? AppColors.primary : AppColors.borderStrong),
           ),
         );
 
@@ -563,7 +584,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           borderRadius: AppRadius.pill,
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.location_on_rounded, size: 16, color: AppColors.primary),
+                          const Icon(TablerIcons.map_pin_filled, size: 16, color: AppColors.primary),
                           const SizedBox(width: 4),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 110),
@@ -574,7 +595,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
                             ),
                           ),
-                          const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.primary),
+                          const Icon(TablerIcons.chevron_down, size: 18, color: AppColors.primary),
                         ]),
                       ),
                     ),
@@ -588,12 +609,12 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: 'Search stylists or services',
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
+                      prefixIcon: const Icon(TablerIcons.search, color: AppColors.primary),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
                         if (_searchCtrl.text.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 20),
+                            icon: const Icon(TablerIcons.x, size: 20),
                             onPressed: () {
                               _searchCtrl.clear();
                               setState(() {});
@@ -609,7 +630,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                               tooltip: 'Filters',
                               onPressed: _showFilterSheet,
                               style: IconButton.styleFrom(backgroundColor: AppColors.primarySoft),
-                              icon: const Icon(Icons.tune_rounded, size: 20, color: AppColors.primary),
+                              icon: const Icon(TablerIcons.adjustments_horizontal, size: 20, color: AppColors.primary),
                             ),
                           ),
                         ),
@@ -618,27 +639,24 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   ),
                 ),
 
-                if (_categories.isNotEmpty)
-                  SizedBox(
-                    height: 56,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
-                      children: [
-                        chip('All', _selectedCategoryIds.isEmpty,
-                            () => setState(() => _selectedCategoryIds.clear())),
-                        ..._categories.map((cat) {
-                          final id = cat['id'] as String;
-                          final selected = _selectedCategoryIds.contains(id);
-                          return chip('${cat['name']}', selected, () {
-                            setState(() {
-                              selected ? _selectedCategoryIds.remove(id) : _selectedCategoryIds.add(id);
-                            });
-                          });
-                        }),
-                      ],
-                    ),
+                SizedBox(
+                  height: 56,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 12, 4),
+                    children: [
+                      chip('All', _group == null && _selectedCategoryIds.isEmpty, () => setState(() {
+                            _group = null;
+                            _selectedCategoryIds.clear();
+                          })),
+                      for (final g in ServiceGroup.all)
+                        chip(g.name, _group == g.name, () => setState(() {
+                              _group = _group == g.name ? null : g.name;
+                              _selectedCategoryIds.clear();
+                            })),
+                    ],
                   ),
+                ),
 
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
@@ -651,7 +669,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     const Spacer(),
                     TextButton.icon(
                       onPressed: _showFilterSheet,
-                      icon: const Icon(Icons.swap_vert_rounded, size: 18),
+                      icon: const Icon(TablerIcons.arrows_sort, size: 18),
                       label: Text(_sortLabel),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
@@ -706,7 +724,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     return ListView(children: [
       const SizedBox(height: 40),
       EmptyState(
-        icon: Icons.search_off_rounded,
+        icon: TablerIcons.search_off,
         title: 'No stylists found',
         message: local
             ? 'Nobody matches in $_selectedCity yet. Try searching all of Zimbabwe.'
@@ -724,7 +742,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       Center(
         child: TextButton.icon(
           onPressed: _requestArea,
-          icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+          icon: const Icon(TablerIcons.map_pin_plus, size: 18),
           label: const Text('Not in your area yet? Request it'),
         ),
       ),
@@ -749,7 +767,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
               Text('Bring BeauTap to your area', style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: 4),
               Text('Tell us where you are. We invite stylists to the areas people ask for most.',
-                  style: Theme.of(ctx).textTheme.bodyMedium),
+                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 16),
               TextField(
                 controller: cityCtrl,
@@ -917,7 +935,7 @@ class _ProviderCard extends StatelessWidget {
                       ),
                       if (verified) ...[
                         const SizedBox(width: 4),
-                        const Icon(Icons.verified_rounded, size: 17, color: AppColors.info),
+                        const Icon(TablerIcons.rosette_discount_check, size: 17, color: AppColors.info),
                       ],
                     ]),
                     const SizedBox(height: 3),
@@ -934,7 +952,7 @@ class _ProviderCard extends StatelessWidget {
                       RatingPill(rating: rating, reviews: totalReviews),
                       if (isFeatured) ...[
                         const SizedBox(width: 8),
-                        const Pill(label: 'Featured', color: AppColors.secondary, icon: Icons.star_rounded),
+                        const Pill(label: 'Featured', color: AppColors.secondary, icon: TablerIcons.star_filled),
                       ],
                     ]),
                   ]),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
 
 class StarRatingWidget extends StatelessWidget {
@@ -35,10 +36,10 @@ class StarRatingWidget extends StatelessWidget {
               : null,
           child: Icon(
             isFilled
-                ? Icons.star_rounded
+                ? TablerIcons.star_filled
                 : isHalf
-                    ? Icons.star_half_rounded
-                    : Icons.star_outline_rounded,
+                    ? TablerIcons.star_half_filled
+                    : TablerIcons.star,
             color: isFilled || isHalf ? filled_ : empty_,
             size: size,
           ),

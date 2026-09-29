@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
 import '../widgets/reschedule_sheet.dart' show bookingMinutes;
 
@@ -15,7 +17,15 @@ class ProviderCalendarScreen extends StatefulWidget {
 class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
   static const _hourHeight = 64.0;
   static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  static const _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  Widget _summary(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        if (label.isNotEmpty) Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      ]);
 
   late DateTime _weekStart; // Monday
   late DateTime _day;
@@ -98,61 +108,69 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         .where((b) => b['status'] != 'pending')
         .fold<num>(0, (s, b) => s + ((b['total_price'] as num?) ?? 0));
 
+    final hoursLabel = working && av != null
+        ? '${(av['start_time'] as String).substring(0, 2)}–${(av['end_time'] as String).substring(0, 2)}'
+        : 'Day off';
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${_months[_weekStart.month - 1]} ${_weekStart.year}'),
-        actions: [
-          IconButton(
-            tooltip: 'Today',
-            icon: const Icon(Icons.today_rounded),
-            onPressed: () {
-              final n = DateTime.now();
-              setState(() {
-                _day = DateTime(n.year, n.month, n.day);
-                _weekStart = _day.subtract(Duration(days: _day.weekday - 1));
-              });
-              _load();
-            },
-          ),
-          IconButton(
-            tooltip: 'All bookings',
-            icon: const Icon(Icons.view_list_rounded),
-            onPressed: () => context.push('/provider/bookings'),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add booking',
         onPressed: () async {
           await context.push('/provider/add-booking?date=${_day.toIso8601String().substring(0, 10)}');
           _load();
         },
-        child: const Icon(Icons.add),
+        child: const Icon(TablerIcons.plus, size: 28),
       ),
       body: Column(children: [
-        // Week strip
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          child: Row(children: [
-            IconButton(icon: const Icon(Icons.chevron_left_rounded), onPressed: () => _shiftWeek(-1)),
-            for (var i = 0; i < 7; i++)
-              Expanded(child: _dayChip(_weekStart.add(Duration(days: i)), today)),
-            IconButton(icon: const Icon(Icons.chevron_right_rounded), onPressed: () => _shiftWeek(1)),
+        ForestHeader(
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 14),
+          child: Column(children: [
+            Row(children: [
+              Expanded(
+                child: Text('${_monthNames[_day.month - 1]} ${_day.year}',
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+              ),
+              IconButton(
+                tooltip: 'Today',
+                icon: const Icon(TablerIcons.calendar_event, color: Colors.white),
+                onPressed: () {
+                  final n = DateTime.now();
+                  setState(() {
+                    _day = DateTime(n.year, n.month, n.day);
+                    _weekStart = _day.subtract(Duration(days: _day.weekday - 1));
+                  });
+                  _load();
+                },
+              ),
+              IconButton(
+                tooltip: 'All bookings',
+                icon: const Icon(TablerIcons.list, color: Colors.white),
+                onPressed: () => context.push('/provider/bookings'),
+              ),
+              IconButton(icon: const Icon(TablerIcons.chevron_left, color: Colors.white), onPressed: () => _shiftWeek(-1)),
+              IconButton(icon: const Icon(TablerIcons.chevron_right, color: Colors.white), onPressed: () => _shiftWeek(1)),
+            ]),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Row(children: [
+                for (var i = 0; i < 7; i++) Expanded(child: _dayChip(_weekStart.add(Duration(days: i)), today)),
+              ]),
+            ),
           ]),
         ),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          color: AppColors.surfaceMuted,
-          child: Text(
-            [
-              '${_weekdays[_day.weekday - 1]} ${_day.day} ${_months[_day.month - 1]}',
-              if (!working) 'day off',
-              '${dayBookings.length} ${dayBookings.length == 1 ? 'booking' : 'bookings'}',
-              if (dayTotal > 0) money(dayTotal),
-            ].join(' · '),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
+          child: Row(children: [
+            Expanded(child: _summary('${dayBookings.length}', dayBookings.length == 1 ? 'booking' : 'bookings')),
+            Expanded(child: _summary(money(dayTotal), 'total')),
+            Expanded(child: _summary(hoursLabel, working ? 'hours' : '')),
+          ]),
         ),
         Expanded(
           child: _loading
@@ -225,8 +243,9 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
 
   Widget _dayChip(DateTime d, DateTime today) {
     final selected = _sameDay(d, _day);
-    final isToday = _sameDay(d, today);
     final count = _on(d).length;
+    final av = _hours[d.weekday % 7];
+    final off = av != null && av['is_available'] != true;
     return InkWell(
       borderRadius: AppRadius.mdAll,
       onTap: () => setState(() => _day = d),
@@ -235,28 +254,38 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.transparent,
+          color: selected ? Colors.white : Colors.transparent,
           borderRadius: AppRadius.mdAll,
         ),
         child: Column(children: [
-          Text(_weekdays[d.weekday - 1].substring(0, 1),
-              style: TextStyle(fontSize: 11, color: selected ? Colors.white70 : AppColors.textTertiary)),
-          const SizedBox(height: 2),
+          Text(_weekdays[d.weekday - 1],
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? AppColors.primary : (off ? const Color(0xFF8FA69C) : const Color(0xFFD5E2DC)))),
+          const SizedBox(height: 4),
           Text('${d.day}',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: selected ? Colors.white : (isToday ? AppColors.primary : AppColors.textPrimary),
+                color: selected ? AppColors.primary : (off ? const Color(0xFF8FA69C) : Colors.white),
               )),
-          const SizedBox(height: 3),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: count == 0 ? Colors.transparent : (selected ? Colors.white : AppColors.primary),
+          const SizedBox(height: 4),
+          if (off && count == 0)
+            Text('OFF',
+                style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? AppColors.textSecondary : const Color(0xFF8FA69C)))
+          else
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: count == 0 ? Colors.transparent : (selected ? AppColors.primary : AppColors.gold),
+              ),
             ),
-          ),
         ]),
       ),
     );
@@ -268,11 +297,8 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
     final top = (t.hour - startH + t.minute / 60) * _hourHeight;
     final height = (mins / 60 * _hourHeight).clamp(30.0, 2000.0);
     final status = b['status'] as String;
-    final color = status == 'pending'
-        ? AppColors.warning
-        : status == 'completed'
-            ? AppColors.success
-            : AppColors.primary;
+    final color = StatusColors.strip(status);
+    final bg = StatusColors.background(status);
     final end = t.add(Duration(minutes: mins));
     String hm(DateTime x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
     final service = b['service_tiers']?['name'] != null
@@ -291,7 +317,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
           decoration: BoxDecoration(
-            color: Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white),
+            color: bg,
             borderRadius: AppRadius.smAll,
             border: Border(left: BorderSide(color: color, width: 4)),
           ),
@@ -305,14 +331,14 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
                 ),
                 if (status == 'pending')
-                  const Text('NEEDS ANSWER',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.warning)),
+                  const Text('pending',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningText)),
               ]),
               if (height > 44)
                 Text('${hm(t)}–${hm(end)} · $service',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: StatusColors.foreground(status), fontWeight: FontWeight.w500)),
             ]),
           ),
         ),

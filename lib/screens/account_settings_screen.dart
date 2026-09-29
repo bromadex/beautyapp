@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show UserAttributes, AuthException;
 import '../supabase_client.dart';
@@ -241,7 +242,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             color: AppColors.error.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.warning_rounded, color: AppColors.error, size: 28),
+          child: const Icon(TablerIcons.alert_triangle, color: AppColors.error, size: 28),
         ),
         title: const Text('Delete Account?'),
         content: const Text(
@@ -378,20 +379,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             Text('Create your free account', style: Theme.of(context).textTheme.titleLarge),
                             const SizedBox(height: 4),
                             Text('Keep your bookings, chat with stylists and get reminders on any phone.',
-                                style: Theme.of(context).textTheme.bodyMedium),
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                             const SizedBox(height: 16),
                             TextField(
                               controller: _emailCtrl,
                               keyboardType: TextInputType.emailAddress,
                               decoration: const InputDecoration(
-                                  labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                                  labelText: 'Email', prefixIcon: Icon(TablerIcons.mail)),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _pwCtrl,
                               obscureText: true,
                               decoration: const InputDecoration(
-                                  labelText: 'Password (8+ characters)', prefixIcon: Icon(Icons.lock_outline_rounded)),
+                                  labelText: 'Password (8+ characters)', prefixIcon: Icon(TablerIcons.lock)),
                             ),
                             const SizedBox(height: 16),
                             FilledButton(
@@ -438,7 +439,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             controller: _nameCtrl,
                             textCapitalization: TextCapitalization.words,
                             decoration: const InputDecoration(
-                                labelText: 'Full name', prefixIcon: Icon(Icons.person_outline_rounded)),
+                                labelText: 'Full name', prefixIcon: Icon(TablerIcons.user)),
                           ),
                           const SizedBox(height: 12),
                           TextField(
@@ -447,7 +448,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             decoration: const InputDecoration(
                                 labelText: 'Phone number',
                                 hintText: '+263 7X XXX XXXX',
-                                prefixIcon: Icon(Icons.phone_outlined)),
+                                prefixIcon: Icon(TablerIcons.phone)),
                           ),
                           const SizedBox(height: 12),
                           TextField(
@@ -456,7 +457,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             decoration: const InputDecoration(
                                 labelText: 'Area / suburb',
                                 hintText: 'e.g. Avondale, Harare',
-                                prefixIcon: Icon(Icons.location_on_outlined)),
+                                prefixIcon: Icon(TablerIcons.map_pin)),
                           ),
                           const SizedBox(height: 16),
                           FilledButton(
@@ -469,7 +470,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: _signOut,
-                      icon: const Icon(Icons.logout_rounded, size: 20),
+                      icon: const Icon(TablerIcons.logout, size: 20),
                       label: const Text('Sign out'),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
@@ -481,8 +482,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.md),
                     _SettingsTile(
                       icon: _isDeactivated
-                          ? Icons.toggle_on_rounded
-                          : Icons.toggle_off_rounded,
+                          ? TablerIcons.toggle_right
+                          : TablerIcons.toggle_left,
                       iconColor: _isDeactivated ? AppColors.success : AppColors.warning,
                       title: _isDeactivated ? 'Reactivate Account' : 'Deactivate Account',
                       subtitle: _isDeactivated
@@ -498,7 +499,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     )),
                     const SizedBox(height: AppSpacing.md),
                     _SettingsTile(
-                      icon: Icons.delete_forever_rounded,
+                      icon: TablerIcons.trash_x,
                       iconColor: AppColors.error,
                       title: 'Delete Account',
                       subtitle: 'Permanently delete your account and all data. This cannot be undone.',
@@ -572,7 +573,7 @@ class _SettingsTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+            Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
           ],
         ),
       ),

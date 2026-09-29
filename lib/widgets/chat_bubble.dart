@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
 
 class ChatBubble extends StatelessWidget {
@@ -90,7 +91,7 @@ class ChatBubble extends StatelessWidget {
                             color: AppColors.surfaceMuted,
                             borderRadius: AppRadius.mdAll,
                           ),
-                          child: const Icon(Icons.broken_image_rounded,
+                          child: const Icon(TablerIcons.photo_off,
                               size: 40, color: AppColors.textTertiary),
                         ),
                       ),
@@ -112,7 +113,7 @@ class ChatBubble extends StatelessWidget {
                 if (isMine) ...[
                   const SizedBox(width: AppSpacing.xs),
                   Icon(
-                    isRead ? Icons.done_all : Icons.done,
+                    isRead ? TablerIcons.checks : TablerIcons.check,
                     size: 12,
                     color: isRead ? AppColors.info : AppColors.textTertiary,
                   ),

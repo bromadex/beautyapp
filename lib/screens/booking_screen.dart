@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
@@ -380,7 +381,7 @@ class _BookingScreenState extends State<BookingScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: const Icon(Icons.check_rounded, color: AppColors.success, size: 40),
+            child: const Icon(TablerIcons.check, color: AppColors.success, size: 40),
           ),
           const SizedBox(height: 16),
           Text('Request sent!', style: Theme.of(ctx).textTheme.headlineSmall),
@@ -390,12 +391,12 @@ class _BookingScreenState extends State<BookingScreen> {
             'Your reference is $ref.'
             '${deposit > 0 && !depositPaid ? '\n\nYour ${_money(deposit)} deposit is still unpaid — you can pay it from the booking page.' : ''}',
             textAlign: TextAlign.center,
-            style: Theme.of(ctx).textTheme.bodyMedium,
+            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           if (_isGuest) ...[
             const SizedBox(height: 16),
             const SoftBanner(
-              icon: Icons.bookmark_add_outlined,
+              icon: TablerIcons.bookmark_plus,
               color: AppColors.primary,
               title: 'Keep your bookings safe',
               message: 'Create a free account from Settings so you can find this booking on any phone.',
@@ -426,7 +427,7 @@ class _BookingScreenState extends State<BookingScreen> {
       return Scaffold(
         appBar: AppBar(),
         body: EmptyState(
-          icon: Icons.event_busy_rounded,
+          icon: TablerIcons.calendar_x,
           title: 'Can\'t book right now',
           message: _error!,
           actionLabel: 'Go back',
@@ -450,7 +451,7 @@ class _BookingScreenState extends State<BookingScreen> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
+            icon: const Icon(TablerIcons.arrow_left),
             onPressed: () {
               if (_step > 0) {
                 setState(() => _step--);
@@ -461,7 +462,16 @@ class _BookingScreenState extends State<BookingScreen> {
               }
             },
           ),
-          title: Text('Book ${(_provider?['full_name'] ?? '').toString().split(' ').first}'),
+          title: Text(_stepTitles[_step]),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text('${_step + 1} / ${_stepTitles.length}',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+              ),
+            ),
+          ],
         ),
         body: Column(children: [
           _StepBar(step: _step, titles: _stepTitles),
@@ -470,7 +480,7 @@ class _BookingScreenState extends State<BookingScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
                     switch (_step) {
                       0 => _serviceStep(),
@@ -485,7 +495,9 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
           _BottomBar(
             total: _money(_total),
-            subtitle: '$_totalMinutes min${_deposit > 0 ? ' · ${_money(_deposit)} deposit' : ''}',
+            subtitle: _day != null && _time != null
+                ? _whenLabel()
+                : '${_durationLabel(_totalMinutes)}${_deposit > 0 ? ' · ${_money(_deposit)} deposit' : ''}',
             label: buttonLabel,
             busy: _submitting,
             onPressed: _submitting ? null : _next,
@@ -557,14 +569,56 @@ class _BookingScreenState extends State<BookingScreen> {
     ]);
   }
 
+  String _durationLabel(int mins) =>
+      mins >= 60 ? '${mins ~/ 60} h${mins % 60 > 0 ? ' ${mins % 60} min' : ''}' : '$mins min';
+
+  String _whenLabel() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final d = _day!;
+    return '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]}, $_time';
+  }
+
   Widget _whenStep() {
     final notice = (_providerProfile?['min_notice_hours'] as num?)?.toInt() ?? 2;
+    final addonNames = _addons.where((a) => _addonIds.contains(a['id'])).map((a) => a['name']).join(', ');
+    final tierName = (_tier != null && _tier!.isNotEmpty) ? ' · ${_tier!['name']}' : '';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('When suits you?', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 4),
-      Text('Only times the stylist is free are shown. Book at least $notice h ahead.',
-          style: Theme.of(context).textTheme.bodyMedium),
-      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          const Icon(TablerIcons.clock, color: AppColors.primary, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                      text: '${_service['service_name']}$tierName',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  if (addonNames.isNotEmpty) TextSpan(text: ' + $addonNames'),
+                ]),
+                style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 2),
+              Text('${_durationLabel(_totalMinutes)} with ${_provider?['full_name'] ?? 'your pro'}',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 6),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Text('Only free times are shown. Book at least $notice h ahead.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ),
+      const SizedBox(height: 14),
       SlotPicker(
         key: ValueKey('$_serviceId-$_totalMinutes'),
         providerId: widget.providerId,
@@ -589,7 +643,7 @@ class _BookingScreenState extends State<BookingScreen> {
       TextField(
         controller: _nameCtrl,
         textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(labelText: 'Your name', prefixIcon: Icon(Icons.person_outline_rounded)),
+        decoration: const InputDecoration(labelText: 'Your name', prefixIcon: Icon(TablerIcons.user)),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -598,7 +652,7 @@ class _BookingScreenState extends State<BookingScreen> {
         decoration: const InputDecoration(
           labelText: 'Phone (WhatsApp)',
           hintText: '+263 7X XXX XXXX',
-          prefixIcon: Icon(Icons.phone_outlined),
+          prefixIcon: Icon(TablerIcons.phone),
         ),
       ),
       const SizedBox(height: 12),
@@ -609,7 +663,7 @@ class _BookingScreenState extends State<BookingScreen> {
         decoration: const InputDecoration(
           labelText: 'Where should the stylist come?',
           hintText: 'e.g. 12 Borrowdale Rd, Harare',
-          prefixIcon: Icon(Icons.location_on_outlined),
+          prefixIcon: Icon(TablerIcons.map_pin),
         ),
       ),
       if (hasTravel)
@@ -619,7 +673,7 @@ class _BookingScreenState extends State<BookingScreen> {
             onPressed: _locating ? null : _useMyLocation,
             icon: _locating
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.my_location_rounded, size: 18),
+                : const Icon(TablerIcons.current_location, size: 18),
             label: Text(_lat == null
                 ? 'Use my location to work out travel fee'
                 : _travelFee > 0
@@ -635,7 +689,7 @@ class _BookingScreenState extends State<BookingScreen> {
         decoration: const InputDecoration(
           labelText: 'Note for the stylist (optional)',
           hintText: 'e.g. Gate code, hair length, bring products',
-          prefixIcon: Icon(Icons.edit_note_rounded),
+          prefixIcon: Icon(TablerIcons.notes),
         ),
       ),
       const SizedBox(height: 24),
@@ -643,9 +697,9 @@ class _BookingScreenState extends State<BookingScreen> {
       const SizedBox(height: 10),
       Row(children: [
         for (final (id, label, icon) in const [
-          ('cash', 'Cash', Icons.payments_outlined),
-          ('ecocash', 'EcoCash', Icons.phone_android_rounded),
-          ('paynow', 'Card', Icons.credit_card_rounded),
+          ('cash', 'Cash', TablerIcons.cash),
+          ('ecocash', 'EcoCash', TablerIcons.device_mobile),
+          ('paynow', 'Card', TablerIcons.credit_card),
         ]) ...[
           Expanded(
             child: _SelectCard(
@@ -675,7 +729,7 @@ class _BookingScreenState extends State<BookingScreen> {
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
               labelText: 'Promo code',
-              prefixIcon: const Icon(Icons.local_offer_outlined),
+              prefixIcon: const Icon(TablerIcons.tag),
               errorText: _promoError,
               helperText: _promo != null ? 'Saved ${_money(_discount)}' : null,
             ),
@@ -730,17 +784,17 @@ class _BookingScreenState extends State<BookingScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${_service['service_name'] ?? ''}$tierName', style: Theme.of(context).textTheme.titleMedium),
-                  Text('with ${_provider?['full_name'] ?? ''}', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('with ${_provider?['full_name'] ?? ''}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                 ]),
               ),
             ]),
             const SizedBox(height: 14),
             _InfoLine(
-                icon: Icons.event_rounded,
+                icon: TablerIcons.calendar_event,
                 text: '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]} · $timeLabel ($_totalMinutes min)'),
-            _InfoLine(icon: Icons.location_on_outlined, text: _addressCtrl.text.trim()),
+            _InfoLine(icon: TablerIcons.map_pin, text: _addressCtrl.text.trim()),
             _InfoLine(
-                icon: Icons.payments_outlined,
+                icon: TablerIcons.cash,
                 text: const {'cash': 'Pay cash', 'ecocash': 'Pay with EcoCash', 'paynow': 'Pay by card'}[_payment]!),
           ]),
         ),
@@ -767,7 +821,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (_policy != null) ...[
         const SizedBox(height: 12),
         SoftBanner(
-          icon: Icons.info_outline_rounded,
+          icon: TablerIcons.info_circle,
           color: AppColors.info,
           title: 'Free cancellation up to ${_policy!['free_cancel_hours']}h before',
           message: 'After that, a ${_policy!['late_cancel_fee_percent']}% late-cancellation fee applies.',
@@ -785,7 +839,7 @@ class _StepBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Row(children: [
         for (var i = 0; i < titles.length; i++) ...[
           Expanded(
@@ -794,16 +848,16 @@ class _StepBar extends StatelessWidget {
                 duration: const Duration(milliseconds: 250),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: i <= step ? AppColors.primary : AppColors.border,
+                  color: i <= step ? AppColors.primary : const Color(0xFFDDE2DE),
                   borderRadius: AppRadius.pill,
                 ),
               ),
               const SizedBox(height: 6),
               Text(titles[i],
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: i == step ? FontWeight.w800 : FontWeight.w600,
-                      color: i <= step ? AppColors.primary : AppColors.textTertiary)),
+                      color: i == step ? AppColors.textPrimary : AppColors.textSecondary)),
             ]),
           ),
           if (i < titles.length - 1) const SizedBox(width: 6),
@@ -829,15 +883,15 @@ class _BottomBar extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: Row(children: [
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(total,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              Text(total,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ]),
             const SizedBox(width: 16),
             Expanded(
@@ -906,8 +960,8 @@ class _SelectCard extends StatelessWidget {
                   if (radio || checkbox) ...[
                     Icon(
                       checkbox
-                          ? (selected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded)
-                          : (selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
+                          ? (selected ? TablerIcons.square_check : TablerIcons.square)
+                          : (selected ? TablerIcons.circle_dot : TablerIcons.circle),
                       color: selected ? AppColors.primary : AppColors.textTertiary,
                     ),
                     const SizedBox(width: 12),

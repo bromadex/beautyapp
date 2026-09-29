@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -34,7 +35,6 @@ class SlotPicker extends StatefulWidget {
 class _SlotPickerState extends State<SlotPicker> {
   static const _pageDays = 14;
   static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   final List<({DateTime day, int slots})> _days = [];
   bool _loadingDays = true;
@@ -162,7 +162,7 @@ class _SlotPickerState extends State<SlotPicker> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
+      decoration: BoxDecoration(color: AppColors.cream, borderRadius: AppRadius.mdAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
           joined
@@ -174,7 +174,7 @@ class _SlotPickerState extends State<SlotPicker> {
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: _joining ? null : () => _joinWaitlist(day),
-            icon: const Icon(Icons.notifications_active_outlined, size: 18),
+            icon: const Icon(TablerIcons.bell_ringing, size: 18),
             label: Text(_joining ? 'Adding…' : 'Notify me if a time opens'),
           ),
         ],
@@ -182,12 +182,54 @@ class _SlotPickerState extends State<SlotPicker> {
     );
   }
 
-  String _label(String hhmm) {
-    final h = int.parse(hhmm.substring(0, 2));
-    final m = hhmm.substring(3);
-    final suffix = h >= 12 ? 'pm' : 'am';
-    final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '$h12:$m $suffix';
+
+
+  Widget _timeChip(String t) {
+    final sel = _selectedTime == t;
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedTime = t);
+        widget.onChanged(_selectedDay!, t);
+      },
+      borderRadius: AppRadius.smAll,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 50,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: sel ? AppColors.primary : Colors.white,
+          borderRadius: AppRadius.smAll,
+          border: Border.all(color: sel ? AppColors.primary : AppColors.border),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (sel) ...[
+            const Icon(TablerIcons.check, size: 16, color: AppColors.goldLight),
+            const SizedBox(width: 6),
+          ],
+          Text(t,
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textPrimary)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _timeGroup(String title, List<String> times) {
+    if (times.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        LayoutBuilder(builder: (context, c) {
+          final cols = c.maxWidth > 480 ? 5 : 3;
+          final w = (c.maxWidth - 8 * (cols - 1)) / cols;
+          return Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final t in times) SizedBox(width: w, child: _timeChip(t)),
+          ]);
+        }),
+      ]),
+    );
   }
 
   @override
@@ -199,10 +241,11 @@ class _SlotPickerState extends State<SlotPicker> {
       );
     }
     final anyOpen = _days.any((d) => d.slots > 0);
+    final fullDay = _days.where((d) => d.slots == 0 && !_waitlisted.contains(d.day)).firstOrNull;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(
-        height: 92,
+        height: 84,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _days.length + 1,
@@ -210,13 +253,13 @@ class _SlotPickerState extends State<SlotPicker> {
           itemBuilder: (_, i) {
             if (i == _days.length) {
               return SizedBox(
-                width: 76,
+                width: 72,
                 child: OutlinedButton(
                   onPressed: _loadingMore ? null : () => _loadDays(),
-                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
+                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll)),
                   child: _loadingMore
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('More\ndates', textAlign: TextAlign.center),
+                      : const Text('More\ndates', textAlign: TextAlign.center, style: TextStyle(fontSize: 13)),
                 ),
               );
             }
@@ -224,36 +267,43 @@ class _SlotPickerState extends State<SlotPicker> {
             final selected = _selectedDay == d.day;
             final open = d.slots > 0;
             final diff = d.day.difference(_today).inDays;
-            final tag = diff == 0 ? 'TODAY' : diff == 1 ? 'TMRW' : _weekdays[d.day.weekday - 1].toUpperCase();
+            final tag = diff == 0 ? 'Today' : diff == 1 ? 'Tmrw' : _weekdays[d.day.weekday - 1];
             return InkWell(
               onTap: open || widget.allowWaitlist ? () => _selectDay(d.day) : null,
               borderRadius: AppRadius.mdAll,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                width: 68,
+                width: 64,
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : (open ? Colors.white : AppColors.surfaceMuted),
+                  color: selected ? AppColors.primary : (open ? Colors.white : const Color(0xFFE9ECE9)),
                   borderRadius: AppRadius.mdAll,
-                  border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                  border: Border.all(color: selected ? AppColors.primary : (open ? AppColors.border : Colors.transparent)),
                 ),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(tag,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                          color: selected ? Colors.white70 : AppColors.textTertiary)),
-                  const SizedBox(height: 2),
-                  Text('${d.day.day}',
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: selected ? Colors.white : (open ? AppColors.textPrimary : AppColors.textTertiary))),
-                  Text(open ? _months[d.day.month - 1] : 'Full',
-                      style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? Colors.white70 : (open ? AppColors.textSecondary : AppColors.textTertiary))),
+                child: Column(children: [
+                  Expanded(
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(tag,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: selected ? AppColors.goldLight : AppColors.textSecondary)),
+                      const SizedBox(height: 2),
+                      Text('${d.day.day}',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: selected ? Colors.white : (open ? AppColors.textPrimary : AppColors.textTertiary))),
+                      if (!open)
+                        Text('FULL',
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.4,
+                                color: selected ? AppColors.goldLight : AppColors.textTertiary)),
+                    ]),
+                  ),
+                  Container(height: 4, color: selected ? AppColors.gold : Colors.transparent),
                 ]),
               ),
             );
@@ -268,16 +318,11 @@ class _SlotPickerState extends State<SlotPicker> {
           child: Text(
             widget.allowWaitlist
                 ? 'No free times in these two weeks. Tap "More dates", or tap a day to get notified if a time opens.'
-                : 'No free times in these two weeks. Tap "More dates", or message the stylist.',
-            style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                : 'No free times in these two weeks. Tap "More dates", or message the pro.',
+            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         )
       else if (_selectedDay != null) ...[
-        Text(
-          '${_weekdays[_selectedDay!.weekday - 1]} ${_selectedDay!.day} ${_months[_selectedDay!.month - 1]}',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 10),
         if (_loadingSlots)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
@@ -285,38 +330,37 @@ class _SlotPickerState extends State<SlotPicker> {
           )
         else if (_slots.isEmpty)
           _waitlistBox(_selectedDay!)
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _slots.map((t) {
-              final sel = _selectedTime == t;
-              return InkWell(
-                onTap: () {
-                  setState(() => _selectedTime = t);
-                  widget.onChanged(_selectedDay!, t);
-                },
-                borderRadius: AppRadius.smAll,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 92,
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: sel ? AppColors.primary : Colors.white,
-                    borderRadius: AppRadius.smAll,
-                    border: Border.all(color: sel ? AppColors.primary : AppColors.borderStrong),
-                  ),
-                  child: Text(_label(t),
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: sel ? Colors.white : AppColors.textPrimary)),
-                ),
-              );
-            }).toList(),
-          ),
+        else ...[
+          _timeGroup('Morning', _slots.where((t) => int.parse(t.substring(0, 2)) < 12).toList()),
+          _timeGroup('Afternoon', _slots.where((t) {
+            final h = int.parse(t.substring(0, 2));
+            return h >= 12 && h < 17;
+          }).toList()),
+          _timeGroup('Evening', _slots.where((t) => int.parse(t.substring(0, 2)) >= 17).toList()),
+        ],
       ],
+      if (widget.allowWaitlist && fullDay != null && _selectedDay != fullDay.day)
+        Material(
+          color: AppColors.cream,
+          borderRadius: AppRadius.mdAll,
+          child: InkWell(
+            borderRadius: AppRadius.mdAll,
+            onTap: _joining ? null : () => _joinWaitlist(fullDay.day),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              child: Row(children: [
+                const Icon(TablerIcons.bell_ringing, size: 22, color: AppColors.goldText),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text.rich(TextSpan(children: [
+                    TextSpan(text: '${_weekdays[fullDay.day.weekday - 1]} ${fullDay.day.day} is full. '),
+                    const TextSpan(text: 'Notify me if a time opens', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ]), style: const TextStyle(fontSize: 14.5, color: AppColors.textPrimary)),
+                ),
+              ]),
+            ),
+          ),
+        ),
     ]);
   }
 }

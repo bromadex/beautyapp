@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 import '../supabase_client.dart';
@@ -111,7 +112,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                 borderRadius: AppRadius.smAll,
               ),
               child: Icon(
-                existing == null ? Icons.add_rounded : Icons.edit_rounded,
+                existing == null ? TablerIcons.plus : TablerIcons.pencil,
                 color: AppColors.primary, size: 20,
               ),
             ),
@@ -126,7 +127,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   value: selectedCategoryId,
                   decoration: const InputDecoration(
                     labelText: 'Category',
-                    prefixIcon: Icon(Icons.category_outlined),
+                    prefixIcon: Icon(TablerIcons.category),
                   ),
                   borderRadius: AppRadius.mdAll,
                   items: _categories.map((c) => DropdownMenuItem(
@@ -159,7 +160,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                         : imageUrl != null
                             ? Image.network(imageUrl, fit: BoxFit.cover)
                             : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Icon(Icons.add_photo_alternate_outlined, color: AppColors.textTertiary),
+                                Icon(TablerIcons.photo_plus, color: AppColors.textTertiary),
                                 SizedBox(height: 4),
                                 Text('Add a photo of this service',
                                     style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
@@ -172,7 +173,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   decoration: const InputDecoration(
                     labelText: 'Service Name',
                     hintText: 'e.g. Box Braids -- Medium',
-                    prefixIcon: Icon(Icons.content_cut_rounded),
+                    prefixIcon: Icon(TablerIcons.scissors),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -182,7 +183,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                       controller: priceCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Price (\$)',
-                        prefixIcon: Icon(Icons.attach_money_rounded),
+                        prefixIcon: Icon(TablerIcons.currency_dollar),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
@@ -193,7 +194,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                       controller: durationCtrl,
                       decoration: const InputDecoration(
                         labelText: 'Duration (min)',
-                        prefixIcon: Icon(Icons.timer_outlined),
+                        prefixIcon: Icon(TablerIcons.clock_hour_4),
                       ),
                       keyboardType: TextInputType.number,
                     ),
@@ -347,7 +348,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                 decoration: const InputDecoration(
                   labelText: 'Add-on Name',
                   hintText: 'e.g. Hair Wash',
-                  prefixIcon: Icon(Icons.add_circle_outline),
+                  prefixIcon: Icon(TablerIcons.circle_plus),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -357,7 +358,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     controller: priceCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Price (\$)',
-                      prefixIcon: Icon(Icons.attach_money_rounded),
+                      prefixIcon: Icon(TablerIcons.currency_dollar),
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
@@ -368,7 +369,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     controller: durCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Extra min',
-                      prefixIcon: Icon(Icons.timer_outlined),
+                      prefixIcon: Icon(TablerIcons.clock_hour_4),
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -538,7 +539,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(TablerIcons.plus),
         label: const Text('Add'),
       ),
       body: _loading
@@ -591,7 +592,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
   // ── Services Tab ──
 
   Widget _buildServicesTab() {
-    if (_services.isEmpty) return _buildEmptyState('No services yet', 'Add the services you offer so clients can discover and book you.', Icons.content_cut_rounded);
+    if (_services.isEmpty) return _buildEmptyState('No services yet', 'Add the services you offer so clients can discover and book you.', TablerIcons.scissors);
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 80),
       itemCount: _services.length,
@@ -622,7 +623,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   color: isActive ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceMuted,
                   borderRadius: AppRadius.mdAll,
                 ),
-                child: Icon(Icons.content_cut_rounded,
+                child: Icon(TablerIcons.scissors,
                   color: isActive ? AppColors.primary : AppColors.textTertiary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -658,17 +659,17 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               ),
               const SizedBox(width: AppSpacing.xs),
               PopupMenuButton(
-                icon: const Icon(Icons.more_vert_rounded, color: AppColors.textTertiary),
+                icon: const Icon(TablerIcons.dots_vertical, color: AppColors.textTertiary),
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                 itemBuilder: (_) => [
                   PopupMenuItem(onTap: () => _showAddEditDialog(existing: s),
-                    child: const Row(children: [Icon(Icons.edit_outlined, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Edit')])),
+                    child: const Row(children: [Icon(TablerIcons.pencil, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Edit')])),
                   PopupMenuItem(onTap: () => _showAddonDialog(s['id']),
-                    child: const Row(children: [Icon(Icons.add_circle_outline, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Add Add-on')])),
+                    child: const Row(children: [Icon(TablerIcons.circle_plus, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Add Add-on')])),
                   PopupMenuItem(onTap: () => _toggleActive(s),
-                    child: Row(children: [Icon(isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.textSecondary), const SizedBox(width: AppSpacing.md), Text(isActive ? 'Deactivate' : 'Activate')])),
+                    child: Row(children: [Icon(isActive ? TablerIcons.eye_off : TablerIcons.eye, size: 20, color: AppColors.textSecondary), const SizedBox(width: AppSpacing.md), Text(isActive ? 'Deactivate' : 'Activate')])),
                   PopupMenuItem(onTap: () => _deleteService(s['id']),
-                    child: const Row(children: [Icon(Icons.delete_outline, size: 20, color: AppColors.error), SizedBox(width: AppSpacing.md), Text('Delete', style: TextStyle(color: AppColors.error))])),
+                    child: const Row(children: [Icon(TablerIcons.trash, size: 20, color: AppColors.error), SizedBox(width: AppSpacing.md), Text('Delete', style: TextStyle(color: AppColors.error))])),
                 ],
               ),
             ]),
@@ -681,7 +682,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                 children: addons.map<Widget>((a) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(children: [
-                    Icon(Icons.add_circle_outline, size: 14, color: AppColors.textTertiary),
+                    Icon(TablerIcons.circle_plus, size: 14, color: AppColors.textTertiary),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(child: Text(a['name'], style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
                     Text('+\$${a['price']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
@@ -690,12 +691,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     const SizedBox(width: AppSpacing.sm),
                     GestureDetector(
                       onTap: () => _showAddonDialog(s['id'], existing: a),
-                      child: const Icon(Icons.edit, size: 14, color: AppColors.textTertiary),
+                      child: const Icon(TablerIcons.pencil, size: 14, color: AppColors.textTertiary),
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     GestureDetector(
                       onTap: () => _deleteAddon(a['id']),
-                      child: const Icon(Icons.close, size: 14, color: AppColors.error),
+                      child: const Icon(TablerIcons.x, size: 14, color: AppColors.error),
                     ),
                   ]),
                 )).toList(),
@@ -717,7 +718,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
       }
     }
     if (allAddons.isEmpty) {
-      return _buildEmptyState('No add-ons yet', 'Add optional extras to your services (e.g. Hair Wash +\$5).', Icons.add_circle_outline);
+      return _buildEmptyState('No add-ons yet', 'Add optional extras to your services (e.g. Hair Wash +\$5).', TablerIcons.circle_plus);
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 80),
@@ -731,7 +732,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
           leading: Container(
             width: 40, height: 40,
             decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: AppRadius.smAll),
-            child: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20),
+            child: const Icon(TablerIcons.circle_plus, color: AppColors.primary, size: 20),
           ),
           title: Text(a['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           subtitle: Text('For: ${a['_service_name']}', style: const TextStyle(fontSize: 12)),
@@ -740,7 +741,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
             children: [
               Text('+\$${a['price']}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
               PopupMenuButton(
-                icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textTertiary),
+                icon: const Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
                 itemBuilder: (_) => [
                   PopupMenuItem(onTap: () => _showAddonDialog(a['_service_id'], existing: a), child: const Text('Edit')),
                   PopupMenuItem(onTap: () => _deleteAddon(a['id']), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
@@ -760,7 +761,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     if (withTiers.isEmpty) {
       return _buildEmptyState('No options yet',
           'Offer levels of the same service — e.g. Knotless braids: Regular \$25, Premium \$40, Bridal \$60.',
-          Icons.layers_outlined);
+          TablerIcons.stack_2);
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 80),
@@ -772,7 +773,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               Expanded(child: Text(svc['service_name'] ?? '', style: Theme.of(context).textTheme.titleMedium)),
               TextButton.icon(
                 onPressed: () => _showTierDialog(svc['id']),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const Icon(TablerIcons.plus, size: 18),
                 label: const Text('Add'),
               ),
             ]),
@@ -788,7 +789,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     Text('\$${t['price']}',
                         style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
                     PopupMenuButton(
-                      icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textTertiary),
+                      icon: const Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
                       itemBuilder: (_) => [
                         PopupMenuItem(onTap: () => _showTierDialog(svc['id'], existing: t), child: const Text('Edit')),
                         PopupMenuItem(

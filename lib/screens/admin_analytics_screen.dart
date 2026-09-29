@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -162,7 +163,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       appBar: AppBar(
         title: const Text('Analytics'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _loadAnalytics),
+          IconButton(icon: const Icon(TablerIcons.refresh), onPressed: _loadAnalytics),
         ],
       ),
       body: _loading
@@ -361,7 +362,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    bookingGrowth >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                    bookingGrowth >= 0 ? TablerIcons.trending_up : TablerIcons.trending_down,
                     color: bookingGrowth >= 0 ? AppColors.success : AppColors.error,
                     size: 18,
                   ),
@@ -438,17 +439,17 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         children: [
           Row(
             children: [
-              _userStatTile('Total', '$_totalUsers', Icons.people_rounded, AppColors.info),
+              _userStatTile('Total', '$_totalUsers', TablerIcons.users, AppColors.info),
               const SizedBox(width: AppSpacing.md),
-              _userStatTile('Providers', '$_totalProviders', Icons.spa_rounded, AppColors.secondary),
+              _userStatTile('Providers', '$_totalProviders', TablerIcons.leaf, AppColors.secondary),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              _userStatTile('Verified', '$_verifiedProviders', Icons.verified_rounded, AppColors.success),
+              _userStatTile('Verified', '$_verifiedProviders', TablerIcons.rosette_discount_check, AppColors.success),
               const SizedBox(width: AppSpacing.md),
-              _userStatTile('New (month)', '$_newUsersThisMonth', Icons.person_add_rounded, AppColors.primary),
+              _userStatTile('New (month)', '$_newUsersThisMonth', TablerIcons.user_plus, AppColors.primary),
             ],
           ),
         ],

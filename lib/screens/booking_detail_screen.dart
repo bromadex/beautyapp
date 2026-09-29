@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
@@ -163,7 +164,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.check_circle_outline,
+          child: const Icon(TablerIcons.circle_check,
               color: AppColors.success, size: 32),
         ),
         title: const Text('Complete Service?'),
@@ -320,7 +321,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           TextField(
             controller: phoneCtrl,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'EcoCash number', prefixIcon: Icon(Icons.phone_android_rounded)),
+            decoration: const InputDecoration(labelText: 'EcoCash number', prefixIcon: Icon(TablerIcons.device_mobile)),
           ),
           const SizedBox(height: 12),
           FilledButton(onPressed: () => Navigator.pop(ctx, 'ecocash'), child: const Text('Pay with EcoCash')),
@@ -386,7 +387,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.error_outline,
+                  child: const Icon(TablerIcons.alert_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -396,7 +397,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: const Icon(TablerIcons.refresh),
                   label: const Text('Retry'),
                 ),
               ],
@@ -499,18 +500,18 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _InfoRow(
-                    icon: Icons.person_outline,
+                    icon: TablerIcons.user,
                     label: _isProvider
                         ? (client?['full_name'] ?? '--')
                         : (provider?['full_name'] ?? '--'),
                   ),
                   if (_isProvider && client?['phone'] != null) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    _InfoRow(icon: Icons.phone_outlined, label: client!['phone']),
+                    _InfoRow(icon: TablerIcons.phone, label: client!['phone']),
                   ],
                   if (_isProvider && isManual) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    const _InfoRow(icon: Icons.edit_note_rounded, label: 'Added by you (not booked in the app)'),
+                    const _InfoRow(icon: TablerIcons.notes, label: 'Added by you (not booked in the app)'),
                   ],
                 ],
               ),
@@ -524,20 +525,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _InfoRow(icon: Icons.calendar_month_outlined, label: _fmt(b['booking_time'])),
+                  _InfoRow(icon: TablerIcons.calendar_month, label: _fmt(b['booking_time'])),
                   if (b['ref'] != null) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    _InfoRow(icon: Icons.confirmation_number_outlined, label: 'Reference #${b['ref']}'),
+                    _InfoRow(icon: TablerIcons.ticket, label: 'Reference #${b['ref']}'),
                   ],
                   const SizedBox(height: AppSpacing.sm),
-                  _InfoRow(icon: Icons.location_on_outlined, label: address.isNotEmpty ? address : 'No address provided'),
+                  _InfoRow(icon: TablerIcons.map_pin, label: address.isNotEmpty ? address : 'No address provided'),
                   if (address.isNotEmpty && address != 'At the salon') ...[
                     const SizedBox(height: AppSpacing.md),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () => _openMaps(address),
-                        icon: const Icon(Icons.navigation_outlined, size: 18),
+                        icon: const Icon(TablerIcons.navigation, size: 18),
                         label: const Text('Open in Maps'),
                       ),
                     ),
@@ -551,7 +552,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               _Section(
                 title: b['no_show_by'] != null ? 'NO-SHOW FEE' : 'CANCELLATION FEE',
                 child: _InfoRow(
-                  icon: Icons.receipt_long_outlined,
+                  icon: TablerIcons.receipt,
                   label: '\$${(b['cancellation_fee'] as num).toStringAsFixed(2)} owed to the stylist'
                       '${b['cancel_reason'] != null ? ' — ${b['cancel_reason']}' : ''}',
                 ),
@@ -593,7 +594,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ((b['deposit_amount'] as num?) ?? 0) > 0 &&
                 b['deposit_paid'] != true) ...[
               _ActionCard(
-                icon: Icons.lock_clock_rounded,
+                icon: TablerIcons.lock_cog,
                 label: 'Pay \$${(b['deposit_amount'] as num).toStringAsFixed(2)} deposit',
                 subtitle: 'Secure your slot with EcoCash or card',
                 color: AppColors.primary,
@@ -604,7 +605,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             if (status == 'pending' || status == 'confirmed') ...[
               _ActionCard(
-                icon: Icons.edit_calendar_rounded,
+                icon: TablerIcons.calendar_cog,
                 label: 'Reschedule',
                 subtitle: _isProvider ? 'Move to another time' : 'Pick another free time',
                 color: AppColors.info,
@@ -617,7 +618,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             if (status == 'completed' || (_isProvider && isManual && status == 'confirmed')) ...[
               _ActionCard(
-                icon: Icons.receipt_long_rounded,
+                icon: TablerIcons.receipt,
                 label: 'Share receipt',
                 subtitle: 'Send it on WhatsApp',
                 color: const Color(0xFF25D366),
@@ -633,7 +634,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             if (_isProvider && b['payment_status'] != 'paid' && (status == 'confirmed' || status == 'completed')) ...[
               _ActionCard(
-                icon: Icons.payments_outlined,
+                icon: TablerIcons.cash,
                 label: 'Mark as paid',
                 subtitle: 'The client paid you in cash or EcoCash',
                 color: AppColors.success,
@@ -647,7 +648,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             if (!isManual && (status == 'pending' || status == 'confirmed' || status == 'completed')) ...[
               _ActionCard(
-                icon: Icons.chat_bubble_outline_rounded,
+                icon: TablerIcons.message_circle,
                 label: 'Open Chat',
                 subtitle: 'Message about this booking',
                 color: AppColors.info,
@@ -658,7 +659,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             if (!_isProvider && status == 'confirmed' && b['payment_status'] == 'unpaid') ...[
               _ActionCard(
-                icon: Icons.payment_rounded,
+                icon: TablerIcons.credit_card,
                 label: 'Pay online',
                 subtitle: 'Pay the balance with EcoCash or card',
                 color: AppColors.primary,
@@ -689,7 +690,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded,
+                          const Icon(TablerIcons.circle_check_filled,
                               color: AppColors.success, size: 22),
                           const SizedBox(width: AppSpacing.sm),
                           Text('You have reviewed this booking',
@@ -702,7 +703,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     );
                   }
                   return _ActionCard(
-                    icon: Icons.star_rounded,
+                    icon: TablerIcons.star_filled,
                     label: 'Leave a Review',
                     subtitle: 'Rate your experience with this service',
                     color: AppColors.warning,
@@ -734,7 +735,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     return const SizedBox.shrink();
                   }
                   return _ActionCard(
-                    icon: Icons.chat_rounded,
+                    icon: TablerIcons.message_circle,
                     label: 'WhatsApp',
                     subtitle: 'Message on WhatsApp',
                     color: const Color(0xFF25D366),
@@ -755,7 +756,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             if (_isProvider) ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.person_search_outlined,
+                icon: TablerIcons.user_search,
                 label: 'Client record',
                 subtitle: 'Visits, spend, notes and tags',
                 color: AppColors.secondary,
@@ -768,7 +769,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             if (status == 'pending' || status == 'confirmed') ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.cancel_outlined,
+                icon: TablerIcons.circle_x,
                 label: 'Cancel Booking',
                 subtitle: 'Cancel this appointment',
                 color: AppColors.error,
@@ -780,7 +781,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             if (!_isProvider && status == 'completed') ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.replay_rounded,
+                icon: TablerIcons.repeat,
                 label: 'Book Again',
                 subtitle: 'Rebook with the same provider and service',
                 color: AppColors.secondary,
@@ -793,7 +794,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 (DateTime.tryParse(b['booking_time'] ?? '')?.isBefore(DateTime.now()) ?? false)) ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.person_off_outlined,
+                icon: TablerIcons.user_off,
                 label: 'Report a No-Show',
                 subtitle: _isProvider ? 'The client did not turn up' : 'Your stylist did not arrive',
                 color: AppColors.error,
@@ -805,7 +806,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             if (!isManual && (status == 'confirmed' || status == 'completed')) ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.flag_outlined,
+                icon: TablerIcons.flag,
                 label: 'Report an Issue',
                 subtitle: 'Report a problem with this booking',
                 color: AppColors.warning,
@@ -818,21 +819,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: AppSpacing.xxl),
               if (canMarkArrived)
                 _ProviderActionButton(
-                  icon: Icons.place_rounded,
+                  icon: TablerIcons.map_pin,
                   label: 'Mark as Arrived',
                   color: AppColors.info,
                   onPressed: _markArrived,
                 ),
               if (canMarkStarted)
                 _ProviderActionButton(
-                  icon: Icons.play_circle_outline,
+                  icon: TablerIcons.player_play,
                   label: 'Start Service',
                   color: AppColors.secondary,
                   onPressed: _markStarted,
                 ),
               if (canMarkComplete)
                 _ProviderActionButton(
-                  icon: Icons.check_circle_outline,
+                  icon: TablerIcons.circle_check,
                   label: 'Complete Service',
                   color: AppColors.success,
                   onPressed: _markCompleted,
@@ -947,7 +948,7 @@ class _ServiceTimeline extends StatelessWidget {
                             : null,
                       ),
                       child: step.done
-                          ? const Icon(Icons.check,
+                          ? const Icon(TablerIcons.check,
                               size: 8, color: Colors.white)
                           : null,
                     ),
@@ -1058,7 +1059,7 @@ class _ActionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded,
+              Icon(TablerIcons.chevron_right,
                   color: AppColors.textTertiary, size: 22),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
@@ -184,7 +185,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isCod ? Icons.handshake_rounded : Icons.check_circle_rounded,
+                  isCod ? TablerIcons.heart_handshake : TablerIcons.circle_check_filled,
                   color: isCod ? AppColors.warning : AppColors.success,
                   size: 48,
                 ),
@@ -302,7 +303,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           borderRadius: AppRadius.smAll,
                         ),
                         child: const Icon(
-                          Icons.receipt_long_rounded,
+                          TablerIcons.receipt,
                           color: AppColors.primary,
                           size: 20,
                         ),
@@ -385,7 +386,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             PaymentMethodCard(
               title: 'Credit / Debit Card',
               subtitle: 'Visa, Mastercard via Paynow',
-              icon: Icons.credit_card_rounded,
+              icon: TablerIcons.credit_card,
               value: 'card',
               selectedValue: _selectedMethod,
               onTap: (v) => setState(() => _selectedMethod = v),
@@ -394,7 +395,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             PaymentMethodCard(
               title: 'EcoCash / Mobile Money',
               subtitle: 'EcoCash, OneMoney, Telecash via Paynow',
-              icon: Icons.phone_android_rounded,
+              icon: TablerIcons.device_mobile,
               value: 'mobile_money',
               selectedValue: _selectedMethod,
               onTap: (v) => setState(() => _selectedMethod = v),
@@ -403,7 +404,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             PaymentMethodCard(
               title: 'Cash on Delivery',
               subtitle: 'Pay the stylist in cash after the service',
-              icon: Icons.payments_rounded,
+              icon: TablerIcons.cash,
               value: 'cash_on_delivery',
               selectedValue: _selectedMethod,
               onTap: (v) => setState(() => _selectedMethod = v),
@@ -434,7 +435,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Mobile Number',
                   hintText: '077XXXXXXX',
-                  prefixIcon: Icon(Icons.phone_rounded),
+                  prefixIcon: Icon(TablerIcons.phone),
                 ),
               ),
             ],
@@ -460,7 +461,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         color: AppColors.warning.withValues(alpha: 0.15),
                         borderRadius: AppRadius.smAll,
                       ),
-                      child: const Icon(Icons.info_outline_rounded,
+                      child: const Icon(TablerIcons.info_circle,
                           color: AppColors.warning, size: 18),
                     ),
                     const SizedBox(width: AppSpacing.md),

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 import '../supabase_client.dart';
@@ -83,7 +84,7 @@ class AvatarWidget extends StatelessWidget {
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Icon(
-                  Icons.camera_alt_rounded,
+                  TablerIcons.camera,
                   size: size * 0.18,
                   color: Colors.white,
                 ),

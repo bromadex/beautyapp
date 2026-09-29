@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
@@ -172,12 +173,12 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
               : ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 120), children: [
                   Text('For bookings you got by phone, WhatsApp or walk-in. They block the time in your calendar '
                       'and don\'t count towards your plan.',
-                      style: Theme.of(context).textTheme.bodyMedium),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                   const SizedBox(height: 20),
                   _label('Client'),
                   if (_client != null)
                     _Tile(
-                      icon: Icons.person_rounded,
+                      icon: TablerIcons.user,
                       title: _client!['name'],
                       subtitle: [
                         if (_client!['phone'] != null) _client!['phone'],
@@ -189,7 +190,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                     TextField(
                       controller: _nameCtrl,
                       textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Icons.person_outline)),
+                      decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(TablerIcons.user)),
                     ),
                     const SizedBox(height: 10),
                     TextField(
@@ -198,7 +199,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Phone (optional)',
                         hintText: '077 123 4567',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                        prefixIcon: Icon(TablerIcons.phone),
                       ),
                     ),
                     if (_clients.isNotEmpty)
@@ -206,7 +207,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
                           onPressed: _chooseClient,
-                          icon: const Icon(Icons.people_outline, size: 18),
+                          icon: const Icon(TablerIcons.users, size: 18),
                           label: const Text('Pick an existing client'),
                         ),
                       ),
@@ -250,7 +251,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                           );
                           if (d != null) setState(() => _date = d);
                         },
-                        icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                        icon: const Icon(TablerIcons.calendar, size: 18),
                         label: Text(_isToday ? 'Today' : MaterialLocalizations.of(context).formatMediumDate(_date)),
                       ),
                     ),
@@ -261,7 +262,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                           final t = await showTimePicker(context: context, initialTime: _time);
                           if (t != null) setState(() => _time = t);
                         },
-                        icon: const Icon(Icons.schedule_rounded, size: 18),
+                        icon: const Icon(TablerIcons.clock, size: 18),
                         label: Text(_time.format(context)),
                       ),
                     ),
@@ -369,7 +370,7 @@ class _ClientPickerState extends State<_ClientPicker> {
         child: Column(children: [
           TextField(
             autofocus: true,
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search name or phone'),
+            decoration: const InputDecoration(prefixIcon: Icon(TablerIcons.search), hintText: 'Search name or phone'),
             onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
           ),
           const SizedBox(height: 8),
