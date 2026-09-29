@@ -33,6 +33,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   final Set<String> _selectedCategoryIds = {};
   String? _group;
   String _where = 'any'; // any | home | studio
+  String _gender = 'any'; // any | woman | man
   double _minRating = 0;
   RangeValues _priceRange = const RangeValues(0, 500);
   String _sortBy = 'rating'; // rating | distance | price_low | newest
@@ -257,6 +258,9 @@ class _BrowseScreenState extends State<BrowseScreen> {
         }
       }
 
+      // The pro's gender (e.g. for massage)
+      if (_gender != 'any' && p['gender'] != _gender) return false;
+
       // Where the service happens
       if (_where != 'any') {
         final want = _where == 'home' ? 'client' : 'studio';
@@ -340,6 +344,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     int count = 0;
     if (_minRating > 0) count++;
     if (_where != 'any') count++;
+    if (_gender != 'any') count++;
     if (_selectedCategoryIds.isNotEmpty) count++;
     if (_priceRange.start > 0 || _priceRange.end < 500) count++;
     if (_selectedCity != 'All Zimbabwe') count++;
@@ -372,6 +377,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     String tempSort = _sortBy;
     int tempRadius = _radiusKm;
     String tempWhere = _where;
+    String tempGender = _gender;
 
     showModalBottomSheet(
       useRootNavigator: true,
@@ -402,6 +408,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                         tempSort = 'rating';
                         tempRadius = 100;
                         tempWhere = 'any';
+                        tempGender = 'any';
                       });
                     },
                     child: const Text('Reset'),
@@ -419,6 +426,22 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   _SortChip('Anywhere', 'any', tempWhere, (v) => setSheetState(() => tempWhere = v)),
                   _SortChip('Comes to me', 'home', tempWhere, (v) => setSheetState(() => tempWhere = v)),
                   _SortChip('I go to them', 'studio', tempWhere, (v) => setSheetState(() => tempWhere = v)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // Pro's gender, e.g. for massage
+              Text('Beauty pro', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text('Handy for massage and other close-contact services.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  _SortChip('Anyone', 'any', tempGender, (v) => setSheetState(() => tempGender = v)),
+                  _SortChip('A woman', 'woman', tempGender, (v) => setSheetState(() => tempGender = v)),
+                  _SortChip('A man', 'man', tempGender, (v) => setSheetState(() => tempGender = v)),
                 ],
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -561,6 +584,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       _priceRange = tempPriceRange;
                       _sortBy = tempSort;
                       _where = tempWhere;
+                      _gender = tempGender;
                       _radiusKm = tempRadius;
                     });
                     Navigator.pop(context);
@@ -923,11 +947,11 @@ class _ProviderCard extends StatelessWidget {
       if (c['name'] != null) catNames.add(c['name']);
     }
 
+    // Measured from the chosen city's centre, not the client's phone, so
+    // very small distances (a pro pinned at the centre) aren't shown.
     String? distanceText;
-    if (distance != null) {
-      distanceText = distance! < 1
-          ? '${(distance! * 1000).toStringAsFixed(0)} m away'
-          : '${distance!.toStringAsFixed(1)} km away';
+    if (distance != null && distance! >= 1) {
+      distanceText = '${distance!.toStringAsFixed(distance! < 10 ? 1 : 0)} km from the centre';
     }
 
     return Padding(

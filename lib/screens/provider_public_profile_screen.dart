@@ -583,12 +583,16 @@ class _ProviderPublicProfileScreenState
                         ),
                       ]),
                     ),
-                    if (idVerified || bizVerified)
+                    if (idVerified || bizVerified || _providerProfile?['gender'] != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
                         child: Wrap(spacing: 6, runSpacing: 6, children: [
                           if (idVerified) const _DarkBadge(icon: TablerIcons.id_badge_2, label: 'ID verified'),
                           if (bizVerified) const _DarkBadge(icon: TablerIcons.building_store, label: 'Business verified'),
+                          if (_providerProfile?['gender'] != null)
+                            _DarkBadge(
+                                icon: TablerIcons.user,
+                                label: _providerProfile!['gender'] == 'woman' ? 'Woman' : 'Man'),
                         ]),
                       ),
                   ]),

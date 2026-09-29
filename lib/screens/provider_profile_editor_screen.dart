@@ -17,6 +17,7 @@ class _ProviderProfileEditorScreenState
   final _formKey     = GlobalKey<FormState>();
   final _bioCtrl     = TextEditingController();
   final _titleCtrl   = TextEditingController();
+  String? _gender; // woman | man | null (not said)
   final _addressCtrl = TextEditingController();
   final _latCtrl     = TextEditingController();
   final _lngCtrl     = TextEditingController();
@@ -56,6 +57,7 @@ class _ProviderProfileEditorScreenState
           .single();
       _bioCtrl.text     = data['bio']     ?? '';
       _titleCtrl.text   = data['title']   ?? '';
+      _gender           = data['gender'];
       _addressCtrl.text = [data['area'], (data['cities'] as Map?)?['name']].where((x) => (x ?? '').toString().isNotEmpty).join(', ');
       _latCtrl.text     = data['latitude']?.toString()  ?? '';
       _lngCtrl.text     = data['longitude']?.toString() ?? '';
@@ -77,6 +79,7 @@ class _ProviderProfileEditorScreenState
       'provider_id': userId,
       'bio':         _bioCtrl.text.trim(),
       'title':       _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
+      'gender':      _gender,
       if (_radiusSupported) 'service_radius_km': _radiusKm,
     };
 
@@ -212,6 +215,25 @@ class _ProviderProfileEditorScreenState
                   hintText: 'e.g. Nail tech, Braider, Barber, Lash artist',
                 ),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              Text('You are', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'woman', label: Text('A woman')),
+                    ButtonSegment(value: 'man', label: Text('A man')),
+                    ButtonSegment(value: 'none', label: Text('Don\'t show')),
+                  ],
+                  selected: {_gender ?? 'none'},
+                  onSelectionChanged: (v) => setState(() => _gender = v.first == 'none' ? null : v.first),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text('Some clients, for example for massage, prefer a woman or a man. They can filter by this.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
               const SizedBox(height: AppSpacing.md),
 
               // -- Bio Section --

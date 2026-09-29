@@ -28,8 +28,11 @@ const SUBSCRIPTION_PRICES: Record<string, number> = {
   monthly: 5,
   salon: 15,
 };
-// Product ads: 20 more listings for 30 days.
-const PRODUCT_PACK_PRICE = 5;
+// Product ads: 20 (or 50) more listings for 30 days; $1 boosts one product
+// to the top of the Home products section for 7 days.
+// Keep in step with public._fee_price() in the database.
+const PRODUCT_PACK_PRICES: Record<string, number> = { standard: 5, large: 10 };
+const PRODUCT_BOOST_PRICE = 1;
 const CLIENT_ACTIVATION_FEE = 1.0;
 // Featured placement: top of Browse/Home in the stylist's city for 7 days.
 const FEATURED_WEEK_PRICE = 3;
@@ -150,8 +153,22 @@ Deno.serve(async (req) => {
     if (prof?.user_type !== "provider") {
       return jsonResponse({ error: "Only beauty pros can advertise products" }, 403);
     }
-    amount = PRODUCT_PACK_PRICE;
+    const size = String(body.tier ?? body.plan ?? "standard");
+    const price = PRODUCT_PACK_PRICES[size];
+    if (!price) return jsonResponse({ error: "Invalid pack" }, 400);
+    amount = price;
     providerId = user.id;
+    meta.plan = size === "large" ? "large" : null;
+  } else if (purpose === "product_boost") {
+    const productId = String(body.productId ?? "");
+    const { data: product } = await admin
+      .from("products").select("id, provider_id, is_active").eq("id", productId).maybeSingle();
+    if (!product || product.provider_id !== user.id || !product.is_active) {
+      return jsonResponse({ error: "Choose one of your showing products to boost" }, 400);
+    }
+    amount = PRODUCT_BOOST_PRICE;
+    providerId = user.id;
+    meta.product_id = productId;
   } else {
     return jsonResponse({ error: "Invalid purpose" }, 400);
   }

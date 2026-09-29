@@ -84,6 +84,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
         'p_purpose': widget.fee.purpose,
         'p_plan': widget.fee.plan,
         'p_reference': _refCtrl.text.trim(),
+        'p_product': widget.fee.productId,
       });
       if (!mounted) return;
       _toast('Sent. We\'ll switch it on as soon as we see your payment.');

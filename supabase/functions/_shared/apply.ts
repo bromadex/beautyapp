@@ -83,7 +83,8 @@ export async function applyPaymentOutcome(opts: {
       .update({ is_activated: true })
       .eq("id", payment.client_id);
   } else if (
-    purpose === "subscription" || purpose === "featured" || purpose === "product_pack"
+    purpose === "subscription" || purpose === "featured" || purpose === "product_pack" ||
+    purpose === "product_boost"
   ) {
     // Plans, featured weeks and product packs are applied in the database
     // (public._apply_fee) so Paynow and manual EcoCash payments behave the same.
@@ -94,6 +95,7 @@ export async function applyPaymentOutcome(opts: {
       p_amount: payment.amount,
       p_ref: payment.transaction_ref ?? payment.gateway_ref ?? null,
       p_record: false,
+      p_product: payment.meta?.product_id ?? null,
     });
     if (error) console.error(`apply fee failed: ${error.message}`);
   }

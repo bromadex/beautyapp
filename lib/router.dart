@@ -343,7 +343,8 @@ final appRouter = GoRouter(
       path: '/pay-beautap',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, state) => FeePayScreen(
-          fee: BeauTapFee(state.uri.queryParameters['purpose'] ?? 'subscription', state.uri.queryParameters['plan'])),
+          fee: BeauTapFee(state.uri.queryParameters['purpose'] ?? 'subscription', state.uri.queryParameters['plan'],
+              state.uri.queryParameters['product'])),
     ),
     GoRoute(
       path: '/admin/fees',

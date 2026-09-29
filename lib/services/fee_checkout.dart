@@ -9,16 +9,19 @@ import '../widgets/ui.dart';
 
 /// What BeauTap charges pros. Keep in step with public._fee_price().
 class BeauTapFee {
-  final String purpose; // subscription | featured | product_pack
-  final String? plan; // activation | monthly | salon (subscriptions only)
-  const BeauTapFee(this.purpose, [this.plan]);
+  final String purpose; // subscription | featured | product_pack | product_boost
+  final String? plan; // activation | monthly | salon; 'large' for the 50-listing pack
+  final String? productId; // product_boost only
+  const BeauTapFee(this.purpose, [this.plan, this.productId]);
 
   double get amount => switch ((purpose, plan)) {
         ('subscription', 'activation') => 3,
         ('subscription', 'monthly') => 5,
         ('subscription', 'salon') => 15,
         ('featured', _) => 3,
+        ('product_pack', 'large') => 10,
         ('product_pack', _) => 5,
+        ('product_boost', _) => 1,
         _ => 0,
       };
 
@@ -27,7 +30,9 @@ class BeauTapFee {
         ('subscription', 'activation') => 'Pro plan activation (first month)',
         ('subscription', _) => 'Pro plan (1 month)',
         ('featured', _) => 'Featured for 7 days',
+        ('product_pack', 'large') => '50 product listings for 30 days',
         ('product_pack', _) => '20 product listings for 30 days',
+        ('product_boost', _) => 'Boost one product for 7 days',
         _ => 'BeauTap',
       };
 }
@@ -85,8 +90,8 @@ class FeeCheckout {
     if (choice == null || !context.mounted) return FeeOutcome.cancelled;
 
     if (choice == 'manual') {
-      final sent = await context.push<bool>(
-          '/pay-beautap?purpose=${fee.purpose}${fee.plan != null ? '&plan=${fee.plan}' : ''}');
+      final sent = await context.push<bool>('/pay-beautap?purpose=${fee.purpose}'
+          '${fee.plan != null ? '&plan=${fee.plan}' : ''}${fee.productId != null ? '&product=${fee.productId}' : ''}');
       return sent == true ? FeeOutcome.sentManually : FeeOutcome.cancelled;
     }
 
@@ -95,6 +100,7 @@ class FeeCheckout {
       purpose: fee.purpose,
       tier: fee.plan,
       months: fee.purpose == 'subscription' ? 1 : null,
+      productId: fee.productId,
     );
     if (outcome == PaynowOutcome.paid) return FeeOutcome.paid;
     if (context.mounted && (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {

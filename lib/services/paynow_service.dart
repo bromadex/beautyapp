@@ -36,6 +36,7 @@ class PaynowService {
     String? phone,
     String? tier,
     int? months,
+    String? productId,
   }) async {
     try {
       final res = await supabase.functions.invoke('initiate-payment', body: {
@@ -45,6 +46,7 @@ class PaynowService {
         if (phone != null) 'phone': phone,
         if (tier != null) 'tier': tier,
         if (months != null) 'months': months,
+        if (productId != null) 'productId': productId,
       });
 
       final data = res.data as Map<String, dynamic>? ?? {};
@@ -92,6 +94,7 @@ class PaynowCheckout {
     String? phone,
     String? tier,
     int? months,
+    String? productId,
   }) async {
     final init = await PaynowService.initiate(
       purpose: purpose,
@@ -100,6 +103,7 @@ class PaynowCheckout {
       phone: phone,
       tier: tier,
       months: months,
+      productId: productId,
     );
 
     if (init.error != null || init.paymentId == null || !init.configured) {

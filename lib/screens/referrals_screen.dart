@@ -173,6 +173,15 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
         const SizedBox(width: 8),
         Expanded(child: _Stat(label: 'Counted, not rewarded yet', value: '$qualified')),
       ]),
+      if (((d['banked_months'] as num?) ?? 0) > 0) ...[
+        const SizedBox(height: 12),
+        SoftBanner(
+          icon: TablerIcons.pig_money,
+          color: AppColors.primary,
+          title: '${d['banked_months']} free Pro months saved',
+          message: 'Your salon plan covers you now. These months start when it ends.',
+        ),
+      ],
       const SizedBox(height: 20),
       Text('Pros you invited', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 8),

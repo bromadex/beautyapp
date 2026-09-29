@@ -8,6 +8,7 @@ import '../services/smart_match_service.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 import '../widgets/location_picker_sheet.dart';
+import '../widgets/product_feed.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ClientHomeScreen extends StatefulWidget {
@@ -276,9 +277,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                           ],
                         );
                       }),
+                      const SizedBox(height: 24),
+                      ProductFeedSection(city: _city),
                       if (_topStylists.isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        SectionHeader(
+                                                SectionHeader(
                           title: 'Featured near you',
                           actionLabel: 'See all',
                           onAction: () => context.go('/browse'),

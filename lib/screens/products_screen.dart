@@ -58,13 +58,31 @@ class _ProductsScreenState extends State<ProductsScreen> {
   void _toast(String m, {bool error = false}) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(m), backgroundColor: error ? AppColors.error : null));
 
-  Future<void> _buyPack() async {
-    final outcome = await FeeCheckout.run(context, const BeauTapFee('product_pack'));
+  Future<void> _buyPack({bool large = false}) async {
+    final outcome = await FeeCheckout.run(context, BeauTapFee('product_pack', large ? 'large' : null));
     if (outcome == FeeOutcome.cancelled) return;
     await _load();
     _toast(outcome == FeeOutcome.paid
-        ? '20 more listings added for 30 days'
+        ? '${large ? 50 : 20} more listings added for 30 days'
         : 'Thanks! We\'ll add your listings as soon as we see your EcoCash payment.');
+  }
+
+  DateTime? _boostedUntil(Map p) {
+    final d = DateTime.tryParse((p['boosted_until'] ?? '').toString())?.toLocal();
+    return d != null && d.isAfter(DateTime.now()) ? d : null;
+  }
+
+  Future<void> _boost(Map<String, dynamic> p) async {
+    if (p['is_active'] != true) {
+      _toast('Show this product first, then boost it', error: true);
+      return;
+    }
+    final outcome = await FeeCheckout.run(context, BeauTapFee('product_boost', null, p['id'] as String));
+    if (outcome == FeeOutcome.cancelled) return;
+    await _load();
+    _toast(outcome == FeeOutcome.paid
+        ? '${p['name']} is at the top of Home for 7 days'
+        : 'Thanks! We\'ll boost it as soon as we see your EcoCash payment.');
   }
 
   Future<void> _toggle(Map<String, dynamic> p, bool on) async {
@@ -151,16 +169,33 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     Text(
                       packEnds != null
                           ? '3 free + ${_allowance - 3} from packs. Your pack ends ${packEnds.day}/${packEnds.month}.'
-                          : '3 listings are free. Add 20 more for \$5 (30 days).',
+                          : '3 listings are free. Add more for 30 days: 20 for \$5 or 50 for \$10.',
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
                     ),
                     const SizedBox(height: 12),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.gold, foregroundColor: AppColors.primaryDark),
-                      onPressed: _buyPack,
-                      icon: const Icon(TablerIcons.plus, size: 18),
-                      label: const Text('20 more listings · \$5'),
-                    ),
+                    Row(children: [
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.gold, foregroundColor: AppColors.primaryDark, padding: EdgeInsets.zero),
+                          onPressed: () => _buyPack(),
+                          child: const Text('+20 · \$5'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.gold, foregroundColor: AppColors.primaryDark, padding: EdgeInsets.zero),
+                          onPressed: () => _buyPack(large: true),
+                          child: const Text('+50 · \$10'),
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 8),
+                    Text('Boost a product for \$1 to put it at the top of clients\' Home screen for 7 days. '
+                        'Use the ⋮ menu on a product.',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5)),
                   ]),
                 ),
                 const SizedBox(height: 10),
@@ -206,6 +241,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                   [
                                     if (p['price'] != null) '\$${amountText(p['price'] as num)}',
                                     p['is_active'] == true ? 'Showing' : 'Hidden',
+                                    if (_boostedUntil(p) != null)
+                                      'Boosted to ${_boostedUntil(p)!.day}/${_boostedUntil(p)!.month}',
                                   ].join(' · '),
                                   style: TextStyle(
                                       fontSize: 13,
@@ -226,8 +263,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             },
                           ),
                           PopupMenuButton<String>(
-                            onSelected: (v) => v == 'edit' ? _edit(p) : _delete(p),
+                            onSelected: (v) => switch (v) { 'edit' => _edit(p), 'boost' => _boost(p), _ => _delete(p) },
                             itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'boost', child: Text('Boost for \$1 · 7 days')),
                               PopupMenuItem(value: 'edit', child: Text('Edit')),
                               PopupMenuItem(value: 'delete', child: Text('Delete')),
                             ],
