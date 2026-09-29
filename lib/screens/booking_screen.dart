@@ -409,7 +409,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Text(
             '${_provider?['full_name'] ?? 'Your pro'} will confirm shortly. '
             'Your reference is $ref.'
-            '${deposit > 0 ? '\n\nSend your ${_money(deposit)} deposit to secure the booking.' : ''}',
+            '${deposit > 0 ? '\n\nSend your ${_money(deposit)} deposit within 2 hours, or the slot is released.' : ''}',
             textAlign: TextAlign.center,
             style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
@@ -787,7 +787,7 @@ class _BookingScreenState extends State<BookingScreen> {
       Text(
         _depositPercent > 0
             ? 'This pro asks for a $_depositPercent% deposit (${_money(_deposit)}). After you book, send it to them '
-                'directly and tap "I\'ve paid". The rest is paid ${_payment == 'cash' ? 'in cash' : 'by ${payMethodLabel(_payment)}'} on the day.'
+                'directly within 2 hours and tap "I\'ve paid". The rest is paid ${_payment == 'cash' ? 'in cash' : 'by ${payMethodLabel(_payment)}'} on the day.'
             : _payment == 'cash'
                 ? 'Pay the pro in cash on the day.'
                 : 'You pay the pro directly. BeauTap never holds your money.',

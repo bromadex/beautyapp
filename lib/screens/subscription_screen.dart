@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../config/app_config.dart';
-import '../services/paynow_service.dart';
+import 'package:go_router/go_router.dart';
+import '../services/fee_checkout.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -23,6 +24,7 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Map<String, dynamic>? _subscription;
   Map<String, dynamic>? _plan;
+  Map<String, dynamic>? _salon;
   bool _loading = true;
   bool _processing = false;
   String? _error;
@@ -45,10 +47,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           .eq('provider_id', supabase.auth.currentUser!.id)
           .maybeSingle();
       final plan = await supabase.rpc('my_plan');
+      final salon = await supabase.rpc('my_salon');
       if (mounted) {
         setState(() {
           _subscription = data;
           _plan = Map<String, dynamic>.from(plan as Map);
+          _salon = salon == null ? null : Map<String, dynamic>.from(salon as Map);
           _loading = false;
         });
       }
@@ -62,7 +66,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
+  /// Covered by the salon owner's plan rather than their own.
+  bool get _viaSalon => _plan?['via_salon'] == true;
+  bool get _onSalonPlan => _plan?['own_plan'] == 'salon';
+  bool get _ownsSalon => _salon?['is_owner'] == true;
+  List get _pendingClaims => (_plan?['fee_claims'] as List?) ?? const [];
+
   bool get _isActive {
+    if (_viaSalon) return true;
     if (_subscription == null) return false;
     if (_subscription!['status'] != 'active') return false;
     final end = DateTime.tryParse(_subscription!['end_date'] ?? '');
@@ -83,39 +94,99 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool get _payingActivation => !_isActive;
 
 
-  Future<void> _pay() async {
+  Future<void> _payFee(BeauTapFee fee, String doneMessage) async {
     setState(() => _processing = true);
-
-    final outcome = await PaynowCheckout.run(
-      context,
-      purpose: 'subscription',
-      tier: _payingActivation ? 'activation' : 'monthly',
-      months: 1,
-    );
+    final outcome = await FeeCheckout.run(context, fee);
     if (mounted) setState(() => _processing = false);
-    if (outcome == PaynowOutcome.paid) {
-      await _load();
-      if (mounted) _snack('Payment received — you\'re live!', AppColors.success);
-    } else if (mounted &&
-        (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
-      _snack(
-          outcome == PaynowOutcome.failed
-              ? 'Payment was not completed. Please try again.'
-              : 'Payment still pending — refresh this page in a few minutes.',
-          AppColors.warning);
-    }
+    if (outcome == FeeOutcome.cancelled) return;
+    await _load();
+    if (!mounted) return;
+    _snack(
+      outcome == FeeOutcome.paid ? doneMessage : 'Thanks! We\'ll switch it on as soon as we see your EcoCash payment.',
+      outcome == FeeOutcome.paid ? AppColors.success : AppColors.info,
+    );
   }
 
-  Future<void> _buyFeatured() async {
-    setState(() => _processing = true);
-    final outcome = await PaynowCheckout.run(context, purpose: 'featured');
-    if (mounted) setState(() => _processing = false);
-    if (outcome == PaynowOutcome.paid) {
-      await _load();
-      if (mounted) _snack('You\'re featured for the next 7 days!', AppColors.success);
-    } else if (mounted && (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
-      _snack('Payment was not completed. Please try again.', AppColors.warning);
+  Future<void> _pay() => _payFee(
+      BeauTapFee('subscription', _payingActivation ? 'activation' : 'monthly'), 'Payment received. You\'re Pro!');
+
+  Future<void> _buyFeatured() => _payFee(const BeauTapFee('featured'), 'You\'re featured for the next 7 days!');
+
+  Future<void> _paySalon() => _payFee(const BeauTapFee('subscription', 'salon'), 'Salon plan active for your whole team!');
+
+  Widget _buildPendingClaims() {
+    return Column(children: [
+      for (final c in _pendingClaims)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: SoftBanner(
+            icon: TablerIcons.clock_hour_4,
+            color: AppColors.warning,
+            title: 'Checking your EcoCash payment',
+            message: '\$${(c['amount'] as num).toStringAsFixed(0)} · ref ${c['reference']}. '
+                'We\'ll notify you as soon as it\'s confirmed.',
+          ),
+        ),
+    ]);
+  }
+
+  Widget _buildSalonCard() {
+    final s = _salon;
+    if (s == null) {
+      return InkWell(
+        onTap: () => context.push('/provider/salon').then((_) => _load()),
+        borderRadius: AppRadius.mdAll,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Row(children: [
+            Icon(TablerIcons.building_store, color: AppColors.primary),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Run a salon? One \$15 plan covers you and up to 7 staff.',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
+          ]),
+        ),
+      );
     }
+    if (!_ownsSalon) return const SizedBox.shrink();
+    final until = DateTime.tryParse((s['plan_until'] ?? '').toString());
+    final active = s['plan_active'] == true;
+    final people = (s['members'] as List?)?.length ?? 1;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.primarySoft,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(TablerIcons.building_store, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Salon plan · ${s['name']}', style: Theme.of(context).textTheme.titleMedium)),
+          const Text('\$15 / month', style: TextStyle(fontWeight: FontWeight.w800)),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          active && until != null
+              ? 'Active until ${until.day}/${until.month}. Covers the first 8 people in your salon ($people now).'
+              : 'Covers you and up to 7 staff ($people in your salon now). Anyone past 8 needs their own Pro plan.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: _processing ? null : _paySalon,
+          child: Text(active ? 'Add another month' : 'Pay salon plan'),
+        ),
+      ]),
+    );
   }
 
   Widget _buildFreeUsage() {
@@ -291,6 +362,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_pendingClaims.isNotEmpty) _buildPendingClaims(),
                 _buildStatusCard(),
                 if (!_isActive) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -303,10 +375,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 _buildInfoBox(),
                 const SizedBox(height: AppSpacing.xl),
-                _buildPayButton(),
+                if (!_viaSalon && !_onSalonPlan) _buildPayButton(),
+                const SizedBox(height: AppSpacing.xl),
+                _buildSalonCard(),
                 const SizedBox(height: AppSpacing.xl),
                 _buildFeaturedCard(),
-                if (_isActive) ...[
+                if (_isActive && !_viaSalon) ...[
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
                     onPressed: _processing ? null : _cancel,
@@ -329,26 +403,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     late final String title;
     late final String subtitle;
 
-    if (_isActive) {
-      gradient = const [Color(0xFFC2185B), Color(0xFF880E4F)];
+    if (_viaSalon) {
+      gradient = const [AppColors.primary, AppColors.primaryDark];
+      icon = TablerIcons.building_store;
+      title = 'Pro through ${_salon?['name'] ?? 'your salon'}';
+      subtitle = 'Your salon\'s plan covers you. No need to pay yourself.';
+    } else if (_isActive) {
+      gradient = const [AppColors.primary, AppColors.primaryDark];
       icon = TablerIcons.rosette_discount_check;
       title = 'Pro — active';
       subtitle =
           '$_daysRemaining days remaining · you keep 100% of what you earn';
     } else if (_subscription?['status'] == 'cancelled') {
-      gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
+      gradient = const [AppColors.pine, AppColors.primaryDark];
       icon = TablerIcons.player_pause;
       title = 'Pro cancelled';
       subtitle =
           'You\'re on the Free plan. Go Pro again for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to remove the booking limit.';
     } else if (_isLapsed) {
-      gradient = const [Color(0xFFDC2626), Color(0xFFEF4444)];
+      gradient = const [AppColors.error, AppColors.errorText];
       icon = TablerIcons.alert_triangle;
       title = 'Pro expired';
       subtitle =
           'You\'re on the Free plan (5 bookings a month). Renew Pro to remove the limit.';
     } else {
-      gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
+      gradient = const [AppColors.pine, AppColors.primaryDark];
       icon = TablerIcons.leaf;
       title = 'You\'re on the Free plan';
       subtitle =

@@ -59,20 +59,6 @@ export async function applyPaymentOutcome(opts: {
         reference_id: payment.booking_id,
       });
     }
-  } else if (purpose === "featured") {
-    const { data: pp } = await admin
-      .from("provider_profiles")
-      .select("featured_until")
-      .eq("provider_id", payment.client_id)
-      .maybeSingle();
-    const now = new Date();
-    const current = pp?.featured_until ? new Date(pp.featured_until) : null;
-    const base = current && current > now ? current : now;
-    const until = new Date(base.getTime() + Number(payment.meta?.days ?? 7) * 86400000);
-    await admin
-      .from("provider_profiles")
-      .update({ featured_until: until.toISOString() })
-      .eq("provider_id", payment.client_id);
   } else if (purpose === "booking" && payment.booking_id) {
     await admin
       .from("bookings")
@@ -96,49 +82,19 @@ export async function applyPaymentOutcome(opts: {
       .from("profiles")
       .update({ is_activated: true })
       .eq("id", payment.client_id);
-  } else if (purpose === "subscription") {
-    // $3 activation (includes first month) or $5 monthly renewal.
-    const plan = payment.meta?.plan ?? "activation";
-    const start = new Date();
-    const dateOnly = (d: Date) => d.toISOString().split("T")[0];
-
-    const { data: existing } = await admin
-      .from("subscriptions")
-      .select("id, end_date, status")
-      .eq("provider_id", payment.client_id)
-      .maybeSingle();
-
-    // Renewals extend from the current end date; activations start today
-    let base = start;
-    if (plan === "monthly" && existing?.end_date) {
-      const currentEnd = new Date(existing.end_date);
-      if (currentEnd > start) base = currentEnd;
-    }
-    const end = new Date(base);
-    end.setMonth(end.getMonth() + 1);
-
-    const payload = {
-      provider_id: payment.client_id,
-      start_date: dateOnly(start),
-      end_date: dateOnly(end),
-      status: "active",
-      plan,
-      amount_paid: payment.amount,
-      payment_ref: payment.transaction_ref,
-    };
-
-    if (existing) {
-      await admin
-        .from("subscriptions")
-        .update(payload)
-        .eq("provider_id", payment.client_id);
-    } else {
-      await admin.from("subscriptions").insert(payload);
-    }
-
-    await admin
-      .from("provider_profiles")
-      .update({ is_hidden: false })
-      .eq("provider_id", payment.client_id);
+  } else if (
+    purpose === "subscription" || purpose === "featured" || purpose === "product_pack"
+  ) {
+    // Plans, featured weeks and product packs are applied in the database
+    // (public._apply_fee) so Paynow and manual EcoCash payments behave the same.
+    const { error } = await admin.rpc("_apply_fee", {
+      p_user: payment.client_id,
+      p_purpose: purpose,
+      p_plan: payment.meta?.plan ?? null,
+      p_amount: payment.amount,
+      p_ref: payment.transaction_ref ?? payment.gateway_ref ?? null,
+      p_record: false,
+    });
+    if (error) console.error(`apply fee failed: ${error.message}`);
   }
 }

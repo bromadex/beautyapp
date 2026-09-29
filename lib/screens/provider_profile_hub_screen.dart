@@ -175,6 +175,24 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                 onTap: () => context.push('/provider/promotions'),
               ),
               _HubTile(
+                icon: TablerIcons.shopping_bag,
+                label: 'Products',
+                subtitle: 'Advertise what you sell. 3 free',
+                onTap: () => context.push('/provider/products'),
+              ),
+              _HubTile(
+                icon: TablerIcons.building_store,
+                label: 'Salon',
+                subtitle: 'Create or join a salon. One plan for up to 8',
+                onTap: () => context.push('/provider/salon'),
+              ),
+              _HubTile(
+                icon: TablerIcons.gift,
+                label: 'Invite pros',
+                subtitle: 'Invite 2 pros, get 2 months free',
+                onTap: () => context.push('/provider/referrals'),
+              ),
+              _HubTile(
                 icon: TablerIcons.crown,
                 label: 'Subscription',
                 subtitle: hasActiveSub ? 'Manage your plan' : 'Subscribe to appear in search',

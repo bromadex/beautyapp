@@ -245,6 +245,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildActionTiles() {
     final actions = [
       _ActionItem(TablerIcons.users, 'Users', AppColors.info, () => context.push('/admin/users')),
+      _ActionItem(TablerIcons.device_mobile_dollar, 'EcoCash fees', AppColors.success, () => context.push('/admin/fees')),
       _ActionItem(TablerIcons.calendar_month, 'Bookings', AppColors.secondary, () => context.push('/admin/bookings')),
       _ActionItem(TablerIcons.rosette_discount_check, 'Verifications', AppColors.warning, () => context.push('/admin/verify')),
       _ActionItem(TablerIcons.chart_bar, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),

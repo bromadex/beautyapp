@@ -7,6 +7,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../services/guest_service.dart';
 import '../widgets/ui.dart';
+import '../utils/booking_helpers.dart' show shareOnWhatsApp;
 
 class ProviderPublicProfileScreen extends StatefulWidget {
   final String providerId;
@@ -27,6 +28,8 @@ class _ProviderPublicProfileScreenState
   bool _isFavorited = false;
   Map<String, dynamic>? _loyalty;
   List<Map<String, dynamic>> _certificates = [];
+  List<Map<String, dynamic>> _products = [];
+  Map<String, dynamic>? _salon;
 
   late final AnimationController _heartController;
   late final Animation<double> _heartScale;
@@ -200,6 +203,24 @@ class _ProviderPublicProfileScreenState
 
 
       try {
+        _products = List<Map<String, dynamic>>.from(await supabase
+            .from('products')
+            .select('id, name, price, description, image_url')
+            .eq('provider_id', id)
+            .eq('is_active', true)
+            .order('created_at', ascending: false));
+      } catch (_) {}
+
+      try {
+        final m = await supabase
+            .from('salon_members')
+            .select('salons(id, name)')
+            .eq('provider_id', id)
+            .maybeSingle();
+        _salon = (m?['salons'] as Map?)?.cast<String, dynamic>();
+      } catch (_) {}
+
+      try {
         _certificates = List<Map<String, dynamic>>.from(await supabase
             .from('provider_certificates')
             .select('title, issuer, year')
@@ -351,6 +372,53 @@ class _ProviderPublicProfileScreenState
               );
             }),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showProduct(Map<String, dynamic> p) {
+    final phone = (_profile?['whatsapp_number'] ?? _profile?['phone'] ?? '').toString();
+    final name = (_profile?['full_name'] ?? 'the pro').toString();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if ((p['image_url'] ?? '').toString().isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: AppRadius.mdAll,
+                child: Image.network(p['image_url'], height: 220, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 14),
+            ],
+            Text(p['name'] ?? '', style: Theme.of(ctx).textTheme.headlineSmall),
+            if (p['price'] != null)
+              Text('\$${(p['price'] as num).toStringAsFixed((p['price'] as num) % 1 == 0 ? 0 : 2)}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
+            if ((p['description'] ?? '').toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(p['description'], style: const TextStyle(color: AppColors.textSecondary, height: 1.45)),
+            ],
+            const SizedBox(height: 16),
+            if (phone.isNotEmpty)
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
+                onPressed: () => shareOnWhatsApp(
+                    'Hi $name, I saw your ${p['name']} on BeauTap. Is it available?',
+                    phone: phone),
+                icon: const Icon(TablerIcons.brand_whatsapp),
+                label: const Text('Ask on WhatsApp'),
+              )
+            else
+              const Text('Ask the pro about it when you book.', style: TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
+            const Text('BeauTap only shows the ad. You pay the pro directly.',
+                textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+          ]),
         ),
       ),
     );
@@ -606,6 +674,33 @@ class _ProviderPublicProfileScreenState
                     const SizedBox(height: AppSpacing.xxl),
                   ],
 
+                  if (_salon != null) ...[
+                    InkWell(
+                      onTap: () => context.push('/salon/${_salon!['id']}'),
+                      borderRadius: AppRadius.mdAll,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: AppRadius.mdAll,
+                        ),
+                        child: Row(children: [
+                          const Icon(TablerIcons.building_store, color: AppColors.primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text.rich(TextSpan(children: [
+                              const TextSpan(text: 'Works at '),
+                              TextSpan(text: _salon!['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800)),
+                            ])),
+                          ),
+                          const Text('See team', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                          const Icon(TablerIcons.chevron_right, color: AppColors.primary, size: 18),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
+
                   if (_certificates.isNotEmpty) ...[
                     Text('Qualifications', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: AppSpacing.sm),
@@ -682,6 +777,27 @@ class _ProviderPublicProfileScreenState
                     ),
 
                   const SizedBox(height: AppSpacing.xxl),
+
+                  if (_products.isNotEmpty) ...[
+                    Text('Products', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    const Text('Sold by this pro. Ask them on WhatsApp to buy.',
+                        style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      height: 196,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _products.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (_, i) => _ProductCard(
+                          product: _products[i],
+                          onTap: () => _showProduct(_products[i]),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                  ],
 
                   // Gallery
                   Text('Gallery', style: Theme.of(context).textTheme.titleMedium),
@@ -1148,6 +1264,50 @@ class _LoyaltyCard extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         ],
       ]),
+    );
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final VoidCallback onTap;
+  const _ProductCard({required this.product, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final img = (product['image_url'] ?? '').toString();
+    final price = product['price'] as num?;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.mdAll,
+      child: Container(
+        width: 140,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: img.isEmpty
+                ? Container(color: AppColors.primarySoft, child: const Icon(TablerIcons.shopping_bag, color: AppColors.primary))
+                : Image.network(img, fit: BoxFit.cover),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(product['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              if (price != null)
+                Text('\$${price.toStringAsFixed(price % 1 == 0 ? 0 : 2)}',
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../services/earnings_service.dart';
+import '../services/referral_service.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../theme.dart';
@@ -47,6 +48,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     WidgetsBinding.instance.addObserver(this);
     _loadData();
     _subscribeRealtime();
+    applyPendingReferral();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) PushService.maybeInit(context);
     });

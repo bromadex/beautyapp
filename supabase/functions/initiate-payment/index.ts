@@ -21,10 +21,15 @@ import {
 
 // Provider subscription: $3 activation (includes first month), $5/month after.
 // No commission — providers keep 100% of booking payments.
+// Salon: one plan covers the owner and up to 7 staff.
+// Keep in step with public._fee_price() in the database.
 const SUBSCRIPTION_PRICES: Record<string, number> = {
   activation: 3,
   monthly: 5,
+  salon: 15,
 };
+// Product ads: 20 more listings for 30 days.
+const PRODUCT_PACK_PRICE = 5;
 const CLIENT_ACTIVATION_FEE = 1.0;
 // Featured placement: top of Browse/Home in the stylist's city for 7 days.
 const FEATURED_WEEK_PRICE = 3;
@@ -120,9 +125,33 @@ Deno.serve(async (req) => {
     const plan = String(body.tier ?? body.plan ?? "activation");
     const price = SUBSCRIPTION_PRICES[plan];
     if (!price) return jsonResponse({ error: "Invalid plan" }, 400);
+    if (plan !== "salon") {
+      const { data: sub } = await admin
+        .from("subscriptions").select("plan, status, end_date")
+        .eq("provider_id", user.id).maybeSingle();
+      if (
+        sub?.plan === "salon" && sub.status === "active" &&
+        sub.end_date >= new Date().toISOString().slice(0, 10)
+      ) {
+        return jsonResponse({ error: "Your salon plan already covers you" }, 400);
+      }
+    }
+    if (plan === "salon") {
+      const { data: salon } = await admin
+        .from("salons").select("id").eq("owner_id", user.id).maybeSingle();
+      if (!salon) return jsonResponse({ error: "Create your salon first" }, 400);
+    }
     amount = price;
     providerId = user.id;
     meta.plan = plan;
+  } else if (purpose === "product_pack") {
+    const { data: prof } = await admin
+      .from("profiles").select("user_type").eq("id", user.id).maybeSingle();
+    if (prof?.user_type !== "provider") {
+      return jsonResponse({ error: "Only beauty pros can advertise products" }, 403);
+    }
+    amount = PRODUCT_PACK_PRICE;
+    providerId = user.id;
   } else {
     return jsonResponse({ error: "Invalid purpose" }, 400);
   }

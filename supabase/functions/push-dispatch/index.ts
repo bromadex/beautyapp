@@ -80,6 +80,14 @@ Deno.serve(async (req) => {
       let route = "/notifications";
       if (record.type === "review_request") route = `/review/${ref}`;
       if (record.type === "payment") route = `/booking/${ref}`;
+      const routes: Record<string, string> = {
+        fee_update: "/provider/subscription",
+        fee_claim: "/admin/fees",
+        referral: "/provider/referrals",
+        salon: "/provider/salon",
+        products: "/provider/products",
+      };
+      if (routes[record.type]) route = routes[record.type];
       if (record.type === "waitlist") {
         const [providerId, serviceId] = ref.split("|");
         route = serviceId ? `/book/${providerId}/${serviceId}` : `/provider/${providerId}`;

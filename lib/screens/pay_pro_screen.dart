@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -34,6 +36,7 @@ class _PayProScreenState extends State<PayProScreen> {
   Uint8List? _proof;
   String _proofType = 'image/jpeg';
   bool _sending = false;
+  Timer? _ticker;
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _PayProScreenState extends State<PayProScreen> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _refCtrl.dispose();
     super.dispose();
   }
@@ -52,7 +56,7 @@ class _PayProScreenState extends State<PayProScreen> {
       final b = await supabase
           .from('bookings')
           .select('id, ref, status, client_id, provider_id, total_price, deposit_amount, deposit_paid, '
-              'payment_status, payment_method, provider:profiles!bookings_provider_id_fkey(full_name)')
+              'payment_status, payment_method, deposit_due_at, provider:profiles!bookings_provider_id_fkey(full_name)')
           .eq('id', widget.bookingId)
           .maybeSingle();
       if (b == null || b['client_id'] != supabase.auth.currentUser?.id) {
@@ -89,6 +93,12 @@ class _PayProScreenState extends State<PayProScreen> {
         }
         _loading = false;
       });
+      _ticker?.cancel();
+      if (_dueAt != null) {
+        _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) setState(() {});
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -105,6 +115,14 @@ class _PayProScreenState extends State<PayProScreen> {
   PayMethod? get _method {
     final m = _methods.where((m) => m.id == _methodId);
     return m.isEmpty ? null : m.first;
+  }
+
+  DateTime? get _dueAt => DateTime.tryParse((_booking?['deposit_due_at'] ?? '').toString())?.toLocal();
+
+  String _countdown(Duration d) {
+    if (d.isNegative) return '0:00:00';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${d.inHours}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
   }
 
   String get _firstName => _proName == 'your pro' ? 'Your pro' : _proName.split(' ').first;
@@ -324,13 +342,33 @@ class _PayProScreenState extends State<PayProScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(label, style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        Text(_money(due.$2, cents: true),
-            style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, height: 1.1)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(_money(due.$2, cents: true),
+                  style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, height: 1.1)),
+            ]),
+          ),
+          if (due.$1 == 'deposit' && _dueAt != null)
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              const Text('RELEASED IN',
+                  style: TextStyle(
+                      color: AppColors.goldLight, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+              const SizedBox(height: 4),
+              Text(_countdown(_dueAt!.difference(DateTime.now())),
+                  style: monoStyle.copyWith(color: Colors.white, fontSize: 18)),
+            ]),
+        ]),
         if (due.$1 == 'deposit') ...[
           const SizedBox(height: 4),
-          Text('Secures your booking. The rest is paid on the day.',
+          Text(
+              _dueAt != null && _dueAt!.isBefore(DateTime.now())
+                  ? 'Time is up. Send it now and tap "I\'ve paid", or the slot may be released.'
+                  : _dueAt != null
+                      ? 'Send it before the timer ends or the slot is released. The rest is paid on the day.'
+                      : 'Secures your booking. The rest is paid on the day.',
               style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13)),
         ],
         if (ussd != null) ...[
@@ -388,6 +426,10 @@ class _PayProScreenState extends State<PayProScreen> {
       ]));
     }
     final note = (_pp?['pay_note'] ?? '').toString().trim();
+    final hint = [
+      if (_booking!['ref'] != null && m.id == 'bank') 'Use ${_booking!['ref']} as the payment reference.',
+      if (note.isNotEmpty) note,
+    ].join(' ');
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -428,13 +470,10 @@ class _PayProScreenState extends State<PayProScreen> {
           ),
         ]),
         ),
-        if (_booking!['ref'] != null || note.isNotEmpty) ...[
+        if (hint.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
-            [
-              if (_booking!['ref'] != null && m.id == 'bank') 'Use ${_booking!['ref']} as the payment reference.',
-              if (note.isNotEmpty) note,
-            ].join(' '),
+            hint,
             style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         ],

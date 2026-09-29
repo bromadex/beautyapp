@@ -4,13 +4,16 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/referral_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  /// Referral code from an invite link (/register?ref=CODE).
+  final String? refCode;
+  const RegisterScreen({super.key, this.refCode});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -24,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
+  final _refCtrl = TextEditingController();
 
   String _userType = 'client';
   bool _loading = false;
@@ -37,6 +41,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    if ((widget.refCode ?? '').isNotEmpty) {
+      _refCtrl.text = widget.refCode!.toUpperCase();
+      _userType = 'provider';
+    }
     _loadCategories();
   }
 
@@ -196,6 +204,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
 
+      if (_userType == 'provider' && _refCtrl.text.trim().isNotEmpty) {
+        await applyReferralCode(_refCtrl.text.trim(), context: context);
+      }
+
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
       if (mounted) {
@@ -238,6 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _emailCtrl.dispose();
+    _refCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     _nameCtrl.dispose();
@@ -610,6 +623,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return null;
                             },
                           ),
+                          if (_userType == 'provider') ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            TextFormField(
+                              controller: _refCtrl,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                labelText: 'Referral code (optional)',
+                                hintText: 'From the pro who invited you',
+                                prefixIcon: Icon(TablerIcons.ticket),
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: AppSpacing.xxxl),
 

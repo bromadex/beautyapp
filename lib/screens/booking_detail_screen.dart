@@ -376,6 +376,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
+  /// "Send within 1 h 52 min or the slot is released"
+  String? _depositLeft(Map<String, dynamic> b) {
+    final due = DateTime.tryParse((b['deposit_due_at'] ?? '').toString())?.toLocal();
+    if (due == null) return null;
+    final left = due.difference(DateTime.now());
+    if (left.isNegative) return 'Time is up. Send it now or the slot may be released';
+    final h = left.inHours, m = left.inMinutes % 60;
+    return 'Send within ${h > 0 ? '$h h ' : ''}$m min or the slot is released';
+  }
+
   String _paymentSummary(Map<String, dynamic> b) {
     num n(String k) => (b[k] as num?) ?? 0;
     final method = payMethodLabel(b['payment_method']);
@@ -676,7 +686,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               _ActionCard(
                 icon: TablerIcons.lock_cog,
                 label: 'Pay \$${amountText(b['deposit_amount'] as num)} deposit',
-                subtitle: 'Send it straight to ${provider?['full_name'] ?? 'your pro'} to secure your slot',
+                subtitle: _depositLeft(b) ?? 'Send it straight to ${provider?['full_name'] ?? 'your pro'} to secure your slot',
                 color: AppColors.primary,
                 onTap: () => context.push('/pay/${widget.bookingId}'),
               ),

@@ -26,6 +26,13 @@ import 'screens/provider_bookings_screen.dart';
 import 'screens/booking_detail_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/pay_pro_screen.dart';
+import 'screens/fee_pay_screen.dart';
+import 'screens/admin_fees_screen.dart';
+import 'screens/referrals_screen.dart';
+import 'screens/salon_screen.dart';
+import 'screens/salon_public_screen.dart';
+import 'screens/products_screen.dart';
+import 'services/fee_checkout.dart';
 import 'screens/provider_earnings_screen.dart';
 import 'screens/browse_screen.dart';
 import 'screens/review_screen.dart';
@@ -65,7 +72,7 @@ final appRouter = GoRouter(
     final loc = state.matchedLocation;
     final isAuthRoute = loc == '/login' || loc == '/register';
 
-    final isPublicRoute = loc.startsWith('/@') || loc.startsWith('/provider/') &&
+    final isPublicRoute = loc.startsWith('/@') || loc.startsWith('/salon/') || loc.startsWith('/provider/') &&
         !loc.startsWith('/provider/home') &&
         !loc.startsWith('/provider/bookings') &&
         !loc.startsWith('/provider/calendar') &&
@@ -78,6 +85,9 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/promotions') &&
         !loc.startsWith('/provider/availability') &&
         !loc.startsWith('/provider/settings') &&
+        !loc.startsWith('/provider/referrals') &&
+        !loc.startsWith('/provider/salon') &&
+        !loc.startsWith('/provider/products') &&
         !loc.startsWith('/provider/service-requests');
     if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
 
@@ -105,7 +115,7 @@ final appRouter = GoRouter(
     // Auth (no shell)
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/login',    builder: (_, __) => const LoginScreen()),
-    GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+    GoRoute(path: '/register', builder: (_, state) => RegisterScreen(refCode: state.uri.queryParameters['ref'])),
 
     // ─────────────────────────────────────────────────────────────
     // CLIENT SHELL — bottom nav: Home | Browse | Bookings | Favourites
@@ -326,6 +336,37 @@ final appRouter = GoRouter(
       path: '/pay/:bookingId',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, state) => PayProScreen(bookingId: state.pathParameters['bookingId']!),
+    ),
+    GoRoute(
+      path: '/pay-beautap',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => FeePayScreen(
+          fee: BeauTapFee(state.uri.queryParameters['purpose'] ?? 'subscription', state.uri.queryParameters['plan'])),
+    ),
+    GoRoute(
+      path: '/admin/fees',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AdminFeesScreen(),
+    ),
+    GoRoute(
+      path: '/provider/referrals',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ReferralsScreen(),
+    ),
+    GoRoute(
+      path: '/provider/salon',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const SalonScreen(),
+    ),
+    GoRoute(
+      path: '/provider/products',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProductsScreen(),
+    ),
+    GoRoute(
+      path: '/salon/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => SalonPublicScreen(salonId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/payment/:bookingId',

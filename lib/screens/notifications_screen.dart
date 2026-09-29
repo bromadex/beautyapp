@@ -63,7 +63,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final type = n['type'] ?? '';
     final refId = n['reference_id'];
 
-    if (refId == null) return;
+    if (refId == null) {
+      if (type == 'products') context.push('/provider/products');
+      return;
+    }
 
     switch (type) {
       case 'booking':
@@ -88,6 +91,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         break;
       case 'service_review':
         context.push('/provider/services');
+        break;
+      case 'fee_update':
+        context.push('/provider/subscription');
+        break;
+      case 'fee_claim':
+        context.push('/admin/fees');
+        break;
+      case 'referral':
+        context.push('/provider/referrals');
+        break;
+      case 'salon':
+        context.push('/provider/salon');
+        break;
+      case 'products':
+        context.push('/provider/products');
         break;
       case 'waitlist':
         final parts = refId.toString().split('|');
