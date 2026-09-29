@@ -71,7 +71,7 @@ class FeeCheckout {
             _Option(
               icon: TablerIcons.bolt,
               title: 'Pay now',
-              subtitle: 'EcoCash or card through Paynow. Active straight away.',
+              subtitle: 'Online through Paynow (Zimswitch, InnBucks and more). Active straight away.',
               onTap: () => Navigator.pop(ctx, 'paynow'),
             ),
             if (manualNumber != null) ...[

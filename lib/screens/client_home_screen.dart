@@ -567,7 +567,7 @@ class _HowItWorks extends StatelessWidget {
   Widget build(BuildContext context) {
     const steps = [
       (TablerIcons.search, 'Find a beauty pro', 'Browse verified pros, prices and real reviews.'),
-      (TablerIcons.calendar_check, 'Book a time', 'Pick a slot that suits you — pay cash, EcoCash or card.'),
+      (TablerIcons.calendar_check, 'Book a time', 'Pick a slot that suits you, then pay the pro directly.'),
       (TablerIcons.home, 'Get it done', 'At your place or theirs. Rate them afterwards.'),
     ];
     return Card(
