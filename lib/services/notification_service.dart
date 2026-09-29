@@ -2,12 +2,13 @@ import '../supabase_client.dart';
 
 class NotificationService {
   static Future<void> send({
-    required String userId,
+    required String? userId,
     required String type,
     required String title,
     required String body,
     String? referenceId,
   }) async {
+    if (userId == null) return; // walk-in clients have no account
     try {
       await supabase.from('notifications').insert({
         'user_id': userId,

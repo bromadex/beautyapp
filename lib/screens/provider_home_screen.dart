@@ -9,6 +9,7 @@ import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
+import '../utils/booking_helpers.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -37,7 +38,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   double _avgRating = 0;
   int _unreadMessages = 0;
   int _unreadNotifications = 0;
-  List<Map<String, dynamic>> _recentActivity = [];
+  List<Map<String, dynamic>> _todayBookings = [];
+  List<Map<String, dynamic>> _requests = [];
 
   @override
   void initState() {
@@ -273,7 +275,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     double avgRating = 0;
     int unreadMessages = 0;
     int unreadNotifs = 0;
-    List<Map<String, dynamic>> recentActivity = [];
 
     try {
       providerProfile = await supabase
@@ -366,49 +367,42 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       unreadMessages = (msgs as List).length;
     } catch (_) {}
 
-    try {
-      final recentReviews = await supabase
-          .from('reviews')
-          .select('id, rating, comment, created_at, profiles!reviews_client_id_fkey(full_name)')
-          .eq('provider_id', userId)
-          .order('created_at', ascending: false)
-          .limit(3);
-      for (final r in (recentReviews as List)) {
-        recentActivity.add({'type': 'review', 'data': r, 'created_at': r['created_at']});
-      }
-    } catch (_) {}
-
-    try {
-      final recentPayments = await supabase
-          .from('payments')
-          .select('id, amount, created_at, bookings(services(service_name), profiles!bookings_client_id_fkey(full_name))')
-          .eq('provider_id', userId)
-          .eq('status', 'completed')
-          .order('created_at', ascending: false)
-          .limit(3);
-      for (final p in (recentPayments as List)) {
-        recentActivity.add({'type': 'payment', 'data': p, 'created_at': p['created_at']});
-      }
-    } catch (_) {}
-
-    try {
-      final recentBookings = await supabase
-          .from('bookings')
-          .select('id, status, booking_time, created_at, services(service_name), profiles!bookings_client_id_fkey(full_name)')
-          .eq('provider_id', userId)
-          .order('created_at', ascending: false)
-          .limit(3);
-      for (final b in (recentBookings as List)) {
-        recentActivity.add({'type': 'booking', 'data': b, 'created_at': b['created_at']});
-      }
-    } catch (_) {}
-
-    recentActivity.sort((a, b) =>
-        (b['created_at'] as String).compareTo(a['created_at'] as String));
-    if (recentActivity.length > 5) recentActivity = recentActivity.sublist(0, 5);
 
     try {
       unreadNotifs = await NotificationService.unreadCount(userId);
+    } catch (_) {}
+
+    var todayBookings = <Map<String, dynamic>>[];
+    var requests = <Map<String, dynamic>>[];
+    try {
+      final n = DateTime.now();
+      final start = DateTime(n.year, n.month, n.day);
+      const sel = 'id, booking_time, status, total_price, payment_status, source, walkin_name, walkin_phone, client_id, '
+          'services(service_name, duration_minutes), service_tiers(name, duration_minutes), '
+          'client:profiles!bookings_client_id_fkey(full_name, phone)';
+      final results = await Future.wait<dynamic>([
+        supabase
+            .from('bookings')
+            .select(sel)
+            .eq('provider_id', userId)
+            .inFilter('status', ['confirmed', 'completed'])
+            .gte('booking_time', start.toUtc().toIso8601String())
+            .lt('booking_time', start.add(const Duration(days: 1)).toUtc().toIso8601String())
+            .order('booking_time', ascending: true),
+        supabase
+            .from('bookings')
+            .select(sel)
+            .eq('provider_id', userId)
+            .eq('status', 'pending')
+            .gte('booking_time', n.toUtc().toIso8601String())
+            .order('booking_time', ascending: true)
+            .limit(10),
+      ]);
+      todayBookings = List<Map<String, dynamic>>.from(results[0] as List);
+      requests = List<Map<String, dynamic>>.from(results[1] as List);
+      for (final b in [...todayBookings, ...requests]) {
+        fillWalkin(b, 'client');
+      }
     } catch (_) {}
 
     if (mounted) {
@@ -428,11 +422,40 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
         _avgRating = avgRating;
         _unreadMessages = unreadMessages;
         _unreadNotifications = unreadNotifs;
-        _recentActivity = recentActivity;
+        _todayBookings = todayBookings;
+        _requests = requests;
         _loading = false;
       });
       _animCtrl.forward();
     }
+  }
+
+  Future<void> _respond(Map<String, dynamic> b, bool accept) async {
+    try {
+      await supabase.from('bookings').update({
+        'status': accept ? 'confirmed' : 'cancelled',
+        if (!accept) 'cancel_reason': 'Declined by stylist',
+      }).eq('id', b['id']);
+      NotificationService.send(
+        userId: b['client_id'],
+        type: 'booking_status',
+        title: accept ? 'Booking confirmed' : 'Booking declined',
+        body: accept
+            ? 'Your ${b['services']?['service_name'] ?? 'booking'} is confirmed.'
+            : 'Your stylist can\'t take this booking. Try another time or stylist.',
+        referenceId: b['id'],
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(accept ? 'Booking confirmed' : 'Booking declined')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not update: $e'), backgroundColor: AppColors.error));
+      }
+    }
+    _loadData();
   }
 
   Future<void> _signOut() async {
@@ -588,11 +611,55 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             const SizedBox(height: 14),
                           ],
 
-                          if (_nextBooking != null)
-                            _NextBookingCard(booking: _nextBooking!)
-                          else
-                            _NoBookingCard(),
-                          const SizedBox(height: 14),
+                          if (_requests.isNotEmpty) ...[
+                            _SectionTitle('Needs your answer', count: _requests.length),
+                            for (final b in _requests)
+                              _AgendaRow(
+                                booking: b,
+                                showDate: true,
+                                onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
+                                onAccept: () => _respond(b, true),
+                                onDecline: () => _respond(b, false),
+                              ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          _SectionTitle(
+                            'Today',
+                            trailing: _todayBookings.isEmpty
+                                ? null
+                                : money(_todayBookings.fold<num>(0, (s, b) => s + ((b['total_price'] as num?) ?? 0))),
+                          ),
+                          if (_todayBookings.isEmpty) ...[
+                            if (_nextBooking != null)
+                              _NextBookingCard(booking: _nextBooking!)
+                            else
+                              _NoBookingCard(),
+                          ] else
+                            for (final b in _todayBookings)
+                              _AgendaRow(
+                                booking: b,
+                                onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
+                              ),
+                          const SizedBox(height: 10),
+                          Row(children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => context.push('/provider/add-booking').then((_) => _loadData()),
+                                icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                                label: const Text('Add walk-in'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => context.go('/provider/calendar'),
+                                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                                label: const Text('Calendar'),
+                              ),
+                            ),
+                          ]),
+                          const SizedBox(height: 20),
 
                           _StatsRow(
                             weeklyEarnings: _weeklyEarnings,
@@ -611,26 +678,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             onShareProfile: () => _shareProfile(context),
                           ),
                           const SizedBox(height: 20),
-
-                          if (_recentActivity.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                Text('Recent activity', style: Theme.of(context).textTheme.titleLarge),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: () => context.go('/provider/bookings'),
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  child: const Text('See all', style: TextStyle(fontSize: 13)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            _ActivityFeed(activities: _recentActivity),
-                          ],
 
                           if (_providerProfile == null) ...[
                             const SizedBox(height: 8),
@@ -1051,14 +1098,14 @@ class _ProviderQuickActions extends StatelessWidget {
               label: 'Bookings',
               color: AppColors.info,
               badge: pendingBookings > 0 ? '$pendingBookings' : null,
-              onTap: () => context.go('/provider/bookings'),
+              onTap: () => context.push('/provider/bookings'),
             )),
             const SizedBox(width: 10),
             Expanded(child: _PrimaryActionTile(
               icon: Icons.account_balance_wallet_rounded,
               label: 'Earnings',
               color: AppColors.success,
-              onTap: () => context.go('/earnings'),
+              onTap: () => context.push('/earnings'),
             )),
             const SizedBox(width: 10),
             Expanded(child: _PrimaryActionTile(
@@ -1066,7 +1113,7 @@ class _ProviderQuickActions extends StatelessWidget {
               label: 'Messages',
               color: AppColors.warning,
               badge: unreadMessages > 0 ? '$unreadMessages' : null,
-              onTap: () => context.go('/provider/bookings'),
+              onTap: () => context.push('/provider/bookings'),
             )),
           ],
         ),
@@ -1286,138 +1333,6 @@ class _SecondaryActionTileState extends State<_SecondaryActionTile> {
   }
 }
 
-class _ActivityFeed extends StatelessWidget {
-  final List<Map<String, dynamic>> activities;
-  const _ActivityFeed({required this.activities});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: ListView.separated(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: activities.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.surfaceMuted, indent: 60),
-        itemBuilder: (context, index) => _ActivityItem(activity: activities[index]),
-      ),
-    );
-  }
-}
-
-class _ActivityItem extends StatelessWidget {
-  final Map<String, dynamic> activity;
-  const _ActivityItem({required this.activity});
-
-  @override
-  Widget build(BuildContext context) {
-    final type = activity['type'] as String;
-    final data = activity['data'] as Map<String, dynamic>;
-    final createdAt = activity['created_at'] as String? ?? '';
-
-    IconData icon;
-    Color color;
-    String title;
-    String subtitle;
-    Widget? trailing;
-
-    if (type == 'review') {
-      icon = Icons.star_rounded;
-      color = const Color(0xFFD97706);
-      final rating = data['rating'] ?? 0;
-      title = 'New $rating-star review';
-      final comment = data['comment'] as String? ?? '';
-      subtitle = comment.isNotEmpty
-          ? '"${comment.length > 50 ? '${comment.substring(0, 50)}…' : comment}"'
-          : 'No comment';
-    } else if (type == 'payment') {
-      icon = Icons.payments_outlined;
-      color = AppColors.success;
-      final amount = (data['amount'] as num?)?.toDouble() ?? 0;
-      final clientName = data['bookings']?['profiles']?['full_name'] ?? '';
-      final serviceName = data['bookings']?['services']?['service_name'] ?? 'Service';
-      title = 'Payment received';
-      subtitle = '\$${amount.toStringAsFixed(0)} for $serviceName${clientName.isNotEmpty ? ' from $clientName' : ''}';
-      trailing = Text('+\$${amount.toStringAsFixed(0)}', style: TextStyle(
-        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.success,
-      ));
-    } else {
-      final bookingStatus = data['status'] ?? 'pending';
-      icon = _bookingIcon(bookingStatus);
-      color = StatusColors.foreground(bookingStatus);
-      final clientName = data['profiles']?['full_name'] ?? 'Client';
-      final serviceName = data['services']?['service_name'] ?? 'Service';
-      title = '$clientName — $serviceName';
-      subtitle = StatusColors.label(bookingStatus);
-    }
-
-    String timeAgo = '';
-    if (createdAt.isNotEmpty) {
-      try {
-        final dt = DateTime.parse(createdAt).toLocal();
-        final diff = DateTime.now().difference(dt);
-        if (diff.inMinutes < 60) {
-          timeAgo = '${diff.inMinutes}m ago';
-        } else if (diff.inHours < 24) {
-          timeAgo = '${diff.inHours}h ago';
-        } else {
-          timeAgo = '${diff.inDays}d ago';
-        }
-      } catch (_) {}
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (timeAgo.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(timeAgo, style: TextStyle(fontSize: 11, color: AppColors.textTertiary.withValues(alpha: 0.7))),
-                  ),
-              ],
-            ),
-          ),
-          ?trailing,
-        ],
-      ),
-    );
-  }
-
-  IconData _bookingIcon(String status) {
-    switch (status) {
-      case 'confirmed': return Icons.check_circle_outline_rounded;
-      case 'en_route': return Icons.directions_walk_rounded;
-      case 'arrived': return Icons.location_on_outlined;
-      case 'in_progress': return Icons.auto_fix_high_rounded;
-      case 'completed': return Icons.task_alt_rounded;
-      case 'cancelled': return Icons.cancel_outlined;
-      default: return Icons.schedule_rounded;
-    }
-  }
-}
-
 class _SetupCard extends StatelessWidget {
   final VoidCallback onTap;
   const _SetupCard({required this.onTap});
@@ -1484,6 +1399,118 @@ class _VerificationBanner extends StatelessWidget {
           Expanded(child: Text(message, style: TextStyle(fontSize: 13, color: bannerColor, fontWeight: FontWeight.w500))),
           Icon(Icons.chevron_right, color: bannerColor, size: 18),
         ]),
+      ),
+    );
+  }
+}
+
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  final int? count;
+  final String? trailing;
+  const _SectionTitle(this.text, {this.count, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(children: [
+        Text(text, style: Theme.of(context).textTheme.titleLarge),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(color: AppColors.warning, borderRadius: BorderRadius.circular(10)),
+            child: Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+        ],
+        const Spacer(),
+        if (trailing != null)
+          Text(trailing!, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+      ]),
+    );
+  }
+}
+
+class _AgendaRow extends StatelessWidget {
+  final Map<String, dynamic> booking;
+  final bool showDate;
+  final VoidCallback onTap;
+  final VoidCallback? onAccept;
+  final VoidCallback? onDecline;
+  const _AgendaRow({required this.booking, required this.onTap, this.showDate = false, this.onAccept, this.onDecline});
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    final t = DateTime.parse(b['booking_time']).toLocal();
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final hm = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final status = b['status'] as String;
+    final done = status == 'completed';
+    final service = b['service_tiers']?['name'] != null
+        ? '${b['services']?['service_name']} · ${b['service_tiers']['name']}'
+        : (b['services']?['service_name'] ?? 'Service');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: onAccept != null ? AppColors.warning.withValues(alpha: 0.5) : AppColors.border),
+      ),
+      child: InkWell(
+        borderRadius: AppRadius.mdAll,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(children: [
+            Row(children: [
+              SizedBox(
+                width: 54,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (showDate)
+                    Text('${days[t.weekday - 1]} ${t.day}',
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary, fontWeight: FontWeight.w600)),
+                  Text(hm,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: done ? AppColors.textTertiary : AppColors.textPrimary,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                      )),
+                ]),
+              ),
+              Container(width: 1, height: 34, color: AppColors.border, margin: const EdgeInsets.only(right: 12)),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(b['client']?['full_name'] ?? 'Client',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                  Text(service,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ]),
+              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(money((b['total_price'] as num?) ?? 0), style: const TextStyle(fontWeight: FontWeight.w700)),
+                if (done)
+                  Text(b['payment_status'] == 'paid' ? 'Paid' : 'Done',
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.success, fontWeight: FontWeight.w700))
+                else if (isManualBooking(b))
+                  const Text('Walk-in', style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
+              ]),
+            ]),
+            if (onAccept != null) ...[
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(child: OutlinedButton(onPressed: onDecline, child: const Text('Decline'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton(onPressed: onAccept, child: const Text('Accept'))),
+              ]),
+            ],
+          ]),
+        ),
       ),
     );
   }

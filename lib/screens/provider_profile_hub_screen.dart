@@ -70,7 +70,7 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Me'),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -131,6 +131,18 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
+              _HubTile(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Earnings',
+                subtitle: 'What you\'ve made, by week and month',
+                onTap: () => context.push('/earnings'),
+              ),
+              _HubTile(
+                icon: Icons.view_list_rounded,
+                label: 'All bookings',
+                subtitle: 'Requests, upcoming and past bookings',
+                onTap: () => context.push('/provider/bookings'),
+              ),
               _HubTile(
                 icon: Icons.person_outline,
                 label: 'Edit Profile',

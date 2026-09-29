@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../services/paynow_service.dart';
 import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
+import '../utils/booking_helpers.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final String bookingId;
@@ -85,6 +86,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           .eq('provider_id', data['provider_id'])
           .maybeSingle();
 
+      fillWalkin(data, 'client');
       if (mounted) {
         setState(() {
           _booking    = data;
@@ -416,9 +418,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final startedAt   = b['service_started_at']   as String?;
     final completedAt = b['service_completed_at'] as String?;
 
-    final canMarkArrived  = _isProvider && status == 'confirmed' && arrivedAt == null;
+    final canMarkArrived  = _isProvider && status == 'confirmed' && arrivedAt == null && !isManualBooking(b);
     final canMarkStarted  = _isProvider && status == 'confirmed' && arrivedAt != null && startedAt == null;
-    final canMarkComplete = _isProvider && status == 'confirmed' && startedAt != null;
+    final isManual = isManualBooking(b);
+    final canMarkComplete = _isProvider && status == 'confirmed' && (startedAt != null || isManual);
 
     final statusFg = StatusColors.foreground(status);
     final statusBg = StatusColors.background(status);
@@ -505,6 +508,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     const SizedBox(height: AppSpacing.sm),
                     _InfoRow(icon: Icons.phone_outlined, label: client!['phone']),
                   ],
+                  if (_isProvider && isManual) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    const _InfoRow(icon: Icons.edit_note_rounded, label: 'Added by you (not booked in the app)'),
+                  ],
                 ],
               ),
             ),
@@ -524,7 +531,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   ],
                   const SizedBox(height: AppSpacing.sm),
                   _InfoRow(icon: Icons.location_on_outlined, label: address.isNotEmpty ? address : 'No address provided'),
-                  if (address.isNotEmpty) ...[
+                  if (address.isNotEmpty && address != 'At the salon') ...[
                     const SizedBox(height: AppSpacing.md),
                     SizedBox(
                       width: double.infinity,
@@ -608,7 +615,37 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            if (status == 'pending' || status == 'confirmed' || status == 'completed') ...[
+            if (status == 'completed' || (_isProvider && isManual && status == 'confirmed')) ...[
+              _ActionCard(
+                icon: Icons.receipt_long_rounded,
+                label: 'Share receipt',
+                subtitle: 'Send it on WhatsApp',
+                color: const Color(0xFF25D366),
+                onTap: () => shareOnWhatsApp(
+                  receiptText(b,
+                      stylist: provider?['full_name'] ?? 'Your stylist',
+                      client: client?['full_name'] ?? 'Client'),
+                  phone: _isProvider ? (client?['phone'] as String?) : null,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            if (_isProvider && b['payment_status'] != 'paid' && (status == 'confirmed' || status == 'completed')) ...[
+              _ActionCard(
+                icon: Icons.payments_outlined,
+                label: 'Mark as paid',
+                subtitle: 'The client paid you in cash or EcoCash',
+                color: AppColors.success,
+                onTap: () async {
+                  await supabase.from('bookings').update({'payment_status': 'paid'}).eq('id', widget.bookingId);
+                  _load();
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            if (!isManual && (status == 'pending' || status == 'confirmed' || status == 'completed')) ...[
               _ActionCard(
                 icon: Icons.chat_bubble_outline_rounded,
                 label: 'Open Chat',
@@ -714,17 +751,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
             ],
 
-            // Client Notes (provider only)
-            if (_isProvider &&
-                (status == 'confirmed' || status == 'completed')) ...[
+            // Client record (provider only)
+            if (_isProvider) ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
-                icon: Icons.note_alt_outlined,
-                label: 'Client Notes',
-                subtitle: 'Private notes about this client',
+                icon: Icons.person_search_outlined,
+                label: 'Client record',
+                subtitle: 'Visits, spend, notes and tags',
                 color: AppColors.secondary,
                 onTap: () => context.push(
-                    '/client-notes/${b['client_id']}?bookingId=${widget.bookingId}'),
+                    '/provider/clients/${Uri.encodeComponent(clientKeyOf(b))}'),
               ),
             ],
 
@@ -766,7 +802,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             ],
 
             // Report Issue (both sides, after confirmed or completed)
-            if (status == 'confirmed' || status == 'completed') ...[
+            if (!isManual && (status == 'confirmed' || status == 'completed')) ...[
               const SizedBox(height: AppSpacing.sm),
               _ActionCard(
                 icon: Icons.flag_outlined,

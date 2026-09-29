@@ -44,15 +44,15 @@ Deno.serve(async (req) => {
   const { type, table, record, old_record: oldRecord } = payload;
 
   try {
-    if (table === "bookings" && type === "INSERT") {
+    if (table === "bookings" && type === "INSERT" && record.source !== "manual") {
       await pushToUser(admin, sa, {
         userId: record.provider_id,
         title: "New Booking Request 💅",
         body: "You have a new booking request. Open BeauTap to respond.",
-        data: { route: "/provider/bookings", bookingId: String(record.id) },
+        data: { route: "/provider/home", bookingId: String(record.id) },
       });
     } else if (
-      table === "bookings" && type === "UPDATE" &&
+      table === "bookings" && type === "UPDATE" && record.client_id &&
       record.status === "confirmed" && oldRecord?.status !== "confirmed"
     ) {
       await pushToUser(admin, sa, {

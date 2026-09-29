@@ -42,6 +42,9 @@ import 'screens/service_requests_screen.dart';
 import 'screens/create_service_request_screen.dart';
 import 'screens/service_request_quote_screen.dart';
 import 'screens/stylist_link_screen.dart';
+import 'screens/provider_calendar_screen.dart';
+import 'screens/clients_screen.dart';
+import 'screens/add_booking_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
 import 'supabase_client.dart';
@@ -65,6 +68,9 @@ final appRouter = GoRouter(
     final isPublicRoute = loc.startsWith('/@') || loc.startsWith('/provider/') &&
         !loc.startsWith('/provider/home') &&
         !loc.startsWith('/provider/bookings') &&
+        !loc.startsWith('/provider/calendar') &&
+        !loc.startsWith('/provider/clients') &&
+        !loc.startsWith('/provider/add-booking') &&
         !loc.startsWith('/provider/profile') &&
         !loc.startsWith('/provider/services') &&
         !loc.startsWith('/provider/gallery') &&
@@ -124,7 +130,7 @@ final appRouter = GoRouter(
     ),
 
     // ─────────────────────────────────────────────────────────────
-    // PROVIDER SHELL — bottom nav: Home | Bookings | Earnings | Profile
+    // PROVIDER SHELL — bottom nav: Today | Calendar | Clients | Me
     // ─────────────────────────────────────────────────────────────
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -134,10 +140,10 @@ final appRouter = GoRouter(
           GoRoute(path: '/provider/home', builder: (_, __) => const ProviderHomeScreen()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/provider/bookings', builder: (_, __) => const ProviderBookingsScreen()),
+          GoRoute(path: '/provider/calendar', builder: (_, __) => const ProviderCalendarScreen()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/earnings', builder: (_, __) => const ProviderEarningsScreen()),
+          GoRoute(path: '/provider/clients', builder: (_, __) => const ClientsScreen()),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(path: '/provider/profile', builder: (_, __) => const ProviderProfileHubScreen()),
@@ -148,6 +154,34 @@ final appRouter = GoRouter(
     // ─────────────────────────────────────────────────────────────
     // Full-screen routes (no shell) — pushed on root navigator
     // ─────────────────────────────────────────────────────────────
+    GoRoute(
+      path: '/provider/bookings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProviderBookingsScreen(),
+    ),
+    GoRoute(
+      path: '/earnings',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProviderEarningsScreen(),
+    ),
+    GoRoute(
+      path: '/provider/clients/:key',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ClientDetailScreen(clientKey: state.pathParameters['key']!),
+    ),
+    GoRoute(
+      path: '/provider/add-booking',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) {
+        final q = state.uri.queryParameters;
+        final d = DateTime.tryParse(q['date'] ?? '');
+        return AddBookingScreen(
+          initialDate: d,
+          initialHour: int.tryParse(q['hour'] ?? ''),
+          clientKey: q['client'],
+        );
+      },
+    ),
 
     // Identity Verification (Stage 2)
     GoRoute(

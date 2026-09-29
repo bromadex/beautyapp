@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../widgets/booking_card.dart';
 import '../theme.dart';
+import '../utils/booking_helpers.dart';
 
 class ProviderBookingsScreen extends StatefulWidget {
   const ProviderBookingsScreen({super.key});
@@ -63,6 +64,9 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       if (mounted) {
         setState(() {
           _bookings = List<Map<String, dynamic>>.from(data);
+          for (final b in _bookings) {
+            fillWalkin(b, 'profiles');
+          }
           _loading = false;
         });
       }

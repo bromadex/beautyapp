@@ -45,12 +45,14 @@ Deno.serve(async (req) => {
       minute: "2-digit",
     });
 
-    await pushToUser(admin, sa, {
-      userId: b.client_id,
-      title: "Upcoming Booking ⏰",
-      body: `${service} starts around ${when}. Your stylist is getting ready!`,
-      data: { route: `/booking/${b.id}`, bookingId: String(b.id) },
-    });
+    if (b.client_id) {
+      await pushToUser(admin, sa, {
+        userId: b.client_id,
+        title: "Upcoming Booking ⏰",
+        body: `${service} starts around ${when}. Your stylist is getting ready!`,
+        data: { route: `/booking/${b.id}`, bookingId: String(b.id) },
+      });
+    }
     await pushToUser(admin, sa, {
       userId: b.provider_id,
       title: "Upcoming Booking ⏰",
