@@ -580,9 +580,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                             SoftBanner(
                               icon: Icons.rocket_launch_rounded,
                               color: AppColors.primary,
-                              title: 'Go live and start getting bookings',
-                              message: 'Activate for \$3 (includes your first month). No commission, ever.',
-                              actionLabel: 'Activate',
+                              title: 'You\'re on the Free plan',
+                              message: '5 bookings a month free. Go Pro for unlimited — \$3 first month, then \$5. No commission.',
+                              actionLabel: 'Go Pro',
                               onTap: () => context.push('/provider/subscription'),
                             ),
                             const SizedBox(height: 14),
@@ -780,9 +780,9 @@ class _NextBookingCard extends StatelessWidget {
                   child: SizedBox(
                     height: 40,
                     child: OutlinedButton.icon(
-                      onPressed: () => context.push('/tracking/$bookingId'),
-                      icon: const Icon(Icons.navigation_outlined, size: 16),
-                      label: const Text('Navigate'),
+                      onPressed: () => context.push('/booking/$bookingId'),
+                      icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                      label: const Text('Details'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
@@ -1399,7 +1399,7 @@ class _ActivityItem extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );

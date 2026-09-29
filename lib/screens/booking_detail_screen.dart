@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
+import '../services/paynow_service.dart';
+import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
 
 class BookingDetailScreen extends StatefulWidget {
@@ -62,6 +64,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           .from('bookings')
           .select('''
             *,
+            service_tiers(name, duration_minutes),
+            booking_addons(addon_name, addon_price, addon_duration),
             services(service_name, duration_minutes, price,
               service_categories(name, icon)),
             client:profiles!bookings_client_id_fkey(full_name, phone, location),
@@ -301,6 +305,42 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
+  Future<void> _payDeposit() async {
+    final b = _booking!;
+    final phoneCtrl = TextEditingController(text: (b['client']?['phone'] ?? '').toString());
+    final method = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Pay deposit', style: Theme.of(ctx).textTheme.headlineSmall),
+          const SizedBox(height: 12),
+          TextField(
+            controller: phoneCtrl,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'EcoCash number', prefixIcon: Icon(Icons.phone_android_rounded)),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: () => Navigator.pop(ctx, 'ecocash'), child: const Text('Pay with EcoCash')),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () => Navigator.pop(ctx, 'web'), child: const Text('Pay by card')),
+        ]),
+      ),
+    );
+    if (method == null || !mounted) return;
+    final outcome = await PaynowCheckout.run(
+      context,
+      purpose: 'deposit',
+      bookingId: widget.bookingId,
+      method: method,
+      phone: method == 'ecocash' ? phoneCtrl.text.trim() : null,
+    );
+    if (outcome == PaynowOutcome.paid && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deposit paid — thank you!')));
+      _load();
+    }
+  }
+
   // -- Book Again --
   void _bookAgain() {
     final b = _booking!;
@@ -478,6 +518,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _InfoRow(icon: Icons.calendar_month_outlined, label: _fmt(b['booking_time'])),
+                  if (b['ref'] != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    _InfoRow(icon: Icons.confirmation_number_outlined, label: 'Reference #${b['ref']}'),
+                  ],
                   const SizedBox(height: AppSpacing.sm),
                   _InfoRow(icon: Icons.location_on_outlined, label: address.isNotEmpty ? address : 'No address provided'),
                   if (address.isNotEmpty) ...[
@@ -536,8 +580,35 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             const SizedBox(height: AppSpacing.xxl),
 
-            // Action cards: Chat, Track, Pay
-            if (status == 'confirmed' || status == 'completed') ...[
+            // Action cards
+            if (!_isProvider &&
+                (status == 'pending' || status == 'confirmed') &&
+                ((b['deposit_amount'] as num?) ?? 0) > 0 &&
+                b['deposit_paid'] != true) ...[
+              _ActionCard(
+                icon: Icons.lock_clock_rounded,
+                label: 'Pay \$${(b['deposit_amount'] as num).toStringAsFixed(2)} deposit',
+                subtitle: 'Secure your slot with EcoCash or card',
+                color: AppColors.primary,
+                onTap: _payDeposit,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            if (status == 'pending' || status == 'confirmed') ...[
+              _ActionCard(
+                icon: Icons.edit_calendar_rounded,
+                label: 'Reschedule',
+                subtitle: _isProvider ? 'Move to another time' : 'Pick another free time',
+                color: AppColors.info,
+                onTap: () async {
+                  if (await showRescheduleSheet(context, b)) _load();
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            if (status == 'pending' || status == 'confirmed' || status == 'completed') ...[
               _ActionCard(
                 icon: Icons.chat_bubble_outline_rounded,
                 label: 'Open Chat',
@@ -548,22 +619,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            if (status == 'confirmed') ...[
-              _ActionCard(
-                icon: Icons.my_location_rounded,
-                label: 'Live Tracking',
-                subtitle: 'Track provider location in real time',
-                color: AppColors.success,
-                onTap: () => context.push('/tracking/${widget.bookingId}'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
             if (!_isProvider && status == 'confirmed' && b['payment_status'] == 'unpaid') ...[
               _ActionCard(
                 icon: Icons.payment_rounded,
-                label: 'Pay Now',
-                subtitle: 'Complete payment for this service',
+                label: 'Pay online',
+                subtitle: 'Pay the balance with EcoCash or card',
                 color: AppColors.primary,
                 onTap: () => context.push('/payment/${widget.bookingId}'),
               ),

@@ -3,6 +3,7 @@ import '../config/app_config.dart';
 import '../services/paynow_service.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 /// Provider subscription — flat pricing, zero commission.
 ///
@@ -20,6 +21,7 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Map<String, dynamic>? _subscription;
+  Map<String, dynamic>? _plan;
   bool _loading = true;
   bool _processing = false;
   String? _error;
@@ -41,9 +43,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           .select()
           .eq('provider_id', supabase.auth.currentUser!.id)
           .maybeSingle();
+      final plan = await supabase.rpc('my_plan');
       if (mounted) {
         setState(() {
           _subscription = data;
+          _plan = Map<String, dynamic>.from(plan as Map);
           _loading = false;
         });
       }
@@ -101,6 +105,86 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
+  Future<void> _buyFeatured() async {
+    setState(() => _processing = true);
+    final outcome = await PaynowCheckout.run(context, purpose: 'featured');
+    if (mounted) setState(() => _processing = false);
+    if (outcome == PaynowOutcome.paid) {
+      await _load();
+      if (mounted) _snack('You\'re featured for the next 7 days!', AppColors.success);
+    } else if (mounted && (outcome == PaynowOutcome.failed || outcome == PaynowOutcome.timeout)) {
+      _snack('Payment was not completed. Please try again.', AppColors.warning);
+    }
+  }
+
+  Widget _buildFreeUsage() {
+    final used = (_plan?['free_used'] as num?)?.toInt() ?? 0;
+    final limit = (_plan?['free_limit'] as num?)?.toInt() ?? 5;
+    final left = (limit - used).clamp(0, limit);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Pill(label: 'FREE PLAN', color: AppColors.info),
+            const Spacer(),
+            Text('$used of $limit bookings this month', style: Theme.of(context).textTheme.labelMedium),
+          ]),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: AppRadius.pill,
+            child: LinearProgressIndicator(
+              value: limit == 0 ? 1 : used / limit,
+              minHeight: 8,
+              color: left == 0 ? AppColors.error : AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            left == 0
+                ? 'You\'ve used this month\'s free bookings. Go Pro to keep accepting clients.'
+                : '$left free booking${left == 1 ? '' : 's'} left this month. Pro removes the limit.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedCard() {
+    final until = DateTime.tryParse((_plan?['featured_until'] ?? '').toString())?.toLocal();
+    final active = until != null && until.isAfter(DateTime.now());
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.secondary.withValues(alpha: 0.1),
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.35)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.star_rounded, color: AppColors.secondary),
+          const SizedBox(width: 8),
+          Text('Get featured', style: Theme.of(context).textTheme.titleMedium),
+          const Spacer(),
+          const Text('\$3 / 7 days', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          active
+              ? 'You\'re featured until ${until.day}/${until.month}. Buying again adds another 7 days.'
+              : 'Appear at the top of Browse and Home in your city, with a Featured badge.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: _processing ? null : _buyFeatured,
+          child: Text(active ? 'Add 7 more days' : 'Feature my profile'),
+        ),
+      ]),
+    );
+  }
+
   Future<void> _cancel() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -116,7 +200,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
         title: const Text('Cancel Subscription?'),
         content: const Text(
-            'Your profile will be hidden from search and you won\'t be able to accept bookings. You can reactivate anytime for \$3.'),
+            'You\'ll move to the Free plan (5 bookings a month). You can go Pro again anytime.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -136,7 +220,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       await supabase.rpc('cancel_my_subscription');
       await _load();
       if (mounted) {
-        _snack('Subscription cancelled — reactivate anytime for \$3.',
+        _snack('You\'re on the Free plan now.',
             AppColors.warning);
       }
     } catch (e) {
@@ -197,7 +281,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscription')),
+      appBar: AppBar(title: const Text('Your plan')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
@@ -207,6 +291,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildStatusCard(),
+                if (!_isActive) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _buildFreeUsage(),
+                ],
                 const SizedBox(height: AppSpacing.xl),
                 _buildPricingCard(),
                 const SizedBox(height: AppSpacing.xl),
@@ -215,6 +303,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 _buildInfoBox(),
                 const SizedBox(height: AppSpacing.xl),
                 _buildPayButton(),
+                const SizedBox(height: AppSpacing.xl),
+                _buildFeaturedCard(),
                 if (_isActive) ...[
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
@@ -241,27 +331,27 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (_isActive) {
       gradient = const [Color(0xFFC2185B), Color(0xFF880E4F)];
       icon = Icons.verified_rounded;
-      title = 'Subscription Active';
+      title = 'Pro — active';
       subtitle =
           '$_daysRemaining days remaining · you keep 100% of what you earn';
     } else if (_subscription?['status'] == 'cancelled') {
       gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
       icon = Icons.pause_circle_outline_rounded;
-      title = 'Subscription Cancelled';
+      title = 'Pro cancelled';
       subtitle =
-          'Your profile is hidden. Reactivate for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to go live again.';
+          'You\'re on the Free plan. Go Pro again for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to remove the booking limit.';
     } else if (_isLapsed) {
       gradient = const [Color(0xFFDC2626), Color(0xFFEF4444)];
       icon = Icons.warning_rounded;
-      title = 'Subscription Expired';
+      title = 'Pro expired';
       subtitle =
-          'Reactivate for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to keep accepting bookings.';
+          'You\'re on the Free plan (5 bookings a month). Renew Pro to remove the limit.';
     } else {
       gradient = const [Color(0xFF6B7280), Color(0xFF4B5563)];
       icon = Icons.spa_rounded;
-      title = 'Not Activated Yet';
+      title = 'You\'re on the Free plan';
       subtitle =
-          'Clients can find and message you for free. Activate to start accepting bookings.';
+          'Take up to 5 bookings a month for free. Go Pro for unlimited bookings.';
     }
 
     return Container(
@@ -410,10 +500,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildBenefits() {
     const benefits = [
       ('You keep 100% of what you earn', Icons.account_balance_wallet_rounded),
-      ('Unlimited bookings', Icons.all_inclusive_rounded),
+      ('Unlimited bookings (Free plan: 5 a month)', Icons.all_inclusive_rounded),
       ('Appear in client searches', Icons.search_rounded),
       ('Gallery, promos, reviews & ratings', Icons.auto_awesome_rounded),
-      ('Cancel anytime — reactivate for \$3', Icons.lock_open_rounded),
+      ('Cancel anytime — you keep the Free plan', Icons.lock_open_rounded),
     ];
 
     return Container(

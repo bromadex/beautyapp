@@ -298,14 +298,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
   }
 
   static bool _isFeatured(Map<String, dynamic> provider) {
-    final subs = provider['subscriptions'] as List? ?? [];
-    for (final s in subs) {
-      if (s['tier'] == 'featured' && s['status'] == 'active') {
-        final end = DateTime.tryParse(s['end_date'] ?? '');
-        if (end != null && end.isAfter(DateTime.now())) return true;
-      }
-    }
-    return false;
+    final until = DateTime.tryParse((provider['featured_until'] ?? '').toString());
+    return until != null && until.isAfter(DateTime.now());
   }
 
   int get _activeFilterCount {

@@ -21,6 +21,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   // Buffer time
   final _bufferCtrl = TextEditingController(text: '0');
 
+  // Booking rules
+  final _noticeCtrl = TextEditingController(text: '2');
+  final _advanceCtrl = TextEditingController(text: '60');
+  final _depositCtrl = TextEditingController(text: '0');
+
   // Cancellation policy
   final _freeCancelCtrl = TextEditingController(text: '24');
   final _lateCancelCtrl = TextEditingController(text: '50');
@@ -60,6 +65,9 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         _freeRadiusCtrl.text = '${pp['free_travel_radius_km'] ?? 5}';
         _maxTravelFeeCtrl.text = '${pp['max_travel_fee'] ?? 20}';
         _bufferCtrl.text = '${pp['buffer_minutes'] ?? 0}';
+        _noticeCtrl.text = '${pp['min_notice_hours'] ?? 2}';
+        _advanceCtrl.text = '${pp['max_advance_days'] ?? 60}';
+        _depositCtrl.text = '${pp['deposit_percent'] ?? 0}';
         _preferredContact = pp['preferred_contact'] ?? 'in_app';
       }
 
@@ -106,6 +114,9 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         'free_travel_radius_km': double.tryParse(_freeRadiusCtrl.text) ?? 5,
         'max_travel_fee': double.tryParse(_maxTravelFeeCtrl.text) ?? 20,
         'buffer_minutes': int.tryParse(_bufferCtrl.text) ?? 0,
+        'min_notice_hours': (int.tryParse(_noticeCtrl.text) ?? 2).clamp(0, 168),
+        'max_advance_days': (int.tryParse(_advanceCtrl.text) ?? 60).clamp(1, 365),
+        'deposit_percent': (int.tryParse(_depositCtrl.text) ?? 0).clamp(0, 100),
         'preferred_contact': _preferredContact,
       }).eq('provider_id', uid);
 
@@ -238,6 +249,9 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     _freeRadiusCtrl.dispose();
     _maxTravelFeeCtrl.dispose();
     _bufferCtrl.dispose();
+    _noticeCtrl.dispose();
+    _advanceCtrl.dispose();
+    _depositCtrl.dispose();
     _freeCancelCtrl.dispose();
     _lateCancelCtrl.dispose();
     _noShowCtrl.dispose();
@@ -275,6 +289,43 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _SectionHeader(
+              icon: Icons.rule_rounded,
+              title: 'Booking Rules',
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Clients only see times that fit these rules.',
+                style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+            const SizedBox(height: AppSpacing.md),
+            Row(children: [
+              Expanded(
+                child: _NumberField(
+                  controller: _noticeCtrl,
+                  label: 'Min. notice',
+                  suffix: 'hours',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _NumberField(
+                  controller: _advanceCtrl,
+                  label: 'Book up to',
+                  suffix: 'days ahead',
+                ),
+              ),
+            ]),
+            const SizedBox(height: AppSpacing.sm),
+            _NumberField(
+              controller: _depositCtrl,
+              label: 'Deposit to secure a booking (0 = none)',
+              suffix: '%',
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text('Clients pay the deposit by EcoCash or card when they book. It cuts no-shows.',
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+
+            const SizedBox(height: AppSpacing.xxl),
+
             // Travel Fees
             _SectionHeader(
               icon: Icons.directions_car_outlined,

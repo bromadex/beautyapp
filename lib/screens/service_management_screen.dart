@@ -14,7 +14,6 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
   late TabController _tabCtrl;
   List<Map<String, dynamic>> _services = [];
   List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _packages = [];
   bool _loading = true;
 
   @override
@@ -53,14 +52,15 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
       );
     } catch (_) {}
 
-    List<Map<String, dynamic>> pkgs = [];
+    List<Map<String, dynamic>> tiers = [];
     try {
-      pkgs = List<Map<String, dynamic>>.from(
+      tiers = List<Map<String, dynamic>>.from(
         await supabase
-            .from('service_packages')
-            .select('*, package_services(service_id, services(service_name))')
+            .from('service_tiers')
+            .select()
             .eq('provider_id', userId)
-            .order('created_at'),
+            .order('sort_order', ascending: true)
+            .order('price', ascending: true),
       );
     } catch (_) {}
 
@@ -68,13 +68,13 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     final svcList = List<Map<String, dynamic>>.from(svcs);
     for (final svc in svcList) {
       svc['addons'] = addons.where((a) => a['service_id'] == svc['id']).toList();
+      svc['tiers'] = tiers.where((t) => t['service_id'] == svc['id']).toList();
     }
 
     if (mounted) {
       setState(() {
         _categories = List<Map<String, dynamic>>.from(cats);
         _services = svcList;
-        _packages = pkgs;
         _loading = false;
       });
     }
@@ -312,159 +312,85 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
 
   // ── Package CRUD ──
 
-  void _showPackageDialog({Map<String, dynamic>? existing}) {
+  void _showTierDialog(String serviceId, {Map<String, dynamic>? existing}) {
     final nameCtrl = TextEditingController(text: existing?['name'] ?? '');
-    final descCtrl = TextEditingController(text: existing?['description'] ?? '');
-    final priceCtrl = TextEditingController(text: existing?['package_price']?.toString() ?? '');
-    final existingServiceIds = existing != null
-        ? (existing['package_services'] as List?)?.map((ps) => ps['service_id'] as String).toSet() ?? <String>{}
-        : <String>{};
-    Set<String> selectedServiceIds = Set.from(existingServiceIds);
-
+    final priceCtrl = TextEditingController(text: existing?['price']?.toString() ?? '');
+    final durCtrl = TextEditingController(text: (existing?['duration_minutes'] ?? 60).toString());
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          double individualTotal = 0;
-          for (final svc in _services) {
-            if (selectedServiceIds.contains(svc['id'])) {
-              individualTotal += (svc['price'] as num?)?.toDouble() ?? 0;
-            }
-          }
-
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-            title: Text(existing == null ? 'Create Package' : 'Edit Package'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Package Name',
-                        hintText: 'e.g. Bridal Package',
-                        prefixIcon: Icon(Icons.inventory_2_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(
-                      controller: descCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Description (optional)',
-                        hintText: 'What\'s included',
-                      ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('Select Services:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (_services.isEmpty)
-                      const Text('Add services first', style: TextStyle(color: AppColors.textTertiary))
-                    else
-                      ...(_services.map((svc) => CheckboxListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(svc['service_name'], style: const TextStyle(fontSize: 14)),
-                        subtitle: Text('\$${svc['price']}', style: const TextStyle(fontSize: 12)),
-                        value: selectedServiceIds.contains(svc['id']),
-                        onChanged: (v) {
-                          setDialogState(() {
-                            if (v == true) {
-                              selectedServiceIds.add(svc['id']);
-                            } else {
-                              selectedServiceIds.remove(svc['id']);
-                            }
-                          });
-                        },
-                      ))),
-                    if (selectedServiceIds.length >= 2) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Individual total: \$${individualTotal.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                    TextField(
-                      controller: priceCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Package Price (\$)',
-                        hintText: individualTotal > 0 ? 'Suggested: \$${(individualTotal * 0.85).toStringAsFixed(0)}' : '',
-                        prefixIcon: const Icon(Icons.attach_money_rounded),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    ),
-                  ],
-                ),
+      builder: (ctx) => AlertDialog(
+        title: Text(existing == null ? 'Add an option' : 'Edit option'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('e.g. Regular, Premium, Bridal — each with its own price and time.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: nameCtrl,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Option name', hintText: 'Premium'),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Price', prefixText: '\$ '),
               ),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-              FilledButton(
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty ||
-                      priceCtrl.text.trim().isEmpty ||
-                      selectedServiceIds.length < 2) return;
-                  final userId = supabase.auth.currentUser!.id;
-                  final payload = {
-                    'provider_id': userId,
-                    'name': nameCtrl.text.trim(),
-                    'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-                    'package_price': double.parse(priceCtrl.text.trim()),
-                  };
-
-                  String packageId;
-                  if (existing == null) {
-                    final result = await supabase.from('service_packages').insert(payload).select('id').single();
-                    packageId = result['id'];
-                  } else {
-                    packageId = existing['id'];
-                    await supabase.from('service_packages').update(payload).eq('id', packageId);
-                    await supabase.from('package_services').delete().eq('package_id', packageId);
-                  }
-
-                  final rows = selectedServiceIds.map((sid) => ({
-                    'package_id': packageId,
-                    'service_id': sid,
-                  })).toList();
-                  await supabase.from('package_services').insert(rows);
-
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  _load();
-                },
-                child: Text(existing == null ? 'Create' : 'Save'),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: durCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Minutes'),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _deletePackage(String id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Package?'),
+            ),
+          ]),
+        ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
+            onPressed: () async {
+              final price = double.tryParse(priceCtrl.text.trim());
+              final dur = int.tryParse(durCtrl.text.trim());
+              if (nameCtrl.text.trim().isEmpty || price == null || price <= 0 || dur == null || dur <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enter a name, price and minutes')));
+                return;
+              }
+              final payload = {
+                'service_id': serviceId,
+                'provider_id': supabase.auth.currentUser!.id,
+                'name': nameCtrl.text.trim(),
+                'price': price,
+                'duration_minutes': dur,
+              };
+              try {
+                if (existing == null) {
+                  await supabase.from('service_tiers').insert(payload);
+                } else {
+                  await supabase.from('service_tiers').update(payload).eq('id', existing['id']);
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+                _load();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Could not save: $e'), backgroundColor: AppColors.error));
+                }
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
     );
-    if (confirm == true) {
-      await supabase.from('package_services').delete().eq('package_id', id);
-      await supabase.from('service_packages').delete().eq('id', id);
-      _load();
-    }
+  }
+
+  Future<void> _deleteTier(String id) async {
+    await supabase.from('service_tiers').delete().eq('id', id);
+    _load();
   }
 
   @override
@@ -480,7 +406,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
           tabs: const [
             Tab(text: 'Services'),
             Tab(text: 'Add-ons'),
-            Tab(text: 'Packages'),
+            Tab(text: 'Options'),
           ],
         ),
       ),
@@ -500,13 +426,13 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               _showSelectServiceForAddon();
               break;
             case 2:
-              if (_services.length < 2) {
+              if (_services.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Add at least 2 services to create a package')),
+                  const SnackBar(content: Text('Add a service first')),
                 );
                 return;
               }
-              _showPackageDialog();
+              _pickService('Add an option to which service?', (id) => _showTierDialog(id));
               break;
           }
         },
@@ -522,9 +448,27 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               children: [
                 _buildServicesTab(),
                 _buildAddonsTab(),
-                _buildPackagesTab(),
+                _buildTiersTab(),
               ],
             ),
+    );
+  }
+
+  void _pickService(String title, void Function(String id) onPick) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(title),
+        children: _services
+            .map((svc) => SimpleDialogOption(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    onPick(svc['id']);
+                  },
+                  child: Text(svc['service_name']),
+                ))
+            .toList(),
+      ),
     );
   }
 
@@ -709,76 +653,55 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     );
   }
 
-  // ── Packages Tab ──
+  // ── Options (tiers) Tab ──
 
-  Widget _buildPackagesTab() {
-    if (_packages.isEmpty) {
-      return _buildEmptyState('No packages yet', 'Bundle services together at a discounted price (e.g. Bridal Package).', Icons.inventory_2_outlined);
+  Widget _buildTiersTab() {
+    final withTiers = _services.where((s) => (s['tiers'] as List? ?? []).isNotEmpty).toList();
+    if (withTiers.isEmpty) {
+      return _buildEmptyState('No options yet',
+          'Offer levels of the same service — e.g. Knotless braids: Regular \$25, Premium \$40, Bridal \$60.',
+          Icons.layers_outlined);
     }
-    return ListView.separated(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 80),
-      itemCount: _packages.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-      itemBuilder: (_, i) {
-        final pkg = _packages[i];
-        final services = (pkg['package_services'] as List?)
-            ?.map((ps) => ps['services']?['service_name'] ?? '')
-            .where((n) => n.isNotEmpty)
-            .toList() ?? [];
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardLight,
-            borderRadius: AppRadius.lgAll,
-            border: Border.all(color: AppColors.border),
+      children: [
+        for (final svc in withTiers) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 8),
+            child: Row(children: [
+              Expanded(child: Text(svc['service_name'] ?? '', style: Theme.of(context).textTheme.titleMedium)),
+              TextButton.icon(
+                onPressed: () => _showTierDialog(svc['id']),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add'),
+              ),
+            ]),
           ),
-          padding: AppSpacing.cardPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: AppRadius.mdAll),
-                  child: const Icon(Icons.inventory_2_outlined, color: AppColors.secondary, size: 22),
+          for (final t in (svc['tiers'] as List).cast<Map<String, dynamic>>())
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: ListTile(
+                  title: Text(t['name'] ?? ''),
+                  subtitle: Text('${t['duration_minutes']} min'),
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('\$${t['price']}',
+                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    PopupMenuButton(
+                      icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textTertiary),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(onTap: () => _showTierDialog(svc['id'], existing: t), child: const Text('Edit')),
+                        PopupMenuItem(
+                            onTap: () => _deleteTier(t['id']),
+                            child: const Text('Delete', style: TextStyle(color: AppColors.error))),
+                      ],
+                    ),
+                  ]),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pkg['name'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                    if (pkg['description'] != null)
-                      Text(pkg['description'], style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                  ],
-                )),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: AppRadius.smAll),
-                  child: Text('\$${pkg['package_price']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.secondary)),
-                ),
-                PopupMenuButton(
-                  icon: const Icon(Icons.more_vert, color: AppColors.textTertiary),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(onTap: () => _showPackageDialog(existing: pkg), child: const Text('Edit')),
-                    PopupMenuItem(onTap: () => _deletePackage(pkg['id']), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
-                  ],
-                ),
-              ]),
-              if (services.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.xs,
-                  children: services.map((s) => Chip(
-                    label: Text(s, style: const TextStyle(fontSize: 12)),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  )).toList(),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
+              ),
+            ),
+        ],
+      ],
     );
   }
 

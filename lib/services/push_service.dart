@@ -25,7 +25,7 @@ class PushService {
   /// device token, and wires up tap-to-open routing.
   static Future<void> maybeInit(BuildContext context) async {
     if (!firebaseConfigured || _initialized) return;
-    if (supabase.auth.currentUser == null) return;
+    if (supabase.auth.currentUser == null || supabase.auth.currentUser!.isAnonymous) return;
     _initialized = true;
 
     try {

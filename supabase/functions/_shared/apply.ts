@@ -45,7 +45,35 @@ export async function applyPaymentOutcome(opts: {
 
   const purpose = payment.purpose ?? "booking";
 
-  if (purpose === "booking" && payment.booking_id) {
+  if (purpose === "deposit" && payment.booking_id) {
+    await admin
+      .from("bookings")
+      .update({ deposit_paid: true })
+      .eq("id", payment.booking_id);
+    if (payment.provider_id) {
+      await admin.from("notifications").insert({
+        user_id: payment.provider_id,
+        type: "payment",
+        title: "Deposit Received",
+        body: `Your client paid a $${Number(payment.amount ?? 0).toFixed(2)} deposit. Please confirm the booking.`,
+        reference_id: payment.booking_id,
+      });
+    }
+  } else if (purpose === "featured") {
+    const { data: pp } = await admin
+      .from("provider_profiles")
+      .select("featured_until")
+      .eq("provider_id", payment.client_id)
+      .maybeSingle();
+    const now = new Date();
+    const current = pp?.featured_until ? new Date(pp.featured_until) : null;
+    const base = current && current > now ? current : now;
+    const until = new Date(base.getTime() + Number(payment.meta?.days ?? 7) * 86400000);
+    await admin
+      .from("provider_profiles")
+      .update({ featured_until: until.toISOString() })
+      .eq("provider_id", payment.client_id);
+  } else if (purpose === "booking" && payment.booking_id) {
     await admin
       .from("bookings")
       .update({ payment_status: "paid" })

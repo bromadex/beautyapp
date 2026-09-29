@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
-import '../services/notification_service.dart';
 import '../widgets/booking_card.dart';
 import '../theme.dart';
 
@@ -78,57 +76,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     }
   }
 
-  /// Accepting bookings requires an active subscription:
-  /// $3 activation (includes first month), then $5/month.
-  /// Declining is always allowed.
-  Future<bool> _canAcceptBooking() async {
-    final userId = supabase.auth.currentUser!.id;
-    try {
-      final sub = await supabase
-          .from('subscriptions')
-          .select('status, end_date')
-          .eq('provider_id', userId)
-          .maybeSingle();
-      if (sub == null || sub['status'] != 'active') return false;
-      final end = DateTime.tryParse(sub['end_date'] ?? '');
-      return end != null && end.isAfter(DateTime.now());
-    } catch (_) {
-      // Subscription table unreachable — don't block providers
-      return true;
-    }
-  }
-
   Future<void> _respond(String bookingId, bool accept) async {
-    if (accept && !await _canAcceptBooking()) {
-      if (!mounted) return;
-      final activate = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          icon: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.rocket_launch_rounded,
-                color: AppColors.primary, size: 32),
-          ),
-          title: const Text('Activate to Accept Bookings'),
-          content: const Text(
-              'Activate your account for \$3 — that covers your whole first month, then it\'s just \$5/month. You keep 100% of what you earn, no commission.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Not now')),
-            FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Activate — \$3')),
-          ],
-        ),
-      );
-      if (activate == true && mounted) context.push('/provider/subscription');
-      return;
-    }
 
     await supabase.from('bookings').update({
       'status': accept ? 'confirmed' : 'cancelled',
@@ -137,68 +85,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
     _load();
   }
 
-  Future<void> _acceptOffer(String bookingId) async {
-    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
-    final offeredPrice = (booking['client_offered_price'] as num?)?.toDouble();
-    if (offeredPrice == null) return;
 
-    await supabase.from('bookings').update({
-      'negotiation_status': 'agreed',
-    }).eq('id', bookingId);
-
-    NotificationService.send(
-      userId: booking['client_id'],
-      type: 'booking',
-      title: 'Offer Accepted!',
-      body: 'Your offer of \$${offeredPrice.toStringAsFixed(0)} was accepted.',
-    );
-    _load();
-  }
-
-  Future<void> _declineOffer(String bookingId) async {
-    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
-    await supabase.from('bookings').update({
-      'negotiation_status': 'declined',
-    }).eq('id', bookingId);
-
-    NotificationService.send(
-      userId: booking['client_id'],
-      type: 'booking',
-      title: 'Offer Declined',
-      body: 'Your price offer was declined.',
-    );
-    _load();
-  }
-
-  Future<void> _counterOffer(String bookingId, double counterPrice) async {
-    final booking = _bookings.firstWhere((b) => b['id'] == bookingId);
-    final rounds = (booking['negotiation_rounds'] as int?) ?? 0;
-
-    if (rounds >= 3) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Maximum negotiation rounds reached')),
-        );
-      }
-      return;
-    }
-
-    await supabase.from('bookings').update({
-      'negotiation_status': 'provider_countered',
-      'provider_counter_price': counterPrice,
-      'negotiation_rounds': rounds + 1,
-      'offer_expires_at':
-          DateTime.now().add(const Duration(hours: 24)).toUtc().toIso8601String(),
-    }).eq('id', bookingId);
-
-    NotificationService.send(
-      userId: booking['client_id'],
-      type: 'booking',
-      title: 'Counter Offer',
-      body: 'Provider countered with \$${counterPrice.toStringAsFixed(0)}.',
-    );
-    _load();
-  }
 
   Future<void> _markCompleted(String bookingId) async {
     final confirm = await showDialog<bool>(
@@ -300,17 +187,11 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
               isProvider: true,
               onAccept: (id) => _respond(id, true),
               onDecline: (id) => _respond(id, false),
-              onAcceptOffer: _acceptOffer,
-              onDeclineOffer: _declineOffer,
-              onCounterOffer: _counterOffer,
             ),
             BookingList(
               bookings: confirmed,
               isProvider: true,
               onComplete: _markCompleted,
-              onAcceptOffer: _acceptOffer,
-              onDeclineOffer: _declineOffer,
-              onCounterOffer: _counterOffer,
             ),
             BookingList(bookings: past, isProvider: true),
           ],

@@ -46,14 +46,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               .maybeSingle();
           fav['provider_profiles'] = pp;
         } catch (_) {}
-        try {
-          final sub = await supabase
-              .from('subscriptions')
-              .select('status')
-              .eq('provider_id', pid)
-              .maybeSingle();
-          fav['subscription'] = sub;
-        } catch (_) {}
       }
 
       if (mounted) {
@@ -155,10 +147,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         final totalReviews = pp?['total_reviews'] ?? 0;
                         final isHidden = pp?['is_hidden'] == true;
 
-                        final sub = fav['subscription'] as Map<String, dynamic>?;
-                        final subExpired = sub == null || sub['status'] != 'active';
-
-                        final bool canBook = !isHidden && !subExpired && status != 'offline';
+                        final bool canBook = !isHidden;
 
                         Color statusColor;
                         String statusLabel;
@@ -260,7 +249,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     ],
                                   ),
 
-                                  if (subExpired) ...[
+                                  if (isHidden) ...[
                                     const SizedBox(height: AppSpacing.sm),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -272,7 +261,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                         borderRadius: AppRadius.smAll,
                                       ),
                                       child: Text(
-                                        'Subscription expired',
+                                        'Not taking bookings right now',
                                         style: TextStyle(
                                           color: AppColors.error,
                                           fontSize: 11,

@@ -1,7 +1,7 @@
 // Stage 20: Creates a Paynow transaction and a pending payments row.
 //
 // POST body: {
-//   purpose: 'booking' | 'activation' | 'subscription',
+//   purpose: 'booking' | 'deposit' | 'featured' | 'activation' | 'subscription',
 //   bookingId?: string,          // required for purpose=booking
 //   method?: 'web' | 'ecocash' | 'onemoney' | 'telecash',
 //   phone?: string,              // required for mobile money methods
@@ -26,6 +26,8 @@ const SUBSCRIPTION_PRICES: Record<string, number> = {
   monthly: 5,
 };
 const CLIENT_ACTIVATION_FEE = 1.0;
+// Featured placement: top of Browse/Home in the stylist's city for 7 days.
+const FEATURED_WEEK_PRICE = 3;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -74,18 +76,39 @@ Deno.serve(async (req) => {
   let providerId: string | null = null;
   const meta: Record<string, unknown> = {};
 
-  if (purpose === "booking") {
+  if (purpose === "booking" || purpose === "deposit") {
     bookingId = String(body.bookingId ?? "");
     const { data: booking } = await admin
       .from("bookings")
-      .select("id, client_id, provider_id, total_price, services(price)")
+      .select("id, client_id, provider_id, total_price, deposit_amount, deposit_paid, payment_status, status")
       .eq("id", bookingId)
       .maybeSingle();
     if (!booking || booking.client_id !== user.id) {
       return jsonResponse({ error: "Booking not found" }, 404);
     }
-    amount = Number(booking.total_price ?? booking.services?.price ?? 0);
+    if (booking.status === "cancelled" || booking.payment_status === "paid") {
+      return jsonResponse({ error: "This booking has nothing left to pay" }, 400);
+    }
+    const total = Number(booking.total_price ?? 0);
+    const deposit = Number(booking.deposit_amount ?? 0);
+    if (purpose === "deposit") {
+      if (deposit <= 0 || booking.deposit_paid) {
+        return jsonResponse({ error: "No deposit is due" }, 400);
+      }
+      amount = deposit;
+    } else {
+      amount = booking.deposit_paid ? Math.max(total - deposit, 0) : total;
+    }
     providerId = booking.provider_id;
+  } else if (purpose === "featured") {
+    const { data: prof } = await admin
+      .from("profiles").select("user_type").eq("id", user.id).maybeSingle();
+    if (prof?.user_type !== "provider") {
+      return jsonResponse({ error: "Only stylists can buy featured placement" }, 403);
+    }
+    amount = FEATURED_WEEK_PRICE;
+    providerId = user.id;
+    meta.days = 7;
   } else if (purpose === "activation") {
     amount = CLIENT_ACTIVATION_FEE;
   } else if (purpose === "subscription") {

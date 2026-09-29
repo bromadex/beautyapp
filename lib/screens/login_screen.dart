@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
+import '../services/guest_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -463,7 +464,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : const Text('Sign in'),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          if (await GuestService.continueAsGuest(context) &&
+                              context.mounted) {
+                            context.go('/home');
+                          }
+                        },
+                        icon: const Icon(Icons.explore_outlined, size: 20),
+                        label: const Text('Just browsing? Continue as guest'),
+                      ),
+                      const SizedBox(height: 20),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../services/guest_service.dart';
 import '../widgets/ui.dart';
 
 class ProviderPublicProfileScreen extends StatefulWidget {
@@ -17,7 +18,6 @@ class _ProviderPublicProfileScreenState
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _providerProfile;
   List<Map<String, dynamic>> _services = [];
-  List<Map<String, dynamic>> _packages = [];
   List<Map<String, dynamic>> _gallery = [];
   bool _loading = true;
   String? _error;
@@ -127,7 +127,19 @@ class _ProviderPublicProfileScreenState
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                if (await GuestService.continueAsGuest(context) && mounted) {
+                  setState(() {});
+                  if (_services.isNotEmpty && action.contains('book')) {
+                    context.push('/book/${widget.providerId}/${_services.first['id']}');
+                  }
+                }
+              },
+              child: const Text('Continue as guest'),
+            ),
           ],
         ),
       ),
@@ -172,7 +184,7 @@ class _ProviderPublicProfileScreenState
       try {
         final servicesResponse = await supabase
             .from('services')
-            .select('*, service_categories(name, icon)')
+            .select('*, service_categories(name, icon), service_tiers(price, is_active)')
             .eq('provider_id', id)
             .eq('is_active', true)
             .order('created_at');
@@ -181,19 +193,6 @@ class _ProviderPublicProfileScreenState
         _services = [];
       }
 
-      try {
-        final pkgs = await supabase
-            .from('service_packages')
-            .select('*, package_services(service_id, services(service_name, duration_minutes, price))')
-            .eq('provider_id', id)
-            .eq('is_active', true)
-            .order('created_at');
-        _packages = List<Map<String, dynamic>>.from(pkgs)
-            .where((p) => ((p['package_services'] as List?) ?? []).isNotEmpty)
-            .toList();
-      } catch (_) {
-        _packages = [];
-      }
 
       try {
         final galleryResponse = await supabase
@@ -318,7 +317,7 @@ class _ProviderPublicProfileScreenState
                     style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   ),
                   trailing: Text(
-                    '\$${s['price']}',
+                    _priceLabel(s),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -597,7 +596,7 @@ class _ProviderPublicProfileScreenState
                                 ),
                               ),
                               Text(
-                                '\$${s['price']}',
+                                _priceLabel(s),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 17,
@@ -612,12 +611,6 @@ class _ProviderPublicProfileScreenState
                       );
                     }),
 
-                  if (_packages.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xxl),
-                    Text('Packages', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: AppSpacing.md),
-                    ..._packages.map(_buildPackageCard),
-                  ],
 
                   const SizedBox(height: AppSpacing.xxl),
 
@@ -672,49 +665,11 @@ class _ProviderPublicProfileScreenState
     );
   }
 
-  Widget _buildPackageCard(Map<String, dynamic> p) {
-    final items = (p['package_services'] as List).cast<Map<String, dynamic>>();
-    final names = items.map((i) => i['services']?['service_name'] ?? '').where((n) => n.isNotEmpty).join(' + ');
-    final separate = items.fold<double>(0, (sum, i) => sum + (((i['services']?['price']) as num?)?.toDouble() ?? 0));
-    final price = (p['package_price'] as num).toDouble();
-    final saving = separate - price;
-    return GestureDetector(
-      onTap: () {
-        if (!_isLoggedIn) {
-          _promptSignIn(action: 'book an appointment');
-        } else {
-          context.push('/book/${widget.providerId}/${items.first['service_id']}?package=${p['id']}');
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.04),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-          borderRadius: AppRadius.mdAll,
-        ),
-        child: Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(p['name'] ?? 'Package',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-              const SizedBox(height: 2),
-              Text(names, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
-              if (saving > 0.5) ...[
-                const SizedBox(height: 4),
-                Text('Save \$${saving.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.success)),
-              ],
-            ]),
-          ),
-          Text('\$${price.toStringAsFixed(price % 1 == 0 ? 0 : 2)}',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.primary)),
-          const SizedBox(width: AppSpacing.xs),
-          Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textTertiary),
-        ]),
-      ),
-    );
+  String _priceLabel(Map<String, dynamic> s) {
+    final tiers = (s['service_tiers'] as List? ?? []).where((t) => t['is_active'] == true).toList();
+    if (tiers.isEmpty) return '\$${s['price']}';
+    final min = tiers.map((t) => (t['price'] as num).toDouble()).reduce((a, b) => a < b ? a : b);
+    return 'from \$${min.toStringAsFixed(min % 1 == 0 ? 0 : 2)}';
   }
 
   Widget _buildBottomBar(BuildContext context, String status) {

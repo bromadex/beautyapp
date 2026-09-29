@@ -15,7 +15,6 @@ class ClientHomeScreen extends StatefulWidget {
 
 class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _profile;
-  Map<String, dynamic>? _verification;
   bool _isAdmin = false;
   bool _loading = true;
   int _unreadNotifications = 0;
@@ -61,14 +60,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
         .from('admins').select().eq('user_id', userId);
     final isAdmin = (adminRows as List).isNotEmpty;
 
-    Map<String, dynamic>? verification;
-    try {
-      verification = await supabase
-          .from('verifications').select()
-          .eq('user_id', userId)
-          .order('submitted_at', ascending: false)
-          .limit(1).maybeSingle();
-    } catch (_) {}
 
     int unreadNotifs = 0;
     try {
@@ -93,6 +84,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
       ]);
       categories = List<Map<String, dynamic>>.from(results[0] as List);
       stylists = List<Map<String, dynamic>>.from(results[1] as List);
+      bool featured(Map<String, dynamic> p) =>
+          DateTime.tryParse((p['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
+      stylists.sort((a, b) => (featured(b) ? 1 : 0).compareTo(featured(a) ? 1 : 0));
       final nb = results[2] as List;
       nextBooking = nb.isNotEmpty ? nb.first as Map<String, dynamic> : null;
     } catch (_) {}
@@ -100,7 +94,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     if (mounted) {
       setState(() {
         _profile = profile;
-        _verification = verification;
         _isAdmin = isAdmin;
         _unreadNotifications = unreadNotifs;
         _categories = categories;
@@ -124,12 +117,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     return 'Good evening';
   }
 
-  void _needsVerification() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Verify your identity to unlock this.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -138,8 +125,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
 
     final name = (_profile?['full_name'] ?? '').toString();
     final firstName = name.split(' ').first;
-    final isVerified = _profile?['is_verified'] == true;
-    final vStatus = _verification?['status'];
+    final isGuest = supabase.auth.currentUser?.isAnonymous ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -165,7 +151,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(_greeting, style: Theme.of(context).textTheme.bodyMedium),
                           Text(
-                            firstName.isEmpty ? 'Welcome' : firstName,
+                            firstName.isEmpty || isGuest || firstName == 'User' ? 'Welcome' : firstName,
                             style: Theme.of(context).textTheme.titleLarge,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -243,42 +229,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                       ),
                     ),
 
-                    // Status notices
-                    if (!isVerified) ...[
+                    if (isGuest) ...[
                       const SizedBox(height: 16),
                       SoftBanner(
-                        icon: vStatus == 'rejected'
-                            ? Icons.error_outline_rounded
-                            : vStatus == 'pending'
-                                ? Icons.hourglass_top_rounded
-                                : Icons.verified_user_outlined,
-                        color: vStatus == 'rejected'
-                            ? AppColors.error
-                            : vStatus == 'pending'
-                                ? AppColors.warning
-                                : AppColors.info,
-                        title: vStatus == 'pending'
-                            ? 'Verification in review'
-                            : vStatus == 'rejected'
-                                ? 'Verification needs another look'
-                                : 'Verify your identity',
-                        message: vStatus == 'pending'
-                            ? 'We\'ll let you know as soon as you\'re approved.'
-                            : vStatus == 'rejected'
-                                ? 'Please re-submit your photos to start booking.'
-                                : 'A quick selfie and ID keeps everyone safe. Takes 2 minutes.',
-                        onTap: () => context.push(
-                            vStatus == null || vStatus == 'rejected' ? '/verify' : '/verify/pending'),
-                      ),
-                    ] else if (_profile?['is_activated'] == false) ...[
-                      const SizedBox(height: 16),
-                      SoftBanner(
-                        icon: Icons.lock_open_rounded,
+                        icon: Icons.bookmark_add_outlined,
                         color: AppColors.primary,
-                        title: 'Activate your account',
-                        message: 'One-time \$1 to unlock unlimited bookings.',
-                        actionLabel: 'Activate',
-                        onTap: () => context.push('/activation'),
+                        title: 'You\'re browsing as a guest',
+                        message: 'Create a free account to keep your bookings on any phone.',
+                        actionLabel: 'Create',
+                        onTap: () => context.push('/account/settings'),
                       ),
                     ],
 
@@ -323,9 +282,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                     Row(children: [
                       Expanded(
                         child: _Shortcut(
-                          icon: Icons.auto_awesome_rounded,
-                          label: 'For you',
-                          onTap: isVerified ? () => context.push('/recommended') : _needsVerification,
+                          icon: Icons.person_outline_rounded,
+                          label: 'Account',
+                          onTap: () => context.push('/account/settings'),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -349,7 +308,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                         child: _Shortcut(
                           icon: Icons.campaign_outlined,
                           label: 'Requests',
-                          onTap: isVerified ? () => context.push('/service-requests') : _needsVerification,
+                          onTap: () => context.push('/service-requests'),
                         ),
                       ),
                     ]),
@@ -357,7 +316,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                     // Request card
                     const SizedBox(height: 24),
                     _RequestCard(
-                      onTap: isVerified ? () => context.push('/service-request/create') : _needsVerification,
+                      onTap: () => context.push('/service-request/create'),
                     ),
 
                     // Top stylists
@@ -369,7 +328,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                         onAction: () => context.go('/browse'),
                       ),
                       SizedBox(
-                        height: 180,
+                        height: 204,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _topStylists.length,
@@ -379,7 +338,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                       ),
                     ],
 
-                    if (!isVerified) ...[
+                    if (_nextBooking == null) ...[
                       const SizedBox(height: 28),
                       const SectionHeader(title: 'How BeauTap works'),
                       const _HowItWorks(),
@@ -641,6 +600,11 @@ class _StylistCard extends StatelessWidget {
               Text(location.isEmpty ? 'Zimbabwe' : location,
                   style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
               const Spacer(),
+              if (DateTime.tryParse((provider['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 6),
+                  child: Pill(label: 'Featured', color: AppColors.secondary, icon: Icons.star_rounded),
+                ),
               RatingPill(rating: rating, reviews: reviews),
             ]),
           ),

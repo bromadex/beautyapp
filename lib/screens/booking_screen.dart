@@ -4,11 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../services/location_service.dart';
-import '../services/notification_service.dart';
+import '../services/paynow_service.dart';
 import '../theme.dart';
+import '../widgets/slot_picker.dart';
 import '../widgets/ui.dart';
-import '../widgets/price_offer_sheet.dart';
 
+/// Step-by-step booking: Service → When → Details → Review.
 class BookingScreen extends StatefulWidget {
   final String providerId;
   final String serviceId;
@@ -24,1346 +25,915 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  Map<String, dynamic>? _provider;
-  Map<String, dynamic>? _service;
-  bool _loading = true;
-  bool _submitting = false;
-  String? _error;
+  static const _stepTitles = ['Service', 'When', 'Details', 'Review'];
 
+  bool _loading = true;
+  String? _error;
+  bool _submitting = false;
+  int _step = 0;
+
+  Map<String, dynamic>? _provider;
+  Map<String, dynamic>? _providerProfile;
+  Map<String, dynamic>? _policy;
+  Map<String, dynamic>? _me;
+  bool _isGuest = false;
+
+  List<Map<String, dynamic>> _services = [];
+  String? _serviceId;
+  List<Map<String, dynamic>> _tiers = [];
+  String? _tierId;
+  List<Map<String, dynamic>> _addons = [];
+  final Set<String> _addonIds = {};
+
+  DateTime? _day;
+  String? _time;
+
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   final _promoCtrl = TextEditingController();
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-
-  // Price negotiation
-  double? _offeredPrice;
-  bool _isNegotiated = false;
-
-  // Promo code state
-  Map<String, dynamic>? _appliedPromo;
-  double _discountAmount = 0;
-  bool _applyingPromo = false;
-  String? _promoError;
-
-  // Add-ons
-  List<Map<String, dynamic>> _addons = [];
-  final Set<String> _selectedAddonIds = {};
-
-  // Payment method
-  String _paymentMethod = 'cash';
-
-  // Travel fee (estimate; the server recalculates from the same inputs)
-  double _travelFee = 0;
-  Map<String, dynamic>? _providerProfile;
-  double? _clientLat;
-  double? _clientLng;
+  String _payment = 'cash';
+  double? _lat;
+  double? _lng;
   bool _locating = false;
 
-  // Package booking
-  Map<String, dynamic>? _package;
-
-  // Cancellation policy
-  Map<String, dynamic>? _cancelPolicy;
+  Map<String, dynamic>? _promo;
+  double _discount = 0;
+  String? _promoError;
+  bool _applyingPromo = false;
 
   @override
   void initState() {
     super.initState();
+    _serviceId = widget.serviceId;
     _load();
   }
 
+  @override
+  void dispose() {
+    for (final c in [_nameCtrl, _phoneCtrl, _addressCtrl, _noteCtrl, _promoCtrl]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  // ---------------- data ----------------
+
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
     try {
-      final provider = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', widget.providerId)
-          .maybeSingle();
-
-      final service = await supabase
-          .from('services')
-          .select('*, service_categories(name, icon)')
-          .eq('id', widget.serviceId)
-          .maybeSingle();
-
-      if (provider == null || service == null) {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        if (mounted) context.go('/login');
+        return;
+      }
+      _isGuest = user.isAnonymous;
+      final results = await Future.wait([
+        supabase.from('profiles').select().eq('id', widget.providerId).maybeSingle(),
+        supabase.from('provider_profiles').select().eq('provider_id', widget.providerId).maybeSingle(),
+        supabase
+            .from('services')
+            .select('*, service_categories(name)')
+            .eq('provider_id', widget.providerId)
+            .eq('is_active', true)
+            .order('created_at', ascending: true),
+        supabase.from('cancellation_policies').select().eq('provider_id', widget.providerId).maybeSingle(),
+        supabase.from('profiles').select().eq('id', user.id).maybeSingle(),
+      ]);
+      _provider = results[0] as Map<String, dynamic>?;
+      _providerProfile = results[1] as Map<String, dynamic>?;
+      _services = List<Map<String, dynamic>>.from(results[2] as List);
+      _policy = results[3] as Map<String, dynamic>?;
+      _me = results[4] as Map<String, dynamic>?;
+      if (_provider == null || _services.isEmpty) {
         setState(() {
-          _error = 'Could not load booking details';
+          _error = 'This stylist has no services to book yet.';
           _loading = false;
         });
         return;
       }
-
-      final uid = supabase.auth.currentUser?.id;
-      if (uid == null) return;
-
-      final clientProfile = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', uid)
-          .maybeSingle();
-
-      // Load add-ons for this service
-      List<Map<String, dynamic>> addons = [];
-      try {
-        addons = await supabase
-            .from('service_addons')
-            .select()
-            .eq('service_id', widget.serviceId)
-            .eq('is_active', true)
-            .order('sort_order');
-      } catch (_) {}
-
-      // Load provider profile for travel fee info
-      Map<String, dynamic>? pp;
-      try {
-        pp = await supabase
-            .from('provider_profiles')
-            .select()
-            .eq('provider_id', widget.providerId)
-            .maybeSingle();
-      } catch (_) {}
-
-      Map<String, dynamic>? package;
-      if (widget.packageId != null) {
-        package = await supabase
-            .from('service_packages')
-            .select('*, package_services(services(service_name, duration_minutes))')
-            .eq('id', widget.packageId!)
-            .eq('provider_id', widget.providerId)
-            .eq('is_active', true)
-            .maybeSingle();
-      }
-
-      // Load cancellation policy
-      Map<String, dynamic>? policy;
-      try {
-        policy = await supabase
-            .from('cancellation_policies')
-            .select()
-            .eq('provider_id', widget.providerId)
-            .maybeSingle();
-      } catch (_) {}
-
-      if (mounted) {
-        setState(() {
-          _provider = provider;
-          _service = service;
-          _addressCtrl.text = clientProfile?['location'] ?? '';
-          _addons = List<Map<String, dynamic>>.from(addons);
-          _providerProfile = pp;
-          _cancelPolicy = policy;
-          _package = package;
-          _loading = false;
-        });
-      }
+      if (!_services.any((s) => s['id'] == _serviceId)) _serviceId = _services.first['id'];
+      final name = (_me?['full_name'] ?? '').toString();
+      _nameCtrl.text = name == 'User' ? '' : name;
+      _phoneCtrl.text = _me?['phone'] ?? '';
+      _addressCtrl.text = _me?['location'] ?? '';
+      await _loadServiceExtras();
+      if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = 'Could not load booking details. Check your connection and try again.';
           _loading = false;
         });
       }
     }
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: now.add(const Duration(days: 1)),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 60)),
-    );
-    if (date != null) setState(() => _selectedDate = date);
+  Future<void> _loadServiceExtras() async {
+    final results = await Future.wait([
+      supabase
+          .from('service_tiers')
+          .select()
+          .eq('service_id', _serviceId!)
+          .eq('is_active', true)
+          .order('sort_order', ascending: true)
+          .order('price', ascending: true),
+      supabase
+          .from('service_addons')
+          .select()
+          .eq('service_id', _serviceId!)
+          .eq('is_active', true)
+          .order('sort_order', ascending: true),
+    ]);
+    _tiers = List<Map<String, dynamic>>.from(results[0] as List);
+    _addons = List<Map<String, dynamic>>.from(results[1] as List);
+    _tierId = _tiers.isNotEmpty ? _tiers.first['id'] : null;
+    _addonIds.clear();
+    _time = null;
   }
 
-  Future<void> _pickTime() async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 10, minute: 0),
-    );
-    if (time != null) setState(() => _selectedTime = time);
+  Map<String, dynamic> get _service => _services.firstWhere((s) => s['id'] == _serviceId);
+  Map<String, dynamic>? get _tier =>
+      _tierId == null ? null : _tiers.firstWhere((t) => t['id'] == _tierId, orElse: () => const {});
+
+  double get _basePrice => ((_tier?['price'] ?? _service['price']) as num?)?.toDouble() ?? 0;
+  int get _baseMinutes => ((_tier?['duration_minutes'] ?? _service['duration_minutes']) as num?)?.toInt() ?? 60;
+  double get _addonsTotal => _addons
+      .where((a) => _addonIds.contains(a['id']))
+      .fold(0.0, (s, a) => s + ((a['price'] as num?)?.toDouble() ?? 0));
+  int get _addonsMinutes => _addons
+      .where((a) => _addonIds.contains(a['id']))
+      .fold(0, (s, a) => s + ((a['duration_minutes'] as num?)?.toInt() ?? 0));
+  int get _totalMinutes => _baseMinutes + _addonsMinutes;
+
+  double get _travelFee {
+    final pp = _providerProfile;
+    final perKm = (pp?['travel_fee_per_km'] as num?)?.toDouble() ?? 0;
+    final lat = (pp?['latitude'] as num?)?.toDouble();
+    final lng = (pp?['longitude'] as num?)?.toDouble();
+    if (perKm <= 0 || lat == null || lng == null || _lat == null) return 0;
+    double rad(double d) => d * math.pi / 180;
+    final a = math.pow(math.sin(rad(_lat! - lat) / 2), 2) +
+        math.cos(rad(lat)) * math.cos(rad(_lat!)) * math.pow(math.sin(rad(_lng! - lng) / 2), 2);
+    final km = 6371 * 2 * math.asin(math.sqrt(a));
+    final free = (pp?['free_travel_radius_km'] as num?)?.toDouble() ?? 0;
+    final maxFee = (pp?['max_travel_fee'] as num?)?.toDouble() ?? 20;
+    return (math.min(maxFee, math.max(0, km - free) * perKm) * 100).roundToDouble() / 100;
   }
 
-  int get _baseDuration {
-    if (_package != null) {
-      final items = (_package!['package_services'] as List?) ?? [];
-      final total = items.fold<int>(0, (sum, ps) =>
-          sum + (((ps['services']?['duration_minutes']) as int?) ?? 0));
-      if (total > 0) return total;
-    }
-    return (_service?['duration_minutes'] as int?) ?? 60;
-  }
+  double get _total => math.max(0, _basePrice - _discount) + _addonsTotal + _travelFee;
+  int get _depositPercent => (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0;
+  double get _deposit => (_total * _depositPercent / 100 * 100).roundToDouble() / 100;
 
-  Future<String?> _slotProblem(DateTime bookingDateTime) async {
-    final res = await supabase.rpc('check_slot', params: {
-      'p_provider': widget.providerId,
-      'p_start': bookingDateTime.toUtc().toIso8601String(),
-      'p_minutes': _baseDuration + _addonsDuration,
+  String _money(double v) => '\$${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
+
+  // ---------------- actions ----------------
+
+  Future<void> _selectService(String id) async {
+    if (id == _serviceId) return;
+    setState(() {
+      _serviceId = id;
+      _promo = null;
+      _discount = 0;
     });
-    return res as String?;
+    await _loadServiceExtras();
+    if (mounted) setState(() {});
   }
 
   Future<void> _useMyLocation() async {
     setState(() => _locating = true);
     try {
       final pos = await LocationService().getCurrentPosition();
-      if (pos == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Location unavailable — travel fee will be agreed with your stylist.')));
-        }
-        return;
+      if (pos != null && mounted) {
+        setState(() {
+          _lat = pos.latitude;
+          _lng = pos.longitude;
+        });
+      } else if (mounted) {
+        _toast('Location unavailable — the stylist will agree any travel fee with you.');
       }
-      setState(() {
-        _clientLat = pos.latitude;
-        _clientLng = pos.longitude;
-        _travelFee = _estimateTravelFee();
-      });
     } catch (_) {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
   }
 
-  double _estimateTravelFee() {
-    final pp = _providerProfile;
-    final perKm = (pp?['travel_fee_per_km'] as num?)?.toDouble() ?? 0;
-    final lat = (pp?['latitude'] as num?)?.toDouble();
-    final lng = (pp?['longitude'] as num?)?.toDouble();
-    if (perKm <= 0 || lat == null || lng == null || _clientLat == null) return 0;
-    double rad(double d) => d * math.pi / 180;
-    final dLat = rad(_clientLat! - lat);
-    final dLng = rad(_clientLng! - lng);
-    final a = math.pow(math.sin(dLat / 2), 2) +
-        math.cos(rad(lat)) * math.cos(rad(_clientLat!)) * math.pow(math.sin(dLng / 2), 2);
-    final km = 6371 * 2 * math.asin(math.sqrt(a));
-    final free = (pp?['free_travel_radius_km'] as num?)?.toDouble() ?? 0;
-    final maxFee = (pp?['max_travel_fee'] as num?)?.toDouble() ?? 20;
-    final fee = math.min(maxFee, math.max(0, km - free) * perKm);
-    return (fee * 100).roundToDouble() / 100;
-  }
-
-  double get _servicePrice => _package != null
-      ? (_package!['package_price'] as num?)?.toDouble() ?? 0
-      : (_service?['price'] as num?)?.toDouble() ?? 0;
-
-  double get _addonsTotal {
-    double total = 0;
-    for (final addon in _addons) {
-      if (_selectedAddonIds.contains(addon['id'])) {
-        total += (addon['price'] as num?)?.toDouble() ?? 0;
-      }
-    }
-    return total;
-  }
-
-  int get _addonsDuration {
-    int total = 0;
-    for (final addon in _addons) {
-      if (_selectedAddonIds.contains(addon['id'])) {
-        total += (addon['duration_minutes'] as int?) ?? 0;
-      }
-    }
-    return total;
-  }
-
-  double get _effectivePrice => _offeredPrice ?? _servicePrice;
-
-  double get _totalPrice =>
-      (_effectivePrice + _addonsTotal + _travelFee - _discountAmount)
-          .clamp(0, double.infinity);
-
-  Future<void> _openPriceOffer() async {
-    final result = await showModalBottomSheet<double>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => PriceOfferSheet(
-        listedPrice: _servicePrice,
-        serviceName: _service!['service_name'] ?? 'Service',
-        providerName: _provider!['full_name'] ?? 'Provider',
-      ),
-    );
-    if (result != null && mounted) {
-      setState(() {
-        _offeredPrice = result;
-        _isNegotiated = result != _servicePrice;
-      });
-    }
-  }
-
   Future<void> _applyPromo() async {
-    final code = _promoCtrl.text.trim().toUpperCase();
+    final code = _promoCtrl.text.trim();
     if (code.isEmpty) return;
-
     setState(() {
       _applyingPromo = true;
       _promoError = null;
-      _appliedPromo = null;
-      _discountAmount = 0;
     });
-
     try {
       final rows = await supabase.rpc('check_promo', params: {
         'p_provider': widget.providerId,
         'p_code': code,
-        'p_amount': _effectivePrice,
+        'p_amount': _basePrice,
       }) as List;
       final res = rows.isNotEmpty ? rows.first as Map<String, dynamic> : null;
-      if (res == null || res['error'] != null) {
-        if (mounted) setState(() => _promoError = res?['error'] ?? 'Invalid promo code');
-        return;
-      }
       setState(() {
-        _appliedPromo = {'code': code};
-        _discountAmount = (res['discount'] as num).toDouble();
+        if (res == null || res['error'] != null) {
+          _promoError = res?['error'] ?? 'Invalid promo code';
+          _promo = null;
+          _discount = 0;
+        } else {
+          _promo = {'code': code.toUpperCase()};
+          _discount = (res['discount'] as num).toDouble();
+        }
       });
-    } catch (e) {
-      if (mounted) setState(() => _promoError = 'Error applying promo code');
+    } catch (_) {
+      setState(() => _promoError = 'Could not check the code');
     } finally {
       if (mounted) setState(() => _applyingPromo = false);
     }
   }
 
-  void _removePromo() {
-    setState(() {
-      _appliedPromo = null;
-      _discountAmount = 0;
-      _promoCtrl.clear();
-      _promoError = null;
-    });
+  void _toast(String msg, {bool error = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: error ? AppColors.error : null),
+    );
   }
 
-  Future<void> _confirmBooking() async {
-    if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date and time')),
-      );
-      return;
+  bool _validateStep() {
+    switch (_step) {
+      case 1:
+        if (_day == null || _time == null) {
+          _toast('Pick a day and a time');
+          return false;
+        }
+      case 2:
+        if (_nameCtrl.text.trim().isEmpty) {
+          _toast('Please enter your name');
+          return false;
+        }
+        if (_phoneCtrl.text.trim().replaceAll(RegExp(r'\D'), '').length < 9) {
+          _toast('Please enter a phone number the stylist can reach you on');
+          return false;
+        }
+        if (_addressCtrl.text.trim().isEmpty) {
+          _toast('Please enter where the stylist should come');
+          return false;
+        }
     }
-    if (_addressCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your address')),
-      );
-      return;
+    return true;
+  }
+
+  void _next() {
+    if (!_validateStep()) return;
+    if (_step < 3) {
+      setState(() => _step++);
+    } else {
+      _confirm();
     }
+  }
 
-    final bookingDateTime = DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      _selectedTime!.hour,
-      _selectedTime!.minute,
-    );
-
-    if (bookingDateTime.isBefore(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a future date and time')),
-      );
-      return;
-    }
-
+  Future<void> _confirm() async {
     setState(() => _submitting = true);
-
     try {
-      // Stage 19: activation gate — unactivated clients pay the one-time $1 fee first.
-      // Null (column not yet migrated) is treated as activated so the app never bricks.
-      final currentUid = supabase.auth.currentUser?.id;
-      if (currentUid == null) return;
-
-      final me = await supabase
-          .from('profiles')
-          .select('is_activated')
-          .eq('id', currentUid)
-          .maybeSingle();
-      if (me != null && me['is_activated'] == false) {
-        setState(() => _submitting = false);
-        if (mounted) context.push('/activation');
-        return;
+      final uid = supabase.auth.currentUser!.id;
+      final name = _nameCtrl.text.trim();
+      final phone = _phoneCtrl.text.trim();
+      if (name != (_me?['full_name'] ?? '') || phone != (_me?['phone'] ?? '')) {
+        await supabase.from('profiles').update({'full_name': name, 'phone': phone}).eq('id', uid);
       }
 
-      // Provider activation gate: providers can be browsed and messaged for
-      // free, but can only RECEIVE bookings with an active subscription
-      // ($3 activation, then $5/month). No subscription row → not bookable.
-      try {
-        final sub = await supabase
-            .from('subscriptions')
-            .select('status, end_date')
-            .eq('provider_id', widget.providerId)
-            .maybeSingle();
-        final end = DateTime.tryParse(sub?['end_date'] ?? '');
-        final providerActive = sub != null &&
-            sub['status'] == 'active' &&
-            end != null &&
-            end.isAfter(DateTime.now());
-        if (!providerActive) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                    'This stylist isn\'t accepting bookings yet. You can still message them!'),
-                backgroundColor: AppColors.warning,
-              ),
-            );
-          }
-          setState(() => _submitting = false);
-          return;
-        }
-      } catch (_) {
-        // Subscriptions table unreachable — don't block the client
-      }
-
-      final problem = await _slotProblem(bookingDateTime);
-      if (problem != null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(problem), backgroundColor: AppColors.error),
-          );
-        }
-        setState(() => _submitting = false);
-        return;
-      }
-
-      final bookingData = {
-        'client_id': currentUid,
-        'provider_id': widget.providerId,
-        'service_id': widget.serviceId,
-        'booking_time': bookingDateTime.toUtc().toIso8601String(),
-        'address': _addressCtrl.text.trim(),
-        'status': 'pending',
-        'total_price': _totalPrice,
-        'discount_amount': _discountAmount,
-        'promo_code': _appliedPromo?['code'],
-        'payment_method': _paymentMethod,
-        'addons_total': _addonsTotal,
-        'travel_fee': _travelFee,
-        if (_package != null) 'package_id': _package!['id'],
-        if (_clientLat != null) 'client_lat': _clientLat,
-        if (_clientLng != null) 'client_lng': _clientLng,
-        'client_note':
-            _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-        if (_isNegotiated) ...{
-          'client_offered_price': _offeredPrice,
-          'negotiation_status': 'client_offered',
-          'negotiation_rounds': 1,
-          'offer_expires_at': DateTime.now()
-              .add(const Duration(hours: 24))
-              .toUtc().toIso8601String(),
-        },
-      };
-
-      final insertedRows = await supabase
+      final inserted = await supabase
           .from('bookings')
-          .insert(bookingData)
-          .select('id')
+          .insert({
+            'client_id': uid,
+            'provider_id': widget.providerId,
+            'service_id': _serviceId,
+            if (_tierId != null) 'tier_id': _tierId,
+            'booking_time': slotToDateTime(_day!, _time!).toIso8601String(),
+            'address': _addressCtrl.text.trim(),
+            'status': 'pending',
+            'total_price': _total,
+            'promo_code': _promo?['code'],
+            'payment_method': _payment,
+            if (_lat != null) 'client_lat': _lat,
+            if (_lng != null) 'client_lng': _lng,
+            'client_note': _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+          })
+          .select('id, ref')
           .single();
-      final bookingId = insertedRows['id'] as String;
+      final bookingId = inserted['id'] as String;
 
-      // Insert selected add-ons
-      if (_selectedAddonIds.isNotEmpty) {
-        final addonRows = _addons
-            .where((a) => _selectedAddonIds.contains(a['id']))
-            .map((a) => ({
+      if (_addonIds.isNotEmpty) {
+        await supabase.from('booking_addons').insert(_addons
+            .where((a) => _addonIds.contains(a['id']))
+            .map((a) => {
                   'booking_id': bookingId,
                   'addon_id': a['id'],
                   'addon_name': a['name'],
                   'addon_price': a['price'],
                   'addon_duration': a['duration_minutes'] ?? 0,
-                }))
-            .toList();
-        await supabase.from('booking_addons').insert(addonRows);
+                })
+            .toList());
       }
 
-      // Notify provider
-      final clientName = (await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', currentUid)
-              .maybeSingle())?['full_name'] ??
-          'A client';
-      NotificationService.send(
-        userId: widget.providerId,
-        type: 'booking',
-        title: _isNegotiated ? 'New Price Offer' : 'New Booking Request',
-        body: _isNegotiated
-            ? '$clientName offered \$${_offeredPrice!.toStringAsFixed(0)} for ${_service!['service_name']} (listed \$${_servicePrice.toStringAsFixed(0)})'
-            : '$clientName booked ${_service!['service_name']}',
-      );
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            icon: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.success,
-                size: 40,
-              ),
-            ),
-            title: const Text('Booking Sent!'),
-            content: const Text(
-                'Your booking request has been sent to the provider. '
-                'You\'ll be notified once they confirm.'),
-            actions: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.go('/client/bookings');
-                },
-                child: const Text('View My Bookings'),
-              ),
-            ],
-          ),
+      final fresh = await supabase.from('bookings').select('deposit_amount').eq('id', bookingId).single();
+      final deposit = ((fresh['deposit_amount'] as num?) ?? 0).toDouble();
+      var depositPaid = deposit <= 0;
+      if (deposit > 0 && mounted) {
+        final outcome = await PaynowCheckout.run(
+          context,
+          purpose: 'deposit',
+          bookingId: bookingId,
+          method: _payment == 'paynow' ? 'web' : 'ecocash',
+          phone: _payment == 'paynow' ? null : phone,
         );
+        depositPaid = outcome == PaynowOutcome.paid;
       }
-    } on PostgrestException catch (e) {
+
       if (!mounted) return;
-      if (e.message.contains('ACTIVATION_REQUIRED')) {
-        context.push('/activation');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
-        );
-      }
+      await _showDone(bookingId, inserted['ref'] ?? '', deposit, depositPaid);
+    } on PostgrestException catch (e) {
+      if (mounted) _toast(e.message, error: true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
-        );
-      }
+      if (mounted) _toast('Something went wrong: $e', error: true);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  @override
-  void dispose() {
-    _addressCtrl.dispose();
-    _noteCtrl.dispose();
-    _promoCtrl.dispose();
-    super.dispose();
+  Future<void> _showDone(String bookingId, String ref, double deposit, bool depositPaid) async {
+    await showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      showDragHandle: false,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle),
+            child: const Icon(Icons.check_rounded, color: AppColors.success, size: 40),
+          ),
+          const SizedBox(height: 16),
+          Text('Request sent!', style: Theme.of(ctx).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(
+            '${_provider?['full_name'] ?? 'Your stylist'} will confirm shortly. '
+            'Your reference is $ref.'
+            '${deposit > 0 && !depositPaid ? '\n\nYour ${_money(deposit)} deposit is still unpaid — you can pay it from the booking page.' : ''}',
+            textAlign: TextAlign.center,
+            style: Theme.of(ctx).textTheme.bodyMedium,
+          ),
+          if (_isGuest) ...[
+            const SizedBox(height: 16),
+            const SoftBanner(
+              icon: Icons.bookmark_add_outlined,
+              color: AppColors.primary,
+              title: 'Keep your bookings safe',
+              message: 'Create a free account from Settings so you can find this booking on any phone.',
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/booking/$bookingId');
+              },
+              child: const Text('View booking'),
+            ),
+          ),
+        ]),
+      ),
+    );
   }
+
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Book Appointment')),
-        body: Center(
-          child: Padding(
-            padding: AppSpacing.screenPadding,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.error_outline,
-                      size: 48, color: AppColors.error),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(_error!,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center),
-                const SizedBox(height: AppSpacing.lg),
-                FilledButton.icon(
-                  onPressed: _load,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        appBar: AppBar(),
+        body: EmptyState(
+          icon: Icons.event_busy_rounded,
+          title: 'Can\'t book right now',
+          message: _error!,
+          actionLabel: 'Go back',
+          onAction: () => context.canPop() ? context.pop() : context.go('/home'),
         ),
       );
     }
 
-    final cat = _service!['service_categories'] as Map?;
-    final dateStr = _selectedDate == null
-        ? 'Select date'
-        : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}';
-    final timeStr = _selectedTime == null
-        ? 'Select time'
-        : _selectedTime!.format(context);
+    final lastStep = _step == 3;
+    final buttonLabel = !lastStep
+        ? 'Continue'
+        : _deposit > 0
+            ? 'Pay ${_money(_deposit)} deposit & book'
+            : 'Confirm booking';
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Book Appointment')),
-      body: SingleChildScrollView(
-        padding: AppSpacing.screenPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Service summary card with gradient accent
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardLight,
-                borderRadius: AppRadius.lgAll,
-                border: Border.all(color: AppColors.border),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: AppSpacing.cardPadding,
-                    child: Row(children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: AppRadius.mdAll,
-                        ),
-                        alignment: Alignment.center,
-                        child: Icon(categoryIcon(_package != null ? 'package' : cat?['name']),
-                            size: 26, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_package?['name'] ?? _service!['service_name'],
-                                style: Theme.of(context).textTheme.titleMedium),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              _package != null
-                                  ? 'Package · $_baseDuration min'
-                                  : '${cat?['name'] ?? ''} · $_baseDuration min',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 2),
-                            Text('with ${_provider!['full_name']}',
-                                style: Theme.of(context).textTheme.bodyMedium),
-                          ],
-                        ),
-                      ),
-                      Text('\$${_servicePrice.toStringAsFixed(_servicePrice % 1 == 0 ? 0 : 2)}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(color: AppColors.primary)),
-                    ]),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Section header
-            Text('Date & Time',
-                style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Date and time picker cards
-            Row(children: [
-              Expanded(
-                child: _PickerCard(
-                  icon: Icons.calendar_month_outlined,
-                  label: 'Date',
-                  value: dateStr,
-                  isSelected: _selectedDate != null,
-                  onTap: _pickDate,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _PickerCard(
-                  icon: Icons.access_time_rounded,
-                  label: 'Time',
-                  value: timeStr,
-                  isSelected: _selectedTime != null,
-                  onTap: _pickTime,
-                ),
-              ),
-            ]),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Address section
-            Text('Your Address',
-                style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-
-            TextFormField(
-              controller: _addressCtrl,
-              decoration: const InputDecoration(
-                hintText: 'e.g. 12 Borrowdale Rd, Harare',
-                prefixIcon: Icon(Icons.location_on_outlined),
-              ),
-              maxLines: 2,
-            ),
-            if (((_providerProfile?['travel_fee_per_km'] as num?) ?? 0) > 0) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Row(children: [
-                TextButton.icon(
-                  onPressed: _locating ? null : _useMyLocation,
-                  icon: _locating
-                      ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.my_location_rounded, size: 18),
-                  label: Text(_clientLat == null
-                      ? 'Use my location for travel fee'
-                      : 'Location set'),
-                ),
-                const Spacer(),
-                if (_clientLat != null)
-                  Text(
-                    _travelFee > 0
-                        ? 'Travel: \$${_travelFee.toStringAsFixed(2)}'
-                        : 'No travel fee',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-              ]),
-            ],
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Note section
-            Text('Note to Provider (optional)',
-                style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-
-            TextFormField(
-              controller: _noteCtrl,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Please bring your own products',
-              ),
-              maxLines: 3,
-            ),
-
-            // Add-ons section
-            if (_addons.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.xxl),
-              Text('Add-ons (Optional)',
-                  style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.cardLight,
-                  borderRadius: AppRadius.lgAll,
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  children: _addons.map((addon) {
-                    final selected = _selectedAddonIds.contains(addon['id']);
-                    final price = (addon['price'] as num?)?.toDouble() ?? 0;
-                    final dur = (addon['duration_minutes'] as int?) ?? 0;
-                    return CheckboxListTile(
-                      value: selected,
-                      onChanged: (v) {
-                        setState(() {
-                          if (v == true) {
-                            _selectedAddonIds.add(addon['id']);
-                          } else {
-                            _selectedAddonIds.remove(addon['id']);
-                          }
-                        });
-                      },
-                      title: Text(addon['name'] ?? '',
-                          style: const TextStyle(fontSize: 14)),
-                      subtitle: Text(
-                        '+\$${price.toStringAsFixed(2)}${dur > 0 ? ' · +$dur min' : ''}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: selected
-                              ? AppColors.primary
-                              : AppColors.textTertiary,
-                        ),
-                      ),
-                      activeColor: AppColors.primary,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      dense: true,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: AppRadius.mdAll),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Payment method
-            Text('Payment Method',
-                style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                _PaymentChip(
-                  label: 'Cash',
-                  icon: Icons.money_rounded,
-                  selected: _paymentMethod == 'cash',
-                  onTap: () => setState(() => _paymentMethod = 'cash'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _PaymentChip(
-                  label: 'EcoCash',
-                  icon: Icons.phone_android_rounded,
-                  selected: _paymentMethod == 'ecocash',
-                  onTap: () => setState(() => _paymentMethod = 'ecocash'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                _PaymentChip(
-                  label: 'PayNow',
-                  icon: Icons.account_balance_rounded,
-                  selected: _paymentMethod == 'paynow',
-                  onTap: () => setState(() => _paymentMethod = 'paynow'),
-                ),
-              ],
-            ),
-
-            // Cancellation policy
-            if (_cancelPolicy != null) ...[
-              const SizedBox(height: AppSpacing.xxl),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.06),
-                  borderRadius: AppRadius.mdAll,
-                  border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        color: AppColors.warning, size: 20),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Cancellation Policy',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13)),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Free cancellation up to ${_cancelPolicy!['free_cancel_hours']}h before. '
-                            'Late cancel: ${_cancelPolicy!['late_cancel_fee_percent']}% fee. '
-                            'No-show: ${_cancelPolicy!['no_show_fee_percent']}% fee.',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Promo code section
-            Text('Promo Code', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-            if (_appliedPromo != null)
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.05),
-                  borderRadius: AppRadius.mdAll,
-                  border: Border.all(
-                      color: AppColors.success.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xs),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.1),
-                        borderRadius: AppRadius.smAll,
-                      ),
-                      child: const Icon(Icons.check_circle_rounded,
-                          color: AppColors.success, size: 18),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _appliedPromo!['code'],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.success,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          Text(
-                            '-\$${_discountAmount.toStringAsFixed(2)} discount applied',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.success),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _removePromo,
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      color: AppColors.textTertiary,
-                    ),
-                  ],
-                ),
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _promoCtrl,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        hintText: 'Enter promo code',
-                        prefixIcon:
-                            const Icon(Icons.confirmation_number_outlined),
-                        errorText: _promoError,
-                        border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: _applyingPromo ? null : _applyPromo,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primarySoft,
-                        foregroundColor: AppColors.primary,
-                        minimumSize: const Size(0, 48),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.mdAll),
-                      ),
-                      child: _applyingPromo
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Apply'),
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Offer your price
-            Container(
-              decoration: BoxDecoration(
-                color: _isNegotiated
-                    ? AppColors.success.withValues(alpha: 0.05)
-                    : AppColors.primary.withValues(alpha: 0.04),
-                borderRadius: AppRadius.lgAll,
-                border: Border.all(
-                  color: _isNegotiated
-                      ? AppColors.success.withValues(alpha: 0.3)
-                      : AppColors.primary.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: AppRadius.lgAll,
-                child: InkWell(
-                  borderRadius: AppRadius.lgAll,
-                  onTap: _openPriceOffer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: _isNegotiated
-                                ? AppColors.success.withValues(alpha: 0.1)
-                                : AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: AppRadius.mdAll,
-                          ),
-                          child: Icon(
-                            _isNegotiated
-                                ? Icons.check_circle_rounded
-                                : Icons.local_offer_outlined,
-                            color: _isNegotiated
-                                ? AppColors.success
-                                : AppColors.primary,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isNegotiated
-                                    ? 'Your Offer: \$${_offeredPrice!.toStringAsFixed(0)}'
-                                    : 'Offer Your Price',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: _isNegotiated
-                                      ? AppColors.success
-                                      : AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                _isNegotiated
-                                    ? 'Listed: \$${_servicePrice.toStringAsFixed(0)} — Tap to change'
-                                    : 'Suggest a price for this service',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppColors.textTertiary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Price summary card
-            Container(
-              padding: AppSpacing.cardPadding,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: AppRadius.lgAll,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Service',
-                        style: Theme.of(context).textTheme.bodyMedium),
-                    Text(
-                      '\$${_servicePrice.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: _isNegotiated
-                            ? AppColors.textTertiary
-                            : AppColors.textPrimary,
-                        decoration: _isNegotiated
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_isNegotiated) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_offer_outlined,
-                              size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          const Text('Your offer',
-                              style: TextStyle(
-                                  fontSize: 14, color: AppColors.primary)),
-                        ],
-                      ),
-                      Text(
-                        '\$${_offeredPrice!.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (_addonsTotal > 0) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Add-ons (${_selectedAddonIds.length})',
-                          style: const TextStyle(fontSize: 14)),
-                      Text(
-                        '+\$${_addonsTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (_travelFee > 0) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Travel fee',
-                          style: TextStyle(fontSize: 14)),
-                      Text(
-                        '+\$${_travelFee.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (_discountAmount > 0) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_offer_outlined,
-                              size: 14, color: AppColors.success),
-                          const SizedBox(width: 4),
-                          Text('Discount (${_appliedPromo!['code']})',
-                              style: const TextStyle(
-                                  fontSize: 14, color: AppColors.success)),
-                        ],
-                      ),
-                      Text(
-                        '-\$${_discountAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                Divider(
-                  height: AppSpacing.xxl,
-                  color: AppColors.border,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    Text('\$${_totalPrice.toStringAsFixed(2)}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(color: AppColors.primary)),
-                  ],
-                ),
-                if (_discountAmount > 0) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'You save \$${_discountAmount.toStringAsFixed(2)}!',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _paymentMethod == 'cash'
-                      ? 'Cash payment at time of service'
-                      : _paymentMethod == 'ecocash'
-                          ? 'Pay via EcoCash'
-                          : 'Pay via PayNow',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ]),
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-
-            // Confirm button
-            FilledButton.icon(
-              onPressed: _submitting ? null : _confirmBooking,
-              icon: _submitting
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check_circle_outline),
-              label: Text(_submitting
-                  ? 'Sending Request...'
-                  : 'Confirm Booking Request'),
-            ),
-
-            const SizedBox(height: AppSpacing.xxl),
-          ],
+    return PopScope(
+      canPop: _step == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _step--);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () {
+              if (_step > 0) {
+                setState(() => _step--);
+              } else if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/provider/${widget.providerId}');
+              }
+            },
+          ),
+          title: Text('Book ${(_provider?['full_name'] ?? '').toString().split(' ').first}'),
         ),
+        body: Column(children: [
+          _StepBar(step: _step, titles: _stepTitles),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                  children: [
+                    switch (_step) {
+                      0 => _serviceStep(),
+                      1 => _whenStep(),
+                      2 => _detailsStep(),
+                      _ => _reviewStep(),
+                    },
+                  ],
+                ),
+              ),
+            ),
+          ),
+          _BottomBar(
+            total: _money(_total),
+            subtitle: '$_totalMinutes min${_deposit > 0 ? ' · ${_money(_deposit)} deposit' : ''}',
+            label: buttonLabel,
+            busy: _submitting,
+            onPressed: _submitting ? null : _next,
+          ),
+        ]),
       ),
     );
   }
-}
 
-class _PaymentChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PaymentChip({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: selected
-            ? AppColors.primary.withValues(alpha: 0.08)
-            : AppColors.cardLight,
-        borderRadius: AppRadius.mdAll,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.mdAll,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.md, horizontal: AppSpacing.sm),
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.mdAll,
-              border: Border.all(
-                color: selected
-                    ? AppColors.primary
-                    : AppColors.borderStrong,
-                width: selected ? 1.5 : 1,
+  Widget _serviceStep() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('What would you like?', style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 16),
+      ..._services.map((s) {
+        final sel = s['id'] == _serviceId;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _SelectCard(
+            selected: sel,
+            onTap: () => _selectService(s['id']),
+            leading: CategoryBadge(name: s['service_categories']?['name'], size: 44),
+            title: s['service_name'] ?? 'Service',
+            subtitle: '${s['duration_minutes'] ?? 60} min',
+            trailing: _money(((s['price'] as num?) ?? 0).toDouble()),
+          ),
+        );
+      }),
+      if (_tiers.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Text('Choose an option', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        ..._tiers.map((t) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _SelectCard(
+                selected: _tierId == t['id'],
+                onTap: () => setState(() {
+                  _tierId = t['id'];
+                  _time = null;
+                }),
+                title: t['name'] ?? '',
+                subtitle: '${t['duration_minutes']} min',
+                trailing: _money((t['price'] as num).toDouble()),
+                radio: true,
               ),
+            )),
+      ],
+      if (_addons.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Text('Add extras', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        ..._addons.map((a) {
+          final on = _addonIds.contains(a['id']);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _SelectCard(
+              selected: on,
+              onTap: () => setState(() {
+                on ? _addonIds.remove(a['id']) : _addonIds.add(a['id']);
+                _time = null;
+              }),
+              title: a['name'] ?? '',
+              subtitle: (a['duration_minutes'] ?? 0) > 0 ? '+${a['duration_minutes']} min' : null,
+              trailing: '+${_money(((a['price'] as num?) ?? 0).toDouble())}',
+              checkbox: true,
             ),
-            child: Column(
-              children: [
-                Icon(icon,
-                    size: 22,
-                    color:
-                        selected ? AppColors.primary : AppColors.textTertiary),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                  ),
-                ),
-              ],
+          );
+        }),
+      ],
+    ]);
+  }
+
+  Widget _whenStep() {
+    final notice = (_providerProfile?['min_notice_hours'] as num?)?.toInt() ?? 2;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('When suits you?', style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 4),
+      Text('Only times the stylist is free are shown. Book at least $notice h ahead.',
+          style: Theme.of(context).textTheme.bodyMedium),
+      const SizedBox(height: 16),
+      SlotPicker(
+        key: ValueKey('$_serviceId-$_totalMinutes'),
+        providerId: widget.providerId,
+        minutes: _totalMinutes,
+        initialDate: _day,
+        initialTime: _time,
+        onChanged: (d, t) => setState(() {
+          _day = d;
+          _time = t;
+        }),
+      ),
+    ]);
+  }
+
+  Widget _detailsStep() {
+    final hasTravel = ((_providerProfile?['travel_fee_per_km'] as num?) ?? 0) > 0;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Your details', style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 16),
+      TextField(
+        controller: _nameCtrl,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(labelText: 'Your name', prefixIcon: Icon(Icons.person_outline_rounded)),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _phoneCtrl,
+        keyboardType: TextInputType.phone,
+        decoration: const InputDecoration(
+          labelText: 'Phone (WhatsApp)',
+          hintText: '+263 7X XXX XXXX',
+          prefixIcon: Icon(Icons.phone_outlined),
+        ),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _addressCtrl,
+        maxLines: 2,
+        minLines: 1,
+        decoration: const InputDecoration(
+          labelText: 'Where should the stylist come?',
+          hintText: 'e.g. 12 Borrowdale Rd, Harare',
+          prefixIcon: Icon(Icons.location_on_outlined),
+        ),
+      ),
+      if (hasTravel)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _locating ? null : _useMyLocation,
+            icon: _locating
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.my_location_rounded, size: 18),
+            label: Text(_lat == null
+                ? 'Use my location to work out travel fee'
+                : _travelFee > 0
+                    ? 'Travel fee: ${_money(_travelFee)}'
+                    : 'You\'re within the free travel area'),
+          ),
+        ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _noteCtrl,
+        maxLines: 3,
+        minLines: 1,
+        decoration: const InputDecoration(
+          labelText: 'Note for the stylist (optional)',
+          hintText: 'e.g. Gate code, hair length, bring products',
+          prefixIcon: Icon(Icons.edit_note_rounded),
+        ),
+      ),
+      const SizedBox(height: 24),
+      Text('How will you pay?', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 10),
+      Row(children: [
+        for (final (id, label, icon) in const [
+          ('cash', 'Cash', Icons.payments_outlined),
+          ('ecocash', 'EcoCash', Icons.phone_android_rounded),
+          ('paynow', 'Card', Icons.credit_card_rounded),
+        ]) ...[
+          Expanded(
+            child: _SelectCard(
+              selected: _payment == id,
+              onTap: () => setState(() => _payment = id),
+              title: label,
+              icon: icon,
+              compact: true,
+            ),
+          ),
+          if (id != 'paynow') const SizedBox(width: 8),
+        ],
+      ]),
+      if (_depositPercent > 0) ...[
+        const SizedBox(height: 10),
+        Text(
+          'This stylist asks for a $_depositPercent% deposit, paid by ${_payment == 'paynow' ? 'card' : 'EcoCash'} when you book. '
+          'The rest is paid ${_payment == 'cash' ? 'in cash' : 'the same way'} on the day.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+      const SizedBox(height: 24),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: TextField(
+            controller: _promoCtrl,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Promo code',
+              prefixIcon: const Icon(Icons.local_offer_outlined),
+              errorText: _promoError,
+              helperText: _promo != null ? 'Saved ${_money(_discount)}' : null,
             ),
           ),
         ),
+        const SizedBox(width: 8),
+        SizedBox(
+          height: 56,
+          child: OutlinedButton(
+            onPressed: _applyingPromo ? null : _applyPromo,
+            child: Text(_applyingPromo ? '…' : 'Apply'),
+          ),
+        ),
+      ]),
+    ]);
+  }
+
+  Widget _reviewStep() {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final d = _day!;
+    final h = int.parse(_time!.substring(0, 2));
+    final timeLabel = '${h % 12 == 0 ? 12 : h % 12}:${_time!.substring(3)} ${h >= 12 ? 'pm' : 'am'}';
+    Widget row(String l, String r, {bool bold = false, Color? color}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(children: [
+            Expanded(
+                child: Text(l,
+                    style: TextStyle(
+                        fontSize: bold ? 16 : 14,
+                        fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+                        color: bold ? AppColors.textPrimary : AppColors.textSecondary))),
+            Text(r,
+                style: TextStyle(
+                    fontSize: bold ? 18 : 14,
+                    fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+                    color: color ?? AppColors.textPrimary)),
+          ]),
+        );
+
+    final tierName = (_tier != null && _tier!.isNotEmpty) ? ' · ${_tier!['name']}' : '';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Check and confirm', style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 16),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              PersonAvatar(name: _provider?['full_name'] ?? '', url: _provider?['avatar_url'], size: 44),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${_service['service_name'] ?? ''}$tierName', style: Theme.of(context).textTheme.titleMedium),
+                  Text('with ${_provider?['full_name'] ?? ''}', style: Theme.of(context).textTheme.bodyMedium),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            _InfoLine(
+                icon: Icons.event_rounded,
+                text: '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]} · $timeLabel ($_totalMinutes min)'),
+            _InfoLine(icon: Icons.location_on_outlined, text: _addressCtrl.text.trim()),
+            _InfoLine(
+                icon: Icons.payments_outlined,
+                text: const {'cash': 'Pay cash', 'ecocash': 'Pay with EcoCash', 'paynow': 'Pay by card'}[_payment]!),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            row('${_service['service_name'] ?? 'Service'}$tierName', _money(_basePrice)),
+            ..._addons
+                .where((a) => _addonIds.contains(a['id']))
+                .map((a) => row(a['name'] ?? 'Extra', '+${_money(((a['price'] as num?) ?? 0).toDouble())}')),
+            if (_travelFee > 0) row('Travel', '+${_money(_travelFee)}'),
+            if (_discount > 0) row('Promo ${_promo?['code']}', '-${_money(_discount)}', color: AppColors.success),
+            const Divider(height: 20),
+            row('Total', _money(_total), bold: true),
+            if (_deposit > 0) row('Deposit due now', _money(_deposit), color: AppColors.primary),
+          ]),
+        ),
+      ),
+      if (_policy != null) ...[
+        const SizedBox(height: 12),
+        SoftBanner(
+          icon: Icons.info_outline_rounded,
+          color: AppColors.info,
+          title: 'Free cancellation up to ${_policy!['free_cancel_hours']}h before',
+          message: 'After that, a ${_policy!['late_cancel_fee_percent']}% late-cancellation fee applies.',
+        ),
+      ],
+    ]);
+  }
+}
+
+class _StepBar extends StatelessWidget {
+  final int step;
+  final List<String> titles;
+  const _StepBar({required this.step, required this.titles});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+      child: Row(children: [
+        for (var i = 0; i < titles.length; i++) ...[
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                height: 4,
+                decoration: BoxDecoration(
+                  color: i <= step ? AppColors.primary : AppColors.border,
+                  borderRadius: AppRadius.pill,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(titles[i],
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: i == step ? FontWeight.w800 : FontWeight.w600,
+                      color: i <= step ? AppColors.primary : AppColors.textTertiary)),
+            ]),
+          ),
+          if (i < titles.length - 1) const SizedBox(width: 6),
+        ],
+      ]),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  final String total;
+  final String subtitle;
+  final String label;
+  final bool busy;
+  final VoidCallback? onPressed;
+  const _BottomBar(
+      {required this.total, required this.subtitle, required this.label, required this.busy, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + MediaQuery.of(context).padding.bottom),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Row(children: [
+            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(total,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            ]),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FilledButton(
+                onPressed: onPressed,
+                child: busy
+                    ? const SizedBox(
+                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(label, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }
 }
 
-/// A styled card for date/time picker triggers.
-class _PickerCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool isSelected;
+class _SelectCard extends StatelessWidget {
+  final bool selected;
   final VoidCallback onTap;
-
-  const _PickerCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.isSelected,
+  final String title;
+  final String? subtitle;
+  final String? trailing;
+  final Widget? leading;
+  final IconData? icon;
+  final bool radio;
+  final bool checkbox;
+  final bool compact;
+  const _SelectCard({
+    required this.selected,
     required this.onTap,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.leading,
+    this.icon,
+    this.radio = false,
+    this.checkbox = false,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final border = selected ? AppColors.primary : AppColors.border;
     return Material(
-      color: isSelected
-          ? AppColors.primary.withValues(alpha: 0.05)
-          : AppColors.cardLight,
-      borderRadius: AppRadius.mdAll,
+      color: selected ? AppColors.primarySoft : Colors.white,
+      shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.mdAll, side: BorderSide(color: border, width: selected ? 1.6 : 1)),
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.mdAll,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.mdAll,
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : AppColors.borderStrong,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon,
-                  size: 22,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.textTertiary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: Theme.of(context).textTheme.labelSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: isSelected
-                                ? AppColors.textPrimary
-                                : AppColors.textTertiary,
-                          ),
-                      overflow: TextOverflow.ellipsis,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14, vertical: compact ? 14 : 12),
+          child: compact
+              ? Column(children: [
+                  Icon(icon, color: selected ? AppColors.primary : AppColors.textSecondary),
+                  const SizedBox(height: 6),
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: selected ? AppColors.primary : AppColors.textPrimary)),
+                ])
+              : Row(children: [
+                  if (radio || checkbox) ...[
+                    Icon(
+                      checkbox
+                          ? (selected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded)
+                          : (selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded),
+                      color: selected ? AppColors.primary : AppColors.textTertiary,
                     ),
+                    const SizedBox(width: 12),
                   ],
-                ),
-              ),
-            ],
-          ),
+                  if (leading != null) ...[leading!, const SizedBox(width: 12)],
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(title, style: Theme.of(context).textTheme.titleSmall),
+                      if (subtitle != null) Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+                    ]),
+                  ),
+                  if (trailing != null)
+                    Text(trailing!,
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: selected ? AppColors.primary : AppColors.textPrimary)),
+                ]),
         ),
       ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 18, color: AppColors.textTertiary),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(text,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary))),
+      ]),
     );
   }
 }

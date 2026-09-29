@@ -29,10 +29,7 @@ class BookingCard extends StatelessWidget {
     this.onDeclineOffer,
   });
 
-  bool get _hasNegotiation {
-    final ns = booking['negotiation_status'] ?? 'none';
-    return ns != 'none';
-  }
+  bool get _hasNegotiation => booking['negotiation_status'] == 'agreed';
 
   Widget _buildNegotiationBanner(BuildContext context) {
     final ns = booking['negotiation_status'] ?? 'none';

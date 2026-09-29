@@ -85,13 +85,9 @@ class _ServiceRequestQuoteScreenState
       if (mounted) context.go('/booking/$bookingId');
     } on PostgrestException catch (e) {
       if (!mounted) return;
-      if (e.message.contains('ACTIVATION_REQUIRED')) {
-        context.push('/activation');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+      );
     }
   }
 

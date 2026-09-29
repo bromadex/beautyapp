@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show UserAttributes, AuthException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/avatar_widget.dart';
@@ -25,6 +26,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _locationCtrl.dispose();
+    _emailCtrl.dispose();
+    _pwCtrl.dispose();
     super.dispose();
   }
 
@@ -58,7 +61,57 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     if (url != null && mounted) setState(() => _avatarUrl = url);
   }
 
+  final _emailCtrl = TextEditingController();
+  final _pwCtrl = TextEditingController();
+  bool _upgrading = false;
+
+  Future<void> _createAccount() async {
+    final email = _emailCtrl.text.trim();
+    final pw = _pwCtrl.text;
+    if (!email.contains('@') || pw.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid email and a password of at least 8 characters')));
+      return;
+    }
+    setState(() => _upgrading = true);
+    try {
+      await supabase.auth.updateUser(UserAttributes(email: email, password: pw));
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Check your email'),
+            content: Text('We sent a link to $email. Tap it to finish creating your account — '
+                'your bookings stay with you.'),
+            actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) setState(() => _upgrading = false);
+    }
+  }
+
   Future<void> _signOut() async {
+    if (supabase.auth.currentUser?.isAnonymous ?? false) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sign out of guest mode?'),
+          content: const Text('Guest bookings can\'t be recovered after signing out. Create an account first to keep them.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Stay')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     await supabase.auth.signOut();
     if (mounted) context.go('/login');
   }
@@ -316,6 +369,41 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 child: ListView(
                   padding: AppSpacing.screenPadding,
                   children: [
+                    if (supabase.auth.currentUser?.isAnonymous ?? false) ...[
+                      Card(
+                        color: AppColors.primarySoft,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                            Text('Create your free account', style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 4),
+                            Text('Keep your bookings, chat with stylists and get reminders on any phone.',
+                                style: Theme.of(context).textTheme.bodyMedium),
+                            const SizedBox(height: 16),
+                            TextField(
+                              controller: _emailCtrl,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: const InputDecoration(
+                                  labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _pwCtrl,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                  labelText: 'Password (8+ characters)', prefixIcon: Icon(Icons.lock_outline_rounded)),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: _upgrading ? null : _createAccount,
+                              child: Text(_upgrading ? 'Creating…' : 'Create account'),
+                            ),
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Profile
                     Card(
                       child: Padding(

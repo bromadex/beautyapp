@@ -24,7 +24,6 @@ import 'screens/client_bookings_screen.dart';
 import 'screens/provider_bookings_screen.dart';
 import 'screens/booking_detail_screen.dart';
 import 'screens/chat_screen.dart';
-import 'screens/tracking_screen.dart';
 import 'screens/payment_screen.dart';
 import 'screens/provider_earnings_screen.dart';
 import 'screens/browse_screen.dart';
@@ -34,8 +33,6 @@ import 'screens/favorites_screen.dart';
 import 'screens/promotion_management_screen.dart';
 import 'screens/availability_screen.dart';
 import 'screens/notifications_screen.dart';
-import 'screens/smart_match_screen.dart';
-import 'screens/activation_screen.dart';
 import 'screens/account_settings_screen.dart';
 import 'screens/dispute_screen.dart';
 import 'screens/provider_settings_screen.dart';
@@ -171,13 +168,6 @@ final appRouter = GoRouter(
 
     // Client Activation (Stage 19)
     GoRoute(
-      path: '/activation',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, __) => const ActivationScreen(),
-    ),
-
-    // Admin (Stage 14)
-    GoRoute(
       path: '/admin/verify',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const AdminVerificationScreen(),
@@ -262,13 +252,6 @@ final appRouter = GoRouter(
       builder: (_, __) => const NotificationsScreen(),
     ),
     GoRoute(
-      path: '/recommended',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, __) => const SmartMatchScreen(),
-    ),
-
-    // Booking Flows (Create, Detail)
-    GoRoute(
       path: '/book/:providerId/:serviceId',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, state) => BookingScreen(
@@ -295,15 +278,6 @@ final appRouter = GoRouter(
     ),
 
     // Live Tracking (Stage 6B)
-    GoRoute(
-      path: '/tracking/:bookingId',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, state) => TrackingScreen(
-        bookingId: state.pathParameters['bookingId']!,
-      ),
-    ),
-
-    // Payment (Stage 8)
     GoRoute(
       path: '/payment/:bookingId',
       parentNavigatorKey: _rootNavigatorKey,
