@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/google_auth.dart';
+import '../services/social_auth.dart';
+import '../widgets/apple_sign_in_button.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -58,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _googleLoading = true);
     try {
-      await GoogleAuth.start();
+      await SocialAuth.start();
     } on AuthException catch (e) {
       _googleError(e.message);
     } catch (_) {
@@ -329,6 +330,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           minimumSize: const Size.fromHeight(52),
                         ),
                       ),
+                      const AppleSignInButton(label: 'Continue with Apple'),
 
                       const SizedBox(height: 24),
                       Row(

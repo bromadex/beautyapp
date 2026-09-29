@@ -9,7 +9,7 @@ import 'router.dart';
 import 'supabase_client.dart';
 import 'theme.dart';
 import 'services/appearance.dart';
-import 'services/google_auth.dart';
+import 'services/social_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,14 +26,14 @@ Future<void> main() async {
   await _applyPendingOAuthUserType();
   await Appearance.instance.load();
 
-  // Phone app: coming back from Google in the browser signs the person in
+  // Phone app: coming back from Google or Apple in the browser signs the person in
   // without restarting, so set up their account and open their home here.
   if (!kIsWeb) {
     supabase.auth.onAuthStateChange.listen((data) async {
-      if (data.event != AuthChangeEvent.signedIn || !GoogleAuth.pending) return;
-      GoogleAuth.pending = false;
+      if (data.event != AuthChangeEvent.signedIn || !SocialAuth.pending) return;
+      SocialAuth.pending = false;
       await _applyPendingOAuthUserType();
-      await GoogleAuth.ensureProfile();
+      await SocialAuth.ensureProfile();
       appRouter.go('/');
     });
   }
@@ -60,10 +60,7 @@ Future<void> _applyPendingOAuthUserType() async {
     if (existing == null) {
       await supabase.from('profiles').insert({
         'id': user.id,
-        'full_name': user.userMetadata?['full_name'] ??
-            user.userMetadata?['name'] ??
-            user.email?.split('@').first ??
-            '',
+        'full_name': displayName(user),
         'user_type': pendingType,
       });
     } else if (existing['user_type'] != pendingType) {
