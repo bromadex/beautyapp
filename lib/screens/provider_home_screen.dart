@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
+import '../services/earnings_service.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../theme.dart';
@@ -209,25 +210,9 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
     try {
       final now = DateTime.now();
-      final weekAgo = now.subtract(const Duration(days: 7)).toUtc().toIso8601String();
-      final twoWeeksAgo = now.subtract(const Duration(days: 14)).toUtc().toIso8601String();
-
-      final payments = await supabase
-          .from('payments')
-          .select('amount, created_at')
-          .eq('provider_id', userId)
-          .eq('status', 'completed')
-          .gte('created_at', twoWeeksAgo);
-
-      for (final p in (payments as List)) {
-        final amount = (p['amount'] as num).toDouble();
-        final createdAt = p['created_at'] as String;
-        if (createdAt.compareTo(weekAgo) >= 0) {
-          weeklyEarnings += amount;
-        } else {
-          prevWeekEarnings += amount;
-        }
-      }
+      final earned = await EarningsService.load();
+      weeklyEarnings = earned.between(now.subtract(const Duration(days: 7)), now.add(const Duration(days: 1)));
+      prevWeekEarnings = earned.between(now.subtract(const Duration(days: 14)), now.subtract(const Duration(days: 7)));
     } catch (_) {}
 
     try {
@@ -859,12 +844,16 @@ class _StatsRow extends StatelessWidget {
 
     return Row(
       children: [
-        Expanded(child: _StatCard(
-          topColor: AppColors.success,
-          label: 'THIS WEEK',
-          value: '\$${weeklyEarnings.toStringAsFixed(0)}',
-          subtitle: earningsTrend,
-          subtitleColor: earningsUp ? AppColors.success : AppColors.error,
+        Expanded(child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => context.push('/earnings'),
+          child: _StatCard(
+            topColor: AppColors.success,
+            label: 'THIS WEEK',
+            value: '\$${weeklyEarnings.toStringAsFixed(0)}',
+            subtitle: earningsTrend,
+            subtitleColor: earningsUp ? AppColors.success : AppColors.error,
+          ),
         )),
         const SizedBox(width: 8),
         Expanded(child: _StatCard(

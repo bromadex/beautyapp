@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import '../supabase_client.dart';
+import 'package:go_router/go_router.dart';
+import '../services/earnings_service.dart';
 import '../theme.dart';
+import '../utils/booking_helpers.dart';
+import '../utils/pay_methods.dart';
+import '../widgets/ui.dart';
 
+/// What the pro has received, from payments they confirmed and bookings
+/// they marked as paid. Their own records; BeauTap takes no commission.
 class ProviderEarningsScreen extends StatefulWidget {
   const ProviderEarningsScreen({super.key});
 
@@ -10,461 +16,379 @@ class ProviderEarningsScreen extends StatefulWidget {
   State<ProviderEarningsScreen> createState() => _ProviderEarningsScreenState();
 }
 
+enum _Period { week, month, year, all }
+
 class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
-  List<Map<String, dynamic>> _payments = [];
-  bool _loading = true;
+  Earnings? _data;
+  String? _error;
+  _Period _period = _Period.month;
 
-  // Providers keep 100% of every booking payment — no commission
-  double get _totalEarnings =>
-      _payments.where((p) => p['status'] == 'paid').fold(
-          0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
-
-  double get _pendingCod =>
-      _payments.where((p) => p['status'] == 'pending').fold(
-          0.0, (sum, p) => sum + (p['amount'] as num).toDouble());
-
-  int get _totalTransactions => _payments.length;
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void initState() {
     super.initState();
-    _loadEarnings();
+    _load();
   }
 
-  Future<void> _loadEarnings() async {
-    final uid = supabase.auth.currentUser!.id;
-    final data = await supabase
-        .from('payments')
-        .select('*, bookings(booking_time, status), client:profiles!payments_client_id_fkey(full_name)')
-        .eq('provider_id', uid)
-        .order('created_at', ascending: false);
-
-    if (mounted) {
-      setState(() {
-        _payments = List<Map<String, dynamic>>.from(data);
-        _loading = false;
-      });
+  Future<void> _load() async {
+    try {
+      final d = await EarningsService.load();
+      if (mounted) {
+        setState(() {
+          _data = d;
+          _error = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not load your earnings. Check your connection.');
     }
   }
 
-  Future<void> _markCodPaid(String paymentId, String bookingId) async {
-    await supabase.rpc('confirm_cash_received', params: {'p_booking_id': bookingId});
-
-    await _loadEarnings();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Cash payment recorded'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+  /// Start of the chosen period and of the one before it.
+  (DateTime start, DateTime prevStart) get _range {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return switch (_period) {
+      _Period.week => (
+          today.subtract(Duration(days: today.weekday - 1)),
+          today.subtract(Duration(days: today.weekday - 1 + 7))
         ),
-      );
-    }
+      _Period.month => (DateTime(now.year, now.month), DateTime(now.year, now.month - 1)),
+      _Period.year => (DateTime(now.year), DateTime(now.year - 1)),
+      _Period.all => (DateTime(2000), DateTime(2000)),
+    };
   }
+
+  String get _periodLabel => switch (_period) {
+        _Period.week => 'this week',
+        _Period.month => 'this month',
+        _Period.year => 'this year',
+        _Period.all => 'in total',
+      };
+
+  String get _prevLabel => switch (_period) {
+        _Period.week => 'Last week',
+        _Period.month => 'Last month',
+        _Period.year => 'Last year',
+        _Period.all => '',
+      };
+
+  String _dayLabel(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(d.year, d.month, d.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return '${_days[d.weekday - 1]} ${d.day} ${_months[d.month - 1]}${d.year != now.year ? ' ${d.year}' : ''}';
+  }
+
+  IconData _methodIcon(String m) => switch (m) {
+        'ecocash' => TablerIcons.device_mobile,
+        'innbucks' => TablerIcons.wallet,
+        'onemoney' => TablerIcons.device_mobile_dollar,
+        'bank' => TablerIcons.building_bank,
+        _ => TablerIcons.cash,
+      };
+
+  String _kindLabel(EarningEntry e) => switch (e.kind) {
+        'deposit' => 'Deposit · ${payMethodLabel(e.method)}',
+        'balance' => 'Balance · ${payMethodLabel(e.method)}',
+        'full' => payMethodLabel(e.method),
+        _ => 'Marked paid · ${payMethodLabel(e.method)}',
+      };
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
-
     return Scaffold(
-      appBar: AppBar(title: const Text('My Earnings')),
-      body: Column(
-        children: [
-          // Dashboard summary cards
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _DashboardCard(
-                    label: 'Total Earned',
-                    amount: '\$${_totalEarnings.toStringAsFixed(2)}',
-                    icon: TablerIcons.wallet,
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _DashboardCard(
-                    label: 'Cash to collect',
-                    amount: '\$${_pendingCod.toStringAsFixed(2)}',
-                    icon: TablerIcons.hourglass_low,
-                    color: AppColors.warning,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // No-commission banner
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.08),
-                borderRadius: AppRadius.mdAll,
-                border: Border.all(
-                    color: AppColors.success.withValues(alpha: 0.2)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(TablerIcons.rosette_discount_check,
-                      color: AppColors.success, size: 18),
-                  SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      'You keep 100% of what you earn — no hidden fees, no commission.',
-                      style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.success),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Transactions count
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Row(
-              children: [
-                Text(
-                  'Recent Transactions',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$_totalTransactions total',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Payments list
-          Expanded(
-            child: _payments.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.xl),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            TablerIcons.wallet,
-                            size: 40,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          'No payments yet',
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Your earnings will appear here',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                    ),
-                    itemCount: _payments.length,
-                    itemBuilder: (_, i) {
-                      final p = _payments[i];
-                      final clientName =
-                          p['client']?['full_name'] ?? 'Client';
-                      final isCodPending = p['status'] == 'pending' &&
-                          p['method'] == 'cash_on_delivery';
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                        padding: AppSpacing.cardPadding,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: AppRadius.lgAll,
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header row
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    clientName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                _StatusChip(status: p['status']),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-
-                            // Payment details row
-                            Row(
-                              children: [
-                                _PaymentDetail(
-                                  label: 'You Receive',
-                                  value:
-                                      '\$${(p['amount'] as num).toStringAsFixed(2)}',
-                                  valueColor: AppColors.success,
-                                  bold: true,
-                                ),
-                                const SizedBox(width: AppSpacing.lg),
-                                _PaymentDetail(
-                                  label: 'Method',
-                                  value: _methodLabel(p['method']),
-                                ),
-                              ],
-                            ),
-
-                            if (p['transaction_ref'] != null) ...[
-                              const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                'Ref: ${p['transaction_ref']}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textTertiary,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-
-                            if (isCodPending) ...[
-                              const SizedBox(height: AppSpacing.md),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: () =>
-                                      _markCodPaid(p['id'], p['booking_id']),
-                                  icon: const Icon(TablerIcons.check,
-                                      size: 18),
-                                  label:
-                                      const Text('Mark Cash as Received'),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.success,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Earnings')),
+      body: _error != null
+          ? EmptyState(
+              icon: TablerIcons.wifi_off,
+              title: 'Can\'t load earnings',
+              message: _error!,
+              actionLabel: 'Try again',
+              onAction: _load,
+            )
+          : _data == null
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
     );
   }
 
-  String _methodLabel(String method) {
-    switch (method) {
-      case 'card':
-        return 'Card';
-      case 'mobile_money':
-        return 'Mobile Money';
-      case 'cash_on_delivery':
-        return 'Cash';
-      default:
-        return method;
+  Widget _body(Earnings d) {
+    final (start, prevStart) = _range;
+    final list = d.entries.where((e) => !e.when.isBefore(start)).toList();
+    final total = list.fold(0.0, (s, e) => s + e.amount);
+    final prev = _period == _Period.all ? 0.0 : d.between(prevStart, start);
+
+    final byMethod = <String, double>{};
+    for (final e in list) {
+      byMethod[e.method] = (byMethod[e.method] ?? 0) + e.amount;
     }
-  }
-}
+    final methods = byMethod.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-// -- Dashboard summary card ---------------------------------------------------
-
-class _DashboardCard extends StatelessWidget {
-  final String label;
-  final String amount;
-  final IconData icon;
-  final Color color;
-
-  const _DashboardCard({
-    required this.label,
-    required this.amount,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: AppSpacing.cardPadding,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: AppRadius.lgAll,
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: AppRadius.smAll,
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            amount,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: color,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// -- Status chip --------------------------------------------------------------
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color fgColor;
-    String label;
-    switch (status) {
-      case 'paid':
-        fgColor = AppColors.success;
-        bgColor = AppColors.success.withValues(alpha: 0.1);
-        label = 'Paid';
-        break;
-      case 'pending':
-        fgColor = AppColors.warning;
-        bgColor = AppColors.warning.withValues(alpha: 0.1);
-        label = 'Cash to collect';
-        break;
-      case 'refunded':
-        fgColor = AppColors.error;
-        bgColor = AppColors.error.withValues(alpha: 0.1);
-        label = 'Refunded';
-        break;
-      default:
-        fgColor = AppColors.textTertiary;
-        bgColor = Colors.grey.withValues(alpha: 0.1);
-        label = status;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fgColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-// -- Payment detail -----------------------------------------------------------
-
-class _PaymentDetail extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool bold;
-  const _PaymentDetail({
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.bold = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textTertiary,
-            fontWeight: FontWeight.w500,
-          ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            for (final (p, label) in const [
+              (_Period.week, 'This week'),
+              (_Period.month, 'This month'),
+              (_Period.year, 'This year'),
+              (_Period.all, 'All time'),
+            ]) ...[
+              ChoiceChip(
+                label: Text(label),
+                selected: _period == p,
+                onSelected: (_) => setState(() => _period = p),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ]),
         ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-            color: valueColor ?? AppColors.textPrimary,
-          ),
+        const SizedBox(height: 12),
+
+        // Total for the period
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Received $_periodLabel',
+                style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(money(total),
+                style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, height: 1.1)),
+            const SizedBox(height: 8),
+            Text(
+              [
+                '${list.length} ${list.length == 1 ? 'payment' : 'payments'}',
+                if (_period != _Period.all) '$_prevLabel ${money(prev)}',
+              ].join('  ·  '),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+            ),
+          ]),
         ),
+
+        if (d.toCheck.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          SoftBanner(
+            icon: TablerIcons.cash_banknote,
+            color: AppColors.warning,
+            title: '${d.toCheck.length} ${d.toCheck.length == 1 ? 'payment' : 'payments'} to check',
+            message: 'Clients say they\'ve paid. Check your messages and confirm.',
+            actionLabel: 'Check',
+            onTap: () => context.push('/booking/${d.toCheck.first}').then((_) => _load()),
+          ),
+        ],
+
+        if (methods.length > 1) ...[
+          const SizedBox(height: 20),
+          const _Heading('How you were paid'),
+          const SizedBox(height: 8),
+          _Panel(
+            child: Column(children: [
+              for (final m in methods)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(children: [
+                    Icon(_methodIcon(m.key), size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    SizedBox(width: 96, child: Text(payMethodLabel(m.key))),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: AppRadius.pill,
+                        child: LinearProgressIndicator(
+                          value: total == 0 ? 0 : m.value / total,
+                          minHeight: 8,
+                          backgroundColor: AppColors.primarySoft,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 64,
+                      child: Text(money(m.value),
+                          textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ]),
+                ),
+            ]),
+          ),
+        ],
+
+        if (d.owed.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          _Heading('Still to collect · ${money(d.owedTotal)}'),
+          const SizedBox(height: 4),
+          const Text('Finished appointments that aren\'t marked as paid yet.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          const SizedBox(height: 8),
+          _Panel(
+            padding: EdgeInsets.zero,
+            child: Column(children: [
+              for (final o in d.owed.take(5))
+                _Row(
+                  icon: TablerIcons.hourglass_low,
+                  iconColor: AppColors.warningText,
+                  title: o.client,
+                  subtitle: '${o.service} · ${_dayLabel(o.when)}',
+                  amount: money(o.amount),
+                  onTap: () => context.push('/booking/${o.bookingId}').then((_) => _load()),
+                ),
+            ]),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+        const _Heading('Payments'),
+        const SizedBox(height: 8),
+        if (list.isEmpty)
+          _Panel(
+            child: Column(children: [
+              const Icon(TablerIcons.receipt, size: 32, color: AppColors.textTertiary),
+              const SizedBox(height: 8),
+              Text('No payments $_periodLabel', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text(
+                'When you confirm a payment, or mark a booking as paid, it shows here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ]),
+          )
+        else
+          ..._grouped(list),
+
+        const SizedBox(height: 20),
+        const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(TablerIcons.rosette_discount_check, size: 18, color: AppColors.success),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'You keep 100% of what clients pay you. BeauTap takes no commission and never holds your money.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+          ),
+        ]),
       ],
     );
   }
+
+  List<Widget> _grouped(List<EarningEntry> list) {
+    final out = <Widget>[];
+    String? day;
+    var rows = <Widget>[];
+    var dayTotal = 0.0;
+    void flush() {
+      final d = day;
+      if (d == null) return;
+      out.add(Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
+        child: Row(children: [
+          Expanded(child: Text(d, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary))),
+          Text(money(dayTotal), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+        ]),
+      ));
+      out.add(_Panel(padding: EdgeInsets.zero, child: Column(children: rows)));
+      out.add(const SizedBox(height: 8));
+    }
+
+    for (final e in list) {
+      final label = _dayLabel(e.when);
+      if (label != day) {
+        flush();
+        day = label;
+        rows = [];
+        dayTotal = 0;
+      }
+      dayTotal += e.amount;
+      rows.add(_Row(
+        icon: _methodIcon(e.method),
+        iconColor: AppColors.primary,
+        title: e.client,
+        subtitle: '${e.service} · ${_kindLabel(e)}',
+        amount: money(e.amount),
+        onTap: () => context.push('/booking/${e.bookingId}').then((_) => _load()),
+      ));
+    }
+    flush();
+    return out;
+  }
+}
+
+class _Heading extends StatelessWidget {
+  final String text;
+  const _Heading(this.text);
+  @override
+  Widget build(BuildContext context) => Text(text, style: Theme.of(context).textTheme.titleMedium);
+}
+
+class _Panel extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  const _Panel({required this.child, this.padding = const EdgeInsets.all(14)});
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: padding,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: child,
+      );
+}
+
+class _Row extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String amount;
+  final VoidCallback onTap;
+  const _Row({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.smAll),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              ]),
+            ),
+            const SizedBox(width: 8),
+            Text(amount, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          ]),
+        ),
+      );
 }
