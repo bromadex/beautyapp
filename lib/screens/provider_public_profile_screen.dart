@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
@@ -22,6 +24,7 @@ class _ProviderPublicProfileScreenState
   bool _loading = true;
   String? _error;
   bool _isFavorited = false;
+  Map<String, dynamic>? _loyalty;
 
   late final AnimationController _heartController;
   late final Animation<double> _heartScale;
@@ -184,7 +187,7 @@ class _ProviderPublicProfileScreenState
       try {
         final servicesResponse = await supabase
             .from('services')
-            .select('*, service_categories(name, icon), service_tiers(price, is_active)')
+            .select('*, service_categories(name, icon), service_tiers(name, price, duration_minutes, is_active, sort_order)')
             .eq('provider_id', id)
             .eq('is_active', true)
             .order('created_at');
@@ -215,6 +218,12 @@ class _ProviderPublicProfileScreenState
             .eq('provider_id', id)
             .maybeSingle();
         _isFavorited = fav != null;
+        if (((_providerProfile?['loyalty_visits'] as num?) ?? 0) > 0 && currentUser.id != id) {
+          try {
+            _loyalty = Map<String, dynamic>.from(
+                await supabase.rpc('loyalty_status', params: {'p_provider': id}) as Map);
+          } catch (_) {}
+        }
       }
 
       if (mounted) {
@@ -407,6 +416,12 @@ class _ProviderPublicProfileScreenState
           SliverAppBar(
             pinned: true,
             actions: [
+              if (_providerProfile?['slug'] != null)
+                IconButton(
+                  icon: const Icon(Icons.ios_share_rounded),
+                  tooltip: 'Share',
+                  onPressed: () => _share(name),
+                ),
               if (!isSelf)
                 ScaleTransition(
                   scale: _heartScale,
@@ -499,6 +514,10 @@ class _ProviderPublicProfileScreenState
                         ]),
                       ),
                     ),
+                    if (_loyalty?['enabled'] == true) ...[
+                      const SizedBox(height: 12),
+                      _LoyaltyCard(status: _loyalty!),
+                    ],
                   ]),
                 ),
               ),
@@ -549,13 +568,7 @@ class _ProviderPublicProfileScreenState
                     ..._services.map((s) {
                       final cat = s['service_categories'] as Map?;
                       return GestureDetector(
-                        onTap: () {
-                          if (!_isLoggedIn) {
-                            _promptSignIn(action: 'book an appointment');
-                          } else {
-                            context.push('/book/${widget.providerId}/${s['id']}');
-                          }
-                        },
+                        onTap: () => _showServiceDetails(s),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -566,6 +579,13 @@ class _ProviderPublicProfileScreenState
                           ),
                           child: Row(
                             children: [
+                              if (s['image_url'] != null)
+                                ClipRRect(
+                                  borderRadius: AppRadius.smAll,
+                                  child: Image.network(s['image_url'], width: 48, height: 48, fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const SizedBox(width: 48, height: 48)),
+                                )
+                              else
                               Container(
                                 width: 40,
                                 height: 40,
@@ -662,6 +682,157 @@ class _ProviderPublicProfileScreenState
       ),
 
       bottomNavigationBar: _buildBottomBar(context, status),
+    );
+  }
+
+  void _book(Map<String, dynamic> s) {
+    if (!_isLoggedIn) {
+      _promptSignIn(action: 'book an appointment');
+    } else {
+      context.push('/book/${widget.providerId}/${s['id']}');
+    }
+  }
+
+  void _share(String name) {
+    final link = 'https://beautyapp-swart.vercel.app/@${_providerProfile!['slug']}';
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(ctx).padding.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Share $name', style: Theme.of(ctx).textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Text(link, style: Theme.of(ctx).textTheme.bodyMedium),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              launchUrl(Uri.parse('https://wa.me/?text=${Uri.encodeComponent('Book $name on BeauTap: $link')}'),
+                  mode: LaunchMode.externalApplication);
+            },
+            icon: const Icon(Icons.chat_rounded, size: 18),
+            label: const Text('Share on WhatsApp'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: link));
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+              }
+            },
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Copy link'),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  void _showServiceDetails(Map<String, dynamic> s) {
+    final tiers = (s['service_tiers'] as List? ?? []).where((t) => t['is_active'] == true).toList()
+      ..sort((a, b) => ((a['sort_order'] ?? 0) as num).compareTo((b['sort_order'] ?? 0) as num));
+    final includes = (s['includes'] as String? ?? '')
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final desc = (s['description'] as String? ?? '').trim();
+    final aftercare = (s['aftercare'] as String? ?? '').trim();
+    String money(num v) => '\$${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: s['image_url'] != null ? 0.85 : 0.6,
+        maxChildSize: 0.95,
+        builder: (ctx, scroll) => Column(children: [
+          Expanded(
+            child: ListView(controller: scroll, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), children: [
+              if (s['image_url'] != null) ...[
+                ClipRRect(
+                  borderRadius: AppRadius.lgAll,
+                  child: AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: Image.network(s['image_url'], fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(color: AppColors.surfaceMuted)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              Text(s['service_name'] ?? '', style: Theme.of(ctx).textTheme.headlineSmall),
+              const SizedBox(height: 4),
+              Text('${_priceLabel(s)} · ${s['duration_minutes']} min',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              if (desc.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(desc, style: const TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textSecondary)),
+              ],
+              if (tiers.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('Options', style: Theme.of(ctx).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                for (final t in tiers)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(children: [
+                      Expanded(child: Text('${t['name']}', style: const TextStyle(fontSize: 14.5))),
+                      Text('${t['duration_minutes']} min  ',
+                          style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+                      Text(money(t['price'] as num), style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+              ],
+              if (includes.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('What\'s included', style: Theme.of(ctx).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                for (final l in includes)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(l, style: const TextStyle(fontSize: 14.5))),
+                    ]),
+                  ),
+              ],
+              if (aftercare.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [
+                      Icon(Icons.spa_outlined, size: 18, color: AppColors.primary),
+                      SizedBox(width: 6),
+                      Text('Aftercare', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ]),
+                    const SizedBox(height: 6),
+                    Text(aftercare, style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+                  ]),
+                ),
+              ],
+            ]),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 16 + MediaQuery.of(ctx).padding.bottom),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _book(s);
+                },
+                child: const Text('Book this'),
+              ),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 
@@ -859,6 +1030,71 @@ class _Stat extends StatelessWidget {
         ]),
         const SizedBox(height: 2),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ]),
+    );
+  }
+}
+
+
+class _LoyaltyCard extends StatelessWidget {
+  final Map<String, dynamic> status;
+  const _LoyaltyCard({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final needed = (status['visits_needed'] as num).toInt();
+    final progress = (status['progress'] as num).toInt();
+    final pct = (status['percent'] as num).toInt();
+    final available = status['available'] == true;
+    final stamps = needed - 1;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: available ? AppColors.success.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.05),
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: available ? AppColors.success.withValues(alpha: 0.4) : AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.loyalty_rounded, size: 18, color: available ? AppColors.success : AppColors.primary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              available ? 'Your next booking is $pct% off' : 'Loyalty card: every ${needed}th visit $pct% off'
+                  .replaceFirst('every 2th', 'every 2nd').replaceFirst('every 3th', 'every 3rd'),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (var i = 0; i < stamps; i++)
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: i < progress || available ? AppColors.primary : Colors.white,
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+              ),
+              child: i < progress || available ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
+            ),
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: available ? AppColors.success : Colors.white,
+              border: Border.all(color: AppColors.success),
+            ),
+            child: Icon(Icons.card_giftcard_rounded, size: 13, color: available ? Colors.white : AppColors.success),
+          ),
+        ]),
+        if (!available) ...[
+          const SizedBox(height: 8),
+          Text('${stamps - progress} more ${stamps - progress == 1 ? 'visit' : 'visits'} to your reward. Applied automatically.',
+              style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+        ],
       ]),
     );
   }

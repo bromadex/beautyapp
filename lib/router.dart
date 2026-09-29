@@ -40,6 +40,7 @@ import 'screens/client_notes_screen.dart';
 import 'screens/service_requests_screen.dart';
 import 'screens/create_service_request_screen.dart';
 import 'screens/service_request_quote_screen.dart';
+import 'screens/stylist_link_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
 import 'supabase_client.dart';
@@ -60,7 +61,7 @@ final appRouter = GoRouter(
     final loc = state.matchedLocation;
     final isAuthRoute = loc == '/login' || loc == '/register';
 
-    final isPublicRoute = loc.startsWith('/provider/') &&
+    final isPublicRoute = loc.startsWith('/@') || loc.startsWith('/provider/') &&
         !loc.startsWith('/provider/home') &&
         !loc.startsWith('/provider/bookings') &&
         !loc.startsWith('/provider/profile') &&
@@ -362,6 +363,11 @@ final appRouter = GoRouter(
     // ─────────────────────────────────────────────────────────────
     // DYNAMIC ROUTES – MUST BE LAST
     // ─────────────────────────────────────────────────────────────
+    GoRoute(
+      path: '/@:slug',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => StylistLinkScreen(slug: state.pathParameters['slug']!),
+    ),
     GoRoute(
       path: '/provider/:id',
       parentNavigatorKey: _rootNavigatorKey,

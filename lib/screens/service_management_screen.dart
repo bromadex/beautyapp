@@ -1,4 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -87,7 +90,13 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     final priceCtrl = TextEditingController(text: existing?['price']?.toString() ?? '');
     final durationCtrl = TextEditingController(
         text: existing?['duration_minutes']?.toString() ?? '60');
+    final descCtrl = TextEditingController(text: existing?['description'] ?? '');
+    final includesCtrl = TextEditingController(text: existing?['includes'] ?? '');
+    final aftercareCtrl = TextEditingController(text: existing?['aftercare'] ?? '');
     String? selectedCategoryId = existing?['category_id'];
+    String? imageUrl = existing?['image_url'];
+    Uint8List? newImage;
+    bool saving = false;
 
     showDialog(
       context: context,
@@ -127,6 +136,37 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   onChanged: (v) => setDialogState(() => selectedCategoryId = v),
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                InkWell(
+                  borderRadius: AppRadius.mdAll,
+                  onTap: () async {
+                    final picked = await ImagePicker()
+                        .pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1400);
+                    if (picked == null) return;
+                    final bytes = await picked.readAsBytes();
+                    setDialogState(() => newImage = bytes);
+                  },
+                  child: Container(
+                    height: 130,
+                    width: double.infinity,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: AppRadius.mdAll,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: newImage != null
+                        ? Image.memory(newImage!, fit: BoxFit.cover)
+                        : imageUrl != null
+                            ? Image.network(imageUrl, fit: BoxFit.cover)
+                            : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                Icon(Icons.add_photo_alternate_outlined, color: AppColors.textTertiary),
+                                SizedBox(height: 4),
+                                Text('Add a photo of this service',
+                                    style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+                              ]),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(
@@ -159,6 +199,39 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     ),
                   ),
                 ]),
+                const SizedBox(height: AppSpacing.lg),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                    hintText: 'What the client gets, hair length, style…',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                TextField(
+                  controller: includesCtrl,
+                  maxLines: 4,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'What\'s included (one per line)',
+                    hintText: 'Wash\nBlow-dry\nHair provided',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                TextField(
+                  controller: aftercareCtrl,
+                  maxLines: 3,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Aftercare tips (optional)',
+                    hintText: 'e.g. Sleep with a satin scarf, avoid washing for 3 days',
+                    alignLabelWithHint: true,
+                  ),
+                ),
               ],
             ),
           ),
@@ -168,27 +241,54 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty ||
-                    priceCtrl.text.trim().isEmpty ||
-                    selectedCategoryId == null) return;
+              onPressed: saving ? null : () async {
+                final price = double.tryParse(priceCtrl.text.trim());
+                if (nameCtrl.text.trim().isEmpty || price == null || selectedCategoryId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Pick a category and enter a name and price')));
+                  return;
+                }
+                String? opt(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
                 final userId = supabase.auth.currentUser!.id;
                 final payload = {
                   'provider_id': userId,
                   'category_id': selectedCategoryId,
                   'service_name': nameCtrl.text.trim(),
-                  'price': double.parse(priceCtrl.text.trim()),
+                  'price': price,
                   'duration_minutes': int.tryParse(durationCtrl.text.trim()) ?? 60,
+                  'description': opt(descCtrl),
+                  'includes': opt(includesCtrl),
+                  'aftercare': opt(aftercareCtrl),
                 };
-                if (existing == null) {
-                  await supabase.from('services').insert(payload);
-                } else {
-                  await supabase.from('services').update(payload).eq('id', existing['id']);
+                setDialogState(() => saving = true);
+                try {
+                  final String id;
+                  if (existing == null) {
+                    final row = await supabase.from('services').insert(payload).select('id').single();
+                    id = row['id'];
+                  } else {
+                    id = existing['id'];
+                    await supabase.from('services').update(payload).eq('id', id);
+                  }
+                  if (newImage != null) {
+                    final path = '$userId/$id-${DateTime.now().millisecondsSinceEpoch}.jpg';
+                    await supabase.storage.from('service-images').uploadBinary(path, newImage!,
+                        fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true));
+                    await supabase.from('services').update({
+                      'image_url': supabase.storage.from('service-images').getPublicUrl(path),
+                    }).eq('id', id);
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  _load();
+                } catch (e) {
+                  setDialogState(() => saving = false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not save: $e'), backgroundColor: AppColors.error));
+                  }
                 }
-                if (ctx.mounted) Navigator.pop(ctx);
-                _load();
               },
-              child: Text(existing == null ? 'Add' : 'Save'),
+              child: Text(saving ? 'Saving…' : existing == null ? 'Add' : 'Save'),
             ),
           ],
         ),

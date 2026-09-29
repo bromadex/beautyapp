@@ -61,6 +61,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Map<String, dynamic>? _promo;
   double _discount = 0;
   String? _promoError;
+  Map<String, dynamic>? _loyalty;
   bool _applyingPromo = false;
 
   @override
@@ -117,6 +118,12 @@ class _BookingScreenState extends State<BookingScreen> {
       _nameCtrl.text = name == 'User' ? '' : name;
       _phoneCtrl.text = _me?['phone'] ?? '';
       _addressCtrl.text = _me?['location'] ?? '';
+      if (((_providerProfile?['loyalty_visits'] as num?) ?? 0) > 0) {
+        try {
+          _loyalty = Map<String, dynamic>.from(
+              await supabase.rpc('loyalty_status', params: {'p_provider': widget.providerId}) as Map);
+        } catch (_) {}
+      }
       await _loadServiceExtras();
       if (mounted) setState(() => _loading = false);
     } catch (e) {
@@ -181,7 +188,10 @@ class _BookingScreenState extends State<BookingScreen> {
     return (math.min(maxFee, math.max(0, km - free) * perKm) * 100).roundToDouble() / 100;
   }
 
-  double get _total => math.max(0, _basePrice - _discount) + _addonsTotal + _travelFee;
+  double get _loyaltyDiscount => _loyalty?['available'] == true
+      ? (_basePrice * ((_loyalty!['percent'] as num).toDouble()) / 100 * 100).roundToDouble() / 100
+      : 0;
+  double get _total => math.max(0, _basePrice - _discount - _loyaltyDiscount) + _addonsTotal + _travelFee;
   int get _depositPercent => (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0;
   double get _deposit => (_total * _depositPercent / 100 * 100).roundToDouble() / 100;
 
@@ -744,6 +754,8 @@ class _BookingScreenState extends State<BookingScreen> {
                 .map((a) => row(a['name'] ?? 'Extra', '+${_money(((a['price'] as num?) ?? 0).toDouble())}')),
             if (_travelFee > 0) row('Travel', '+${_money(_travelFee)}'),
             if (_discount > 0) row('Promo ${_promo?['code']}', '-${_money(_discount)}', color: AppColors.success),
+            if (_loyaltyDiscount > 0)
+              row('Loyalty reward (${_loyalty!['percent']}%)', '-${_money(_loyaltyDiscount)}', color: AppColors.success),
             const Divider(height: 20),
             row('Total', _money(_total), bold: true),
             if (_deposit > 0) row('Deposit due now', _money(_deposit), color: AppColors.primary),

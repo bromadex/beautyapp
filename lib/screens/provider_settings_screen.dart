@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import 'package:url_launcher/url_launcher.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -39,6 +42,15 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   bool _bizVerified = false;
   bool _submittingBiz = false;
 
+  // Booking link + loyalty
+  final _slugCtrl = TextEditingController();
+  String _savedSlug = '';
+  int _loyaltyVisits = 0;
+  final _loyaltyPctCtrl = TextEditingController(text: '10');
+
+  static const _siteUrl = 'https://beautyapp-swart.vercel.app';
+  String get _link => '$_siteUrl/@$_savedSlug';
+
   // WhatsApp
   final _whatsappCtrl = TextEditingController();
   String _preferredContact = 'in_app';
@@ -69,6 +81,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         _advanceCtrl.text = '${pp['max_advance_days'] ?? 60}';
         _depositCtrl.text = '${pp['deposit_percent'] ?? 0}';
         _preferredContact = pp['preferred_contact'] ?? 'in_app';
+        _savedSlug = pp['slug'] ?? '';
+        _slugCtrl.text = _savedSlug;
+        _loyaltyVisits = (pp['loyalty_visits'] as num?)?.toInt() ?? 0;
+        final pct = (pp['loyalty_percent'] as num?)?.toInt() ?? 0;
+        if (pct > 0) _loyaltyPctCtrl.text = '$pct';
       }
 
       final policy = await supabase
@@ -109,7 +126,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     final uid = supabase.auth.currentUser!.id;
 
     try {
+      final slug = _slugCtrl.text.trim().toLowerCase();
+      if (slug.isNotEmpty && slug != _savedSlug) {
+        await supabase.from('provider_profiles').update({'slug': slug}).eq('provider_id', uid);
+        _savedSlug = slug;
+      }
       await supabase.from('provider_profiles').update({
+        'loyalty_visits': _loyaltyVisits,
+        'loyalty_percent': _loyaltyVisits == 0 ? 0 : (int.tryParse(_loyaltyPctCtrl.text) ?? 10).clamp(1, 100),
         'travel_fee_per_km': double.tryParse(_travelFeeCtrl.text) ?? 0,
         'free_travel_radius_km': double.tryParse(_freeRadiusCtrl.text) ?? 5,
         'max_travel_fee': double.tryParse(_maxTravelFeeCtrl.text) ?? 20,
@@ -147,6 +171,12 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
           ),
         );
       }
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.error),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -156,6 +186,99 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Widget _buildLinkSection() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Put this in your WhatsApp status, Instagram bio or Facebook page. Clients tap it and book you directly.',
+          style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _slugCtrl,
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9-]')),
+          LengthLimitingTextInputFormatter(30),
+        ],
+        decoration: InputDecoration(
+          labelText: 'Link name',
+          prefixText: 'beautyapp-swart.vercel.app/@',
+          border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+          isDense: true,
+        ),
+      ),
+      const SizedBox(height: AppSpacing.xs),
+      Text('Letters, numbers and dashes. Tap Save to change it.',
+          style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+      if (_savedSlug.isNotEmpty) ...[
+        const SizedBox(height: AppSpacing.md),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: _link));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+                }
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copy link'),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse('https://wa.me/?text=${Uri.encodeComponent('Book me on BeauTap: $_link')}'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.share_rounded, size: 18),
+              label: const Text('WhatsApp'),
+            ),
+          ),
+        ]),
+      ],
+    ]);
+  }
+
+  Widget _buildLoyaltySection() {
+    final on = _loyaltyVisits > 0;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Reward regulars. You choose the reward and you fund it, so it comes off your price, not BeauTap\'s.',
+          style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Stamp card'),
+        subtitle: Text(on ? 'On' : 'Off'),
+        value: on,
+        onChanged: (v) => setState(() => _loyaltyVisits = v ? 5 : 0),
+      ),
+      if (on) ...[
+        Row(children: [
+          Expanded(
+            child: DropdownButtonFormField<int>(
+              initialValue: _loyaltyVisits,
+              decoration: InputDecoration(
+                labelText: 'Reward on visit',
+                border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+                isDense: true,
+              ),
+              items: [for (var n = 2; n <= 20; n++) DropdownMenuItem(value: n, child: Text('Every ${_ordinal(n)} visit'))],
+              onChanged: (v) => setState(() => _loyaltyVisits = v ?? 5),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: _NumberField(controller: _loyaltyPctCtrl, label: 'Discount', suffix: '% off')),
+        ]),
+        const SizedBox(height: AppSpacing.xs),
+        Text('After ${_loyaltyVisits - 1} completed visits with you, the client\'s next booking gets the discount automatically.',
+            style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+      ],
+    ]);
+  }
+
+  static String _ordinal(int n) {
+    if (n >= 11 && n <= 13) return '${n}th';
+    return switch (n % 10) { 1 => '${n}st', 2 => '${n}nd', 3 => '${n}rd', _ => '${n}th' };
   }
 
   Future<void> _submitBusiness() async {
@@ -257,6 +380,8 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     _noShowCtrl.dispose();
     _policyTextCtrl.dispose();
     _whatsappCtrl.dispose();
+    _slugCtrl.dispose();
+    _loyaltyPctCtrl.dispose();
     super.dispose();
   }
 
@@ -289,6 +414,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _SectionHeader(icon: Icons.link_rounded, title: 'Your Booking Link'),
+            const SizedBox(height: AppSpacing.sm),
+            _buildLinkSection(),
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionHeader(icon: Icons.loyalty_outlined, title: 'Loyalty Reward'),
+            const SizedBox(height: AppSpacing.sm),
+            _buildLoyaltySection(),
+            const SizedBox(height: AppSpacing.xxl),
             _SectionHeader(
               icon: Icons.rule_rounded,
               title: 'Booking Rules',
