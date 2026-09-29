@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/referral_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/google_auth.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -65,95 +63,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _signUpWithGoogle() async {
     setState(() => _googleLoading = true);
     try {
-      if (kIsWeb) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('pending_user_type', _userType);
-        await supabase.auth.signInWithOAuth(
-          OAuthProvider.google,
-          redirectTo: Uri.base.origin,
-        );
-      } else {
-        const webClientId =
-            '549119684234-bpgdfj7880f9g7gsba897hg8790im54o.apps.googleusercontent.com';
-
-        final googleUser = await GoogleSignIn(
-          serverClientId: webClientId,
-        ).signIn();
-
-        if (googleUser == null) {
-          if (mounted) setState(() => _googleLoading = false);
-          return;
-        }
-
-        final googleAuth = await googleUser.authentication;
-        final idToken = googleAuth.idToken;
-        final accessToken = googleAuth.accessToken;
-
-        if (idToken == null) throw Exception('No ID token from Google');
-
-        await supabase.auth.signInWithIdToken(
-          provider: OAuthProvider.google,
-          idToken: idToken,
-          accessToken: accessToken,
-        );
-
-        if (mounted) {
-          final user = supabase.auth.currentUser;
-          if (user != null) {
-            final existing = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('id', user.id)
-                .maybeSingle();
-
-            if (existing == null) {
-              await supabase.from('profiles').upsert({
-                'id': user.id,
-                'full_name':
-                    user.userMetadata?['full_name'] ??
-                    user.userMetadata?['name'] ??
-                    '',
-                'user_type': _userType,
-              }, onConflict: 'id');
-              if (_userType == 'provider') {
-                await supabase.from('provider_profiles').upsert({
-                  'provider_id': user.id,
-                  'bio': '',
-                }, onConflict: 'provider_id');
-              }
-            } else {
-              await supabase
-                  .from('profiles')
-                  .update({'user_type': _userType})
-                  .eq('id', user.id);
-              if (_userType == 'provider') {
-                await supabase.from('provider_profiles').upsert({
-                  'provider_id': user.id,
-                  'bio': '',
-                }, onConflict: 'provider_id');
-              }
-            }
-            await supabase.auth.updateUser(
-              UserAttributes(data: {'user_type': _userType}),
-            );
-          }
-          context.go(_userType == 'provider' ? '/provider/home' : '/home');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Google sign-in is not configured yet.'),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
+      await GoogleAuth.start(userType: _userType);
+    } on AuthException catch (e) {
+      _googleError(e.message);
+    } catch (_) {
+      _googleError('Could not open Google sign-in. Check your connection and try again.');
     } finally {
       if (mounted) setState(() => _googleLoading = false);
     }
+  }
+
+  void _googleError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      ),
+    );
   }
 
   Future<void> _register() async {

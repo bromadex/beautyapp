@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import 'router.dart';
 import 'supabase_client.dart';
 import 'theme.dart';
 import 'services/appearance.dart';
+import 'services/google_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +25,18 @@ Future<void> main() async {
 
   await _applyPendingOAuthUserType();
   await Appearance.instance.load();
+
+  // Phone app: coming back from Google in the browser signs the person in
+  // without restarting, so set up their account and open their home here.
+  if (!kIsWeb) {
+    supabase.auth.onAuthStateChange.listen((data) async {
+      if (data.event != AuthChangeEvent.signedIn || !GoogleAuth.pending) return;
+      GoogleAuth.pending = false;
+      await _applyPendingOAuthUserType();
+      await GoogleAuth.ensureProfile();
+      appRouter.go('/');
+    });
+  }
 
   runApp(const BeautyApp());
 }
