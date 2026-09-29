@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class PromotionManagementScreen extends StatefulWidget {
   const PromotionManagementScreen({super.key});
@@ -266,7 +267,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
               label: Text(existing == null ? 'Create' : 'Save'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.onPrimary,
               ),
             ),
           ],
@@ -344,7 +345,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                 ),
                 child: Text(
                   '${_promotions.where((p) => p['is_active'] == true).length} active',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.secondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -357,13 +358,12 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEditDialog(),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onPrimary,
         icon: const Icon(TablerIcons.plus),
         label: const Text('New Promo'),
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder()
           : _promotions.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
@@ -391,17 +391,17 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
               color: AppColors.secondary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(TablerIcons.tag,
+            child: Icon(TablerIcons.tag,
                 size: 56, color: AppColors.secondary),
           ),
           const SizedBox(height: AppSpacing.xl),
-          const Text('No Promotions Yet',
+          Text('No Promotions Yet',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary)),
           const SizedBox(height: AppSpacing.sm),
-          const Text('Create promo codes to attract more clients.',
+          Text('Create promo codes to attract more clients.',
               style:
                   TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(height: AppSpacing.xxl),
@@ -411,7 +411,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
             label: const Text('Create Promotion'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onPrimary,
             ),
           ),
         ],
@@ -440,7 +440,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(
           color: !isActive || isExpired || isMaxedOut
@@ -515,7 +515,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                       ),
                       child: Text(
                         discountText,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.success,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
@@ -527,7 +527,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                 if (desc.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Text(desc,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13, color: AppColors.textSecondary)),
                 ],
                 const SizedBox(height: AppSpacing.md),
@@ -571,7 +571,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     ),
                     child: Text(
                       isExpired ? 'Expired' : 'Max uses reached',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppColors.error,
                           fontSize: 11,
                           fontWeight: FontWeight.w600),

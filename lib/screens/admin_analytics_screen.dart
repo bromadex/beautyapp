@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminAnalyticsScreen extends StatefulWidget {
   const AdminAnalyticsScreen({super.key});
@@ -167,7 +168,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         ],
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : RefreshIndicator(
               onRefresh: _loadAnalytics,
               child: SingleChildScrollView(
@@ -275,7 +276,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -291,7 +292,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                   width: 70,
                   child: Text(
                     _monthLabel(m['month']),
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ),
                 Expanded(
@@ -340,7 +341,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -351,7 +352,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$_totalBookings', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
-                const Text('Total Bookings', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text('Total Bookings', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -378,7 +379,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 ],
               ),
               const SizedBox(height: 4),
-              Text('$_thisMonthBookings this month', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              Text('$_thisMonthBookings this month', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
             ],
           ),
         ],
@@ -392,7 +393,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -431,7 +432,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -473,7 +474,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(value, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: color)),
-                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                Text(label, style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
               ],
             ),
           ],
@@ -488,7 +489,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -508,7 +509,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                   width: 20,
                   child: Text(
                     '${i + 1}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary),
                   ),
                 ),
                 Expanded(

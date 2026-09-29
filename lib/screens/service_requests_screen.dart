@@ -64,10 +64,10 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> {
               icon: const Icon(TablerIcons.plus),
               label: const Text('New Request'),
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.onPrimary,
             ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : _requests.isEmpty
               ? Center(
                   child: Column(

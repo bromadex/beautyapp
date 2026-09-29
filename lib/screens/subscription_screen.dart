@@ -139,11 +139,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.border),
           ),
-          child: const Row(children: [
+          child: Row(children: [
             Icon(TablerIcons.building_store, color: AppColors.primary),
             SizedBox(width: 12),
             Expanded(
@@ -168,7 +168,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(TablerIcons.building_store, color: AppColors.primary),
+          Icon(TablerIcons.building_store, color: AppColors.primary),
           const SizedBox(width: 8),
           Expanded(child: Text('Salon plan · ${s['name']}', style: Theme.of(context).textTheme.titleMedium)),
           const Text('\$15 / month', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -198,7 +198,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Pill(label: 'FREE PLAN', color: AppColors.info),
+            Pill(label: 'FREE PLAN', color: AppColors.info),
             const Spacer(),
             Text('$used of $limit bookings this month', style: Theme.of(context).textTheme.labelMedium),
           ]),
@@ -235,11 +235,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(TablerIcons.star_filled, color: AppColors.secondary),
+          Icon(TablerIcons.star_filled, color: AppColors.secondary),
           const SizedBox(width: 8),
           Text('Get featured', style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
-          const Text('\$3 / 7 days', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          Text('\$3 / 7 days', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         ]),
         const SizedBox(height: 6),
         Text(
@@ -267,7 +267,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             color: AppColors.warning.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.player_pause,
+          child: Icon(TablerIcons.player_pause,
               color: AppColors.warning, size: 32),
         ),
         title: const Text('Cancel Subscription?'),
@@ -318,8 +318,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: const Text('Subscription')),
-        body: const Center(
-            child: CircularProgressIndicator(color: AppColors.primary)),
+        body: const LoadingPlaceholder(),
       );
     }
 
@@ -332,12 +331,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(TablerIcons.alert_circle,
+                Icon(TablerIcons.alert_circle,
                     size: 48, color: AppColors.error),
                 const SizedBox(height: AppSpacing.lg),
                 Text(_error!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: AppSpacing.xl),
                 FilledButton.icon(
@@ -384,7 +383,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
                     onPressed: _processing ? null : _cancel,
-                    child: const Text('Cancel subscription',
+                    child: Text('Cancel subscription',
                         style: TextStyle(color: AppColors.textTertiary)),
                   ),
                 ],
@@ -404,30 +403,30 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     late final String subtitle;
 
     if (_viaSalon) {
-      gradient = const [AppColors.primary, AppColors.primaryDark];
+      gradient = [AppColors.forest, AppColors.primaryDark];
       icon = TablerIcons.building_store;
       title = 'Pro through ${_salon?['name'] ?? 'your salon'}';
       subtitle = 'Your salon\'s plan covers you. No need to pay yourself.';
     } else if (_isActive) {
-      gradient = const [AppColors.primary, AppColors.primaryDark];
+      gradient = [AppColors.forest, AppColors.primaryDark];
       icon = TablerIcons.rosette_discount_check;
       title = 'Pro — active';
       subtitle =
           '$_daysRemaining days remaining · you keep 100% of what you earn';
     } else if (_subscription?['status'] == 'cancelled') {
-      gradient = const [AppColors.pine, AppColors.primaryDark];
+      gradient = [AppColors.pine, AppColors.primaryDark];
       icon = TablerIcons.player_pause;
       title = 'Pro cancelled';
       subtitle =
           'You\'re on the Free plan. Go Pro again for \$${AppConfig.providerActivationFee.toStringAsFixed(0)} to remove the booking limit.';
     } else if (_isLapsed) {
-      gradient = const [AppColors.error, AppColors.errorText];
+      gradient = [AppColors.error, AppColors.errorText];
       icon = TablerIcons.alert_triangle;
       title = 'Pro expired';
       subtitle =
           'You\'re on the Free plan (5 bookings a month). Renew Pro to remove the limit.';
     } else {
-      gradient = const [AppColors.pine, AppColors.primaryDark];
+      gradient = [AppColors.pine, AppColors.primaryDark];
       icon = TablerIcons.leaf;
       title = 'You\'re on the Free plan';
       subtitle =
@@ -481,13 +480,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          const Text('Simple, Honest Pricing',
+          Text('Simple, Honest Pricing',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -503,7 +502,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   sub: 'One-time activation,\nmonth 1 included',
                 ),
               ),
-              const Icon(TablerIcons.arrow_right,
+              Icon(TablerIcons.arrow_right,
                   color: AppColors.textTertiary, size: 20),
               Expanded(
                 child: _priceBlock(
@@ -523,7 +522,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               color: AppColors.success.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('NO HIDDEN FEES · NO COMMISSION',
+            child: Text('NO HIDDEN FEES · NO COMMISSION',
                 style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
@@ -563,14 +562,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   color: highlight ? AppColors.primary : AppColors.textPrimary)),
           const SizedBox(height: AppSpacing.xs),
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary)),
           const SizedBox(height: 2),
           Text(sub,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 10.5, color: AppColors.textTertiary, height: 1.3)),
         ],
       ),
@@ -589,14 +588,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('What you get',
+          Text('What you get',
               style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -613,13 +612,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         color: AppColors.success.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(TablerIcons.check,
+                      child: Icon(TablerIcons.check,
                           size: 13, color: AppColors.success),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(b.$1,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14, color: AppColors.textPrimary)),
                     ),
                   ],
@@ -638,7 +637,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(TablerIcons.info_circle, color: AppColors.info, size: 18),
           SizedBox(width: AppSpacing.md),
@@ -677,11 +676,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       child: FilledButton.icon(
         onPressed: _processing ? null : _pay,
         icon: _processing
-            ? const SizedBox(
+            ? SizedBox(
                 height: 18,
                 width: 18,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2, color: AppColors.onPrimary),
               )
             : const Icon(TablerIcons.rocket),
         label: Text(label,

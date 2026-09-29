@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ClientNotesScreen extends StatefulWidget {
   final String clientId;
@@ -138,11 +139,11 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _addNote,
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onPrimary,
         child: const Icon(TablerIcons.plus),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : _notes.isEmpty
               ? Center(
                   child: Column(

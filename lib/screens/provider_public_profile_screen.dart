@@ -58,11 +58,12 @@ class _ProviderPublicProfileScreenState
 
   void _promptSignIn({String action = 'continue'}) {
     showModalBottomSheet(
+      isScrollControlled: true,
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
+      builder: (_) => SheetScroll(child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -87,7 +88,7 @@ class _ProviderPublicProfileScreenState
             const SizedBox(height: AppSpacing.xl),
             Text(
               'Sign in to $action',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
@@ -97,7 +98,7 @@ class _ProviderPublicProfileScreenState
             Text(
               'Create a free account or sign in to book appointments, save favorites, and more.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
                 height: 1.4,
@@ -150,7 +151,7 @@ class _ProviderPublicProfileScreenState
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 
@@ -321,8 +322,9 @@ class _ProviderPublicProfileScreenState
     }
 
     showModalBottomSheet(
+      isScrollControlled: true,
       context: context,
-      builder: (_) => Padding(
+      builder: (_) => SheetScroll(child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.sm, AppSpacing.xxl, AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -354,7 +356,7 @@ class _ProviderPublicProfileScreenState
                   title: Text(s['service_name'], style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(
                     '${s['duration_minutes']} min',
-                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   ),
                   trailing: Text(
                     _priceLabel(s),
@@ -373,7 +375,7 @@ class _ProviderPublicProfileScreenState
             }),
           ],
         ),
-      ),
+      )),
     );
   }
 
@@ -384,7 +386,7 @@ class _ProviderPublicProfileScreenState
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
+      builder: (ctx) => SheetScroll(child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -398,10 +400,10 @@ class _ProviderPublicProfileScreenState
             Text(p['name'] ?? '', style: Theme.of(ctx).textTheme.headlineSmall),
             if (p['price'] != null)
               Text('\$${(p['price'] as num).toStringAsFixed((p['price'] as num) % 1 == 0 ? 0 : 2)}',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
             if ((p['description'] ?? '').toString().isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(p['description'], style: const TextStyle(color: AppColors.textSecondary, height: 1.45)),
+              Text(p['description'], style: TextStyle(color: AppColors.textSecondary, height: 1.45)),
             ],
             const SizedBox(height: 16),
             if (phone.isNotEmpty)
@@ -414,13 +416,13 @@ class _ProviderPublicProfileScreenState
                 label: const Text('Ask on WhatsApp'),
               )
             else
-              const Text('Ask the pro about it when you book.', style: TextStyle(color: AppColors.textSecondary)),
+              Text('Ask the pro about it when you book.', style: TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 6),
-            const Text('BeauTap only shows the ad. You pay the pro directly.',
+            Text('BeauTap only shows the ad. You pay the pro directly.',
                 textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
           ]),
         ),
-      ),
+      )),
     );
   }
 
@@ -428,7 +430,7 @@ class _ProviderPublicProfileScreenState
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: const LoadingPlaceholder(kind: PlaceholderKind.profile),
       );
     }
 
@@ -622,11 +624,11 @@ class _ProviderPublicProfileScreenState
                             final area = location.isEmpty ? 'Zimbabwe' : location;
                             return _InfoTile(
                               top: Text(
-                                  comes ? 'Comes to you' : 'At their studio',
+                                  comes ? 'Comes to you' : 'At their place',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                              bottom: comes && studio ? 'or studio, $area' : area,
+                              bottom: comes && studio ? 'or go to them, $area' : area,
                             );
                           }),
                         ),
@@ -669,7 +671,7 @@ class _ProviderPublicProfileScreenState
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       bio,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                   ],
@@ -685,7 +687,7 @@ class _ProviderPublicProfileScreenState
                           borderRadius: AppRadius.mdAll,
                         ),
                         child: Row(children: [
-                          const Icon(TablerIcons.building_store, color: AppColors.primary),
+                          Icon(TablerIcons.building_store, color: AppColors.primary),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text.rich(TextSpan(children: [
@@ -693,8 +695,8 @@ class _ProviderPublicProfileScreenState
                               TextSpan(text: _salon!['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800)),
                             ])),
                           ),
-                          const Text('See team', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
-                          const Icon(TablerIcons.chevron_right, color: AppColors.primary, size: 18),
+                          Text('See team', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                          Icon(TablerIcons.chevron_right, color: AppColors.primary, size: 18),
                         ]),
                       ),
                     ),
@@ -708,7 +710,7 @@ class _ProviderPublicProfileScreenState
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(children: [
-                          const Icon(TablerIcons.certificate, size: 18, color: AppColors.primary),
+                          Icon(TablerIcons.certificate, size: 18, color: AppColors.primary),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -725,11 +727,11 @@ class _ProviderPublicProfileScreenState
                   Text('Services', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: AppSpacing.md),
                   if (_services.isEmpty)
-                    const Text('No services listed yet.', style: TextStyle(color: AppColors.textSecondary))
+                    Text('No services listed yet.', style: TextStyle(color: AppColors.textSecondary))
                   else
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.card,
                         borderRadius: AppRadius.mdAll,
                         border: Border.all(color: AppColors.border),
                       ),
@@ -781,7 +783,7 @@ class _ProviderPublicProfileScreenState
                   if (_products.isNotEmpty) ...[
                     Text('Products', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    const Text('Sold by this pro. Ask them on WhatsApp to buy.',
+                    Text('Sold by this pro. Ask them on WhatsApp to buy.',
                         style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     SizedBox(
@@ -861,8 +863,9 @@ class _ProviderPublicProfileScreenState
   void _share(String name) {
     final link = 'https://beautyapp-swart.vercel.app/@${_providerProfile!['slug']}';
     showModalBottomSheet(
+      isScrollControlled: true,
       context: context,
-      builder: (ctx) => Padding(
+      builder: (ctx) => SheetScroll(child: Padding(
         padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(ctx).padding.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Share $name', style: Theme.of(ctx).textTheme.headlineSmall),
@@ -891,7 +894,7 @@ class _ProviderPublicProfileScreenState
             label: const Text('Copy link'),
           ),
         ]),
-      ),
+      )),
     );
   }
 
@@ -931,25 +934,25 @@ class _ProviderPublicProfileScreenState
               Text(s['service_name'] ?? '', style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: 4),
               Text('${_priceLabel(s)} · ${s['duration_minutes']} min',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
               const SizedBox(height: 10),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 Pill(
                   label: switch (s['location_mode']) {
-                    'studio' => 'At their studio',
-                    'either' => 'Home or studio',
+                    'studio' => 'At their place',
+                    'either' => 'Your place or theirs',
                     _ => 'Comes to you',
                   },
                   icon: s['location_mode'] == 'studio' ? TablerIcons.building_store : TablerIcons.home,
                 ),
                 if (s['patch_test'] == true)
-                  const Pill(label: 'Patch test first', icon: TablerIcons.alert_circle, color: AppColors.warningText),
+                  Pill(label: 'Patch test first', icon: TablerIcons.alert_circle, color: AppColors.warningText),
                 if (s['service_categories']?['min_age'] != null)
                   Pill(label: '${s['service_categories']['min_age']}+ only', color: AppColors.errorText),
               ]),
               if (desc.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                Text(desc, style: const TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textSecondary)),
+                Text(desc, style: TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textSecondary)),
               ],
               if (tiers.isNotEmpty) ...[
                 const SizedBox(height: 20),
@@ -961,7 +964,7 @@ class _ProviderPublicProfileScreenState
                     child: Row(children: [
                       Expanded(child: Text('${t['name']}', style: const TextStyle(fontSize: 14.5))),
                       Text('${t['duration_minutes']} min  ',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+                          style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
                       Text(money(t['price'] as num), style: const TextStyle(fontWeight: FontWeight.w700)),
                     ]),
                   ),
@@ -974,7 +977,7 @@ class _ProviderPublicProfileScreenState
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Icon(TablerIcons.circle_check_filled, size: 18, color: AppColors.success),
+                      Icon(TablerIcons.circle_check_filled, size: 18, color: AppColors.success),
                       const SizedBox(width: 8),
                       Expanded(child: Text(l, style: const TextStyle(fontSize: 14.5))),
                     ]),
@@ -986,13 +989,13 @@ class _ProviderPublicProfileScreenState
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Row(children: [
+                    Row(children: [
                       Icon(TablerIcons.leaf, size: 18, color: AppColors.primary),
                       SizedBox(width: 6),
                       Text('Aftercare', style: TextStyle(fontWeight: FontWeight.w700)),
                     ]),
                     const SizedBox(height: 6),
-                    Text(aftercare, style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+                    Text(aftercare, style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
                   ]),
                 ),
               ],
@@ -1034,14 +1037,14 @@ class _ProviderPublicProfileScreenState
     final canBook = status != 'offline' && _services.isNotEmpty;
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Row(children: [
         if (minPrice != null) ...[
           Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('From', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text('From', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             Text('\$${minPrice.toStringAsFixed(minPrice % 1 == 0 ? 0 : 2)}',
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           ]),
@@ -1177,8 +1180,8 @@ class _InfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: const BorderSide(color: AppColors.border)),
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: BorderSide(color: AppColors.border)),
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.mdAll,
@@ -1236,7 +1239,7 @@ class _LoyaltyCard extends StatelessWidget {
             child: Text('Loyalty card', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           ),
           Text(available ? 'Next booking $pct% off' : '$done of $needed · $pct% off',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.goldText)),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.goldText)),
         ]),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1255,13 +1258,13 @@ class _LoyaltyCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(color: AppColors.gold, borderRadius: AppRadius.smAll),
-            child: const Icon(TablerIcons.gift, size: 20, color: AppColors.textPrimary),
+            child: Icon(TablerIcons.gift, size: 20, color: AppColors.textPrimary),
           ),
         ]),
         if (!available) ...[
           const SizedBox(height: 10),
           Text('${stamps - progress} more ${stamps - progress == 1 ? 'visit' : 'visits'} to your reward. Applied automatically.',
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         ],
       ]),
     );
@@ -1284,7 +1287,7 @@ class _ProductCard extends StatelessWidget {
         width: 140,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.mdAll,
           border: Border.all(color: AppColors.border),
         ),
@@ -1293,7 +1296,7 @@ class _ProductCard extends StatelessWidget {
             height: 120,
             width: double.infinity,
             child: img.isEmpty
-                ? Container(color: AppColors.primarySoft, child: const Icon(TablerIcons.shopping_bag, color: AppColors.primary))
+                ? Container(color: AppColors.primarySoft, child: Icon(TablerIcons.shopping_bag, color: AppColors.primary))
                 : Image.network(img, fit: BoxFit.cover),
           ),
           Padding(
@@ -1303,7 +1306,7 @@ class _ProductCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               if (price != null)
                 Text('\$${price.toStringAsFixed(price % 1 == 0 ? 0 : 2)}',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
             ]),
           ),
         ]),

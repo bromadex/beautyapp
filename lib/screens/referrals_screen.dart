@@ -84,7 +84,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       body: _error != null
           ? EmptyState(icon: TablerIcons.users, title: 'Can\'t load referrals', message: _error!, actionLabel: 'Try again', onAction: _load)
           : _data == null
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
               : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
     );
   }
@@ -101,7 +101,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       Container(
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Invite 2 pros, get 2 months free',
               style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
@@ -177,12 +177,12 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       Text('Pros you invited', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 8),
       if (list.isEmpty)
-        const Text('Nobody yet. Share your code with beauty pros you know.',
+        Text('Nobody yet. Share your code with beauty pros you know.',
             style: TextStyle(color: AppColors.textSecondary))
       else
         Container(
           decoration: BoxDecoration(
-              color: Colors.white, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
+              color: AppColors.card, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
           child: Column(children: [
             for (final r in list) _referralRow(r),
           ]),
@@ -191,7 +191,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
         const SizedBox(height: 24),
         Text('Were you invited?', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        const Text('Add the code within 30 days of joining, before your first payment.',
+        Text('Add the code within 30 days of joining, before your first payment.',
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         Row(children: [
@@ -210,7 +210,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
         ]),
       ] else if (d['invited_by'] != null) ...[
         const SizedBox(height: 20),
-        Text('You were invited by ${d['invited_by']}.', style: const TextStyle(color: AppColors.textSecondary)),
+        Text('You were invited by ${d['invited_by']}.', style: TextStyle(color: AppColors.textSecondary)),
       ],
     ]);
   }
@@ -233,7 +233,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
             Text(r['name'] ?? 'New pro', style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
             Text('${verified ? 'ID verified' : 'Not verified yet'} · $payments of 2 payments',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           ]),
         ),
         Pill(label: status, color: color),
@@ -250,11 +250,11 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
+            color: AppColors.card, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+          Text(label, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
         ]),
       );
 }

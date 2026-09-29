@@ -104,7 +104,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Pay BeauTap')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : _number == null || _number!.isEmpty
               ? const EmptyState(
                   icon: TablerIcons.device_mobile_off,
@@ -124,7 +124,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
                   : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
                       Container(
                         padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+                        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           Text(fee.label,
                               style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),
@@ -156,7 +156,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.card,
                             borderRadius: AppRadius.mdAll,
                             border: Border.all(color: AppColors.border)),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -205,7 +205,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text('We usually confirm within a few hours. You\'ll get a notification.',
+                      Text('We usually confirm within a few hours. You\'ll get a notification.',
                           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     ]),
       bottomNavigationBar: !_loading && _pending == null && (_number ?? '').isNotEmpty

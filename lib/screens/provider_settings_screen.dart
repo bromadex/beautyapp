@@ -7,6 +7,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../utils/pay_methods.dart';
 import '../widgets/certificates_section.dart';
+import '../widgets/ui.dart';
 
 class ProviderSettingsScreen extends StatefulWidget {
   const ProviderSettingsScreen({super.key});
@@ -501,7 +502,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: LoadingPlaceholder(kind: PlaceholderKind.detail),
       );
     }
 
@@ -735,11 +736,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             FilledButton(
               onPressed: _saving ? null : _save,
               child: _saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2, color: AppColors.onPrimary))
                   : const Text('Save Settings'),
             ),
             const SizedBox(height: AppSpacing.xxl),

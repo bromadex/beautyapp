@@ -24,7 +24,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
 
   Widget _summary(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-        if (label.isNotEmpty) Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        if (label.isNotEmpty) Text(label, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       ]);
 
   late DateTime _weekStart; // Monday
@@ -162,8 +162,8 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AppColors.card,
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
           child: Row(children: [
@@ -174,7 +174,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         ),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingPlaceholder()
               : RefreshIndicator(
                   onRefresh: _load,
                   child: SingleChildScrollView(
@@ -207,7 +207,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                                     child: Text(
                                       '${h % 12 == 0 ? 12 : h % 12}${h < 12 ? 'am' : 'pm'}',
                                       textAlign: TextAlign.right,
-                                      style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+                                      style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
                                     ),
                                   ),
                                 ),
@@ -226,7 +226,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                               Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                                decoration: BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
                               ),
                               Expanded(child: Container(height: 2, color: AppColors.error)),
                             ]),
@@ -262,13 +262,13 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.primary : (off ? const Color(0xFF8FA69C) : const Color(0xFFD5E2DC)))),
+                  color: selected ? const Color(0xFF0F3B31) : (off ? const Color(0xFF8FA69C) : const Color(0xFFD5E2DC)))),
           const SizedBox(height: 4),
           Text('${d.day}',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: selected ? AppColors.primary : (off ? const Color(0xFF8FA69C) : Colors.white),
+                color: selected ? const Color(0xFF0F3B31) : (off ? const Color(0xFF8FA69C) : Colors.white),
               )),
           const SizedBox(height: 4),
           if (off && count == 0)
@@ -276,7 +276,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                 style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
-                    color: selected ? AppColors.textSecondary : const Color(0xFF8FA69C)))
+                    color: selected ? const Color(0xFF55625D) : const Color(0xFF8FA69C)))
           else
             Container(
               width: 6,
@@ -331,7 +331,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
                 ),
                 if (status == 'pending')
-                  const Text('pending',
+                  Text('pending',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningText)),
               ]),
               if (height > 44)

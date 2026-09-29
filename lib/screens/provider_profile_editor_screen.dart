@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/avatar_widget.dart';
+import '../services/location_service.dart';
 
 class ProviderProfileEditorScreen extends StatefulWidget {
   const ProviderProfileEditorScreen({super.key});
@@ -73,28 +73,11 @@ class _ProviderProfileEditorScreenState
   Future<void> _detectLocation() async {
     setState(() => _locating = true);
     try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) {
-        perm = await Geolocator.requestPermission();
-      }
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  'Location permission denied. Please enable it in Settings.'),
-              backgroundColor: AppColors.warning,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-            ),
-          );
-        }
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+      final pos = await LocationService().getCurrentPosition(
+        context: context,
+        reason: 'So clients near you can find you, and travel fees are worked out from your base.',
       );
+      if (pos == null) return;
       setState(() {
         _latCtrl.text = pos.latitude.toStringAsFixed(6);
         _lngCtrl.text = pos.longitude.toStringAsFixed(6);
@@ -196,7 +179,7 @@ class _ProviderProfileEditorScreenState
           const SizedBox(width: AppSpacing.md),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -297,7 +280,7 @@ class _ProviderProfileEditorScreenState
                     contentPadding: EdgeInsets.zero,
                   ),
                   maxLines: 4,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     color: AppColors.textPrimary,
                     height: 1.5,
@@ -392,7 +375,7 @@ class _ProviderProfileEditorScreenState
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'How far will you travel for bookings?',
                               style: TextStyle(
@@ -401,7 +384,7 @@ class _ProviderProfileEditorScreenState
                           ),
                           Text(
                             '${_radiusKm.round()} km',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary),
@@ -416,7 +399,7 @@ class _ProviderProfileEditorScreenState
                         activeColor: AppColors.primary,
                         onChanged: (v) => setState(() => _radiusKm = v),
                       ),
-                      const Text(
+                      Text(
                         'Clients within this radius will see you in their results.',
                         style: TextStyle(
                             fontSize: 11.5, color: AppColors.textTertiary),

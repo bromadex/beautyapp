@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../utils/booking_helpers.dart';
+import '../widgets/ui.dart';
 
 /// Stylist logs a booking taken by phone, WhatsApp or a walk-in, so the calendar is complete.
 class AddBookingScreen extends StatefulWidget {
@@ -157,7 +158,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Add booking')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : _services.isEmpty
               ? Center(
                   child: Padding(
@@ -326,7 +327,7 @@ class _Tile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -336,7 +337,7 @@ class _Tile extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-            Text(subtitle, style: const TextStyle(fontSize: 12.5, color: AppColors.textTertiary)),
+            Text(subtitle, style: TextStyle(fontSize: 12.5, color: AppColors.textTertiary)),
           ]),
         ),
         ?trailing,

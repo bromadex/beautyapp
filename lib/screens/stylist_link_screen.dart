@@ -53,7 +53,7 @@ class _StylistLinkScreenState extends State<StylistLinkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) return const Scaffold(body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     if (_failed) {
       return Scaffold(
         appBar: AppBar(),

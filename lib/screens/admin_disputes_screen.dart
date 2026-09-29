@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminDisputesScreen extends StatefulWidget {
   const AdminDisputesScreen({super.key});
@@ -90,7 +91,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
-      builder: (ctx) => Padding(
+      builder: (ctx) => SheetScroll(child: Padding(
         padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl,
             MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.xl),
         child: Column(
@@ -148,7 +149,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
             ]),
           ],
         ),
-      ),
+      )),
     );
   }
 
@@ -179,7 +180,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
         ),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingPlaceholder()
               : _disputes.isEmpty
                   ? Center(
                       child: Text('No ${_filters[_filter]!.toLowerCase()} disputes',
@@ -196,8 +197,8 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                           return Card(
                             child: ListTile(
                               onTap: () => _open(d),
-                              leading: const CircleAvatar(
-                                backgroundColor: Color(0x1AE5484D),
+                              leading: CircleAvatar(
+                                backgroundColor: AppColors.errorSoft,
                                 child: Icon(TablerIcons.flag, color: AppColors.error),
                               ),
                               title: Text(_categories[d['category']] ?? 'Report'),

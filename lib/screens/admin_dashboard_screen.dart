@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -137,7 +138,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     if (!_isAdmin) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: const LoadingPlaceholder(kind: PlaceholderKind.detail),
       );
     }
 
@@ -149,7 +150,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : RefreshIndicator(
               onRefresh: _loadStats,
               child: SingleChildScrollView(
@@ -273,7 +274,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       borderRadius: AppRadius.lgAll,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.lgAll,
           border: Border.all(color: AppColors.border),
         ),
@@ -292,7 +293,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               item.label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
           ],
         ),
@@ -303,7 +304,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildTopProviders() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -345,7 +346,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(TablerIcons.star_filled, color: AppColors.warning, size: 16),
+                        Icon(TablerIcons.star_filled, color: AppColors.warning, size: 16),
                         const SizedBox(width: 2),
                         Text(
                           (p['rating'] as double).toStringAsFixed(1),
@@ -354,7 +355,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: AppSpacing.sm),
                         Text(
                           '${p['reviews']} reviews',
-                          style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                          style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                         ),
                       ],
                     ),
@@ -373,11 +374,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return Container(
         padding: const EdgeInsets.all(AppSpacing.xxl),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.lgAll,
           border: Border.all(color: AppColors.border),
         ),
-        child: const Center(
+        child: Center(
           child: Text('No bookings yet', style: TextStyle(color: AppColors.textTertiary)),
         ),
       );
@@ -385,7 +386,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -431,7 +432,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             const SizedBox(height: 2),
                             Text(
                               clientName,
-                              style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                             ),
                           ],
                         ),
@@ -500,7 +501,7 @@ class _StatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.lgAll,
           border: Border.all(color: AppColors.border),
         ),
@@ -526,16 +527,16 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
             ),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+              style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

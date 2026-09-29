@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 /// A pro's qualifications. Clients see them on the profile; massage and
 /// microblading need at least one.
@@ -45,7 +46,7 @@ class _CertificatesSectionState extends State<CertificatesSection> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) => SheetScroll(child: StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
           padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -126,7 +127,7 @@ class _CertificatesSectionState extends State<CertificatesSection> {
             ),
           ]),
         ),
-      ),
+      )),
     );
     titleCtrl.dispose();
     issuerCtrl.dispose();
@@ -143,7 +144,7 @@ class _CertificatesSectionState extends State<CertificatesSection> {
   Widget build(BuildContext context) {
     if (_loading) return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator()));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Text('Clients see these on your profile. Massage and microblading need at least one.',
+      Text('Clients see these on your profile. Massage and microblading need at least one.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       const SizedBox(height: 10),
       for (final c in _items)
@@ -151,24 +152,24 @@ class _CertificatesSectionState extends State<CertificatesSection> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.border),
           ),
           child: Row(children: [
-            const Icon(TablerIcons.certificate, color: AppColors.primary),
+            Icon(TablerIcons.certificate, color: AppColors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(c['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
                 if (c['issuer'] != null || c['year'] != null)
                   Text([c['issuer'], c['year']].where((x) => x != null).join(' · '),
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
               ]),
             ),
             IconButton(
               tooltip: 'Remove',
-              icon: const Icon(TablerIcons.trash, size: 20, color: AppColors.textSecondary),
+              icon: Icon(TablerIcons.trash, size: 20, color: AppColors.textSecondary),
               onPressed: () => _delete(c),
             ),
           ]),

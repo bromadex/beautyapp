@@ -5,6 +5,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
 import '../widgets/review_card.dart';
+import '../widgets/ui.dart';
 
 class ProviderReviewsScreen extends StatefulWidget {
   final String providerId;
@@ -139,8 +140,9 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     const reasons = ['Fake or not a real client', 'Rude or abusive', 'Personal information', 'Spam or advertising'];
     String? picked;
     final ok = await showModalBottomSheet<bool>(
+      isScrollControlled: true,
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      builder: (ctx) => SheetScroll(child: StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
           padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(ctx).padding.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -164,7 +166,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
             ),
           ]),
         ),
-      ),
+      )),
     );
     if (ok != true || picked == null) return;
     try {
@@ -189,7 +191,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: const LoadingPlaceholder(),
       );
     }
 
@@ -232,7 +234,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         '$total review${total == 1 ? '' : 's'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textTertiary,
                           fontSize: 13,
                         ),
@@ -257,7 +259,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                           children: [
                             Text(
                               '$star',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.textSecondary,
@@ -282,7 +284,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                               width: 24,
                               child: Text(
                                 '$count',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textTertiary,
                                 ),
@@ -310,7 +312,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                 const Spacer(),
                 Text(
                   '$total total',
-                  style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                 ),
               ],
             ),
@@ -326,7 +328,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                       children: [
                         Icon(TablerIcons.message_star, size: 56, color: AppColors.textTertiary),
                         const SizedBox(height: AppSpacing.lg),
-                        const Text(
+                        Text(
                           'No reviews yet',
                           style: TextStyle(
                             color: AppColors.textSecondary,
@@ -335,7 +337,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
-                        const Text(
+                        Text(
                           'Be the first to leave a review!',
                           style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                         ),

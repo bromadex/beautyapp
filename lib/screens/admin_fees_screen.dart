@@ -130,18 +130,18 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('EcoCash fee payments')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                      color: Colors.white, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
+                      color: AppColors.card, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     Text('BeauTap EcoCash number', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 4),
-                    const Text('Pros see this as a backup when Paynow is down. Leave empty to switch it off.',
+                    Text('Pros see this as a backup when Paynow is down. Leave empty to switch it off.',
                         style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: 12),
                     TextField(
@@ -162,7 +162,7 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
                 Text('To check (${open.length})', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 if (open.isEmpty)
-                  const Text('Nothing to check.', style: TextStyle(color: AppColors.textSecondary))
+                  Text('Nothing to check.', style: TextStyle(color: AppColors.textSecondary))
                 else
                   for (final c in open) _claimCard(c, actions: true),
                 if (done.isNotEmpty) ...[
@@ -197,7 +197,7 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
         ]),
         const SizedBox(height: 4),
         Row(children: [
-          Text('Ref ', style: const TextStyle(color: AppColors.textSecondary)),
+          Text('Ref ', style: TextStyle(color: AppColors.textSecondary)),
           SelectableText('${c['reference']}', style: monoStyle.copyWith(color: AppColors.textPrimary)),
           const Spacer(),
           if (!actions) StatusPill(c['status'] == 'approved' ? 'completed' : 'cancelled',
@@ -210,7 +210,7 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
                 '${when.day}/${when.month} ${when.hour.toString().padLeft(2, '0')}:${when.minute.toString().padLeft(2, '0')}',
               if (p?['phone'] != null) '${p!['phone']}',
             ].join(' · '),
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         if (actions) ...[
           const SizedBox(height: 10),

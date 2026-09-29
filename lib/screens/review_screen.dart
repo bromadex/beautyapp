@@ -279,7 +279,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     serviceName,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   ),
                 ],
               ),
@@ -457,10 +457,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: FilledButton(
                 onPressed: _submitting ? null : _submitReview,
                 child: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
                       )
                     : const Text('Submit Review'),
               ),

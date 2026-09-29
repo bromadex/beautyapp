@@ -77,7 +77,7 @@ class _AdminVerificationScreenState
                 color: AppColors.error.withValues(alpha: 0.1),
                 borderRadius: AppRadius.smAll,
               ),
-              child: const Icon(
+              child: Icon(
                 TablerIcons.ban,
                 color: AppColors.error,
                 size: 20,
@@ -132,10 +132,10 @@ class _AdminVerificationScreenState
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xxl),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.lgAll,
           ),
-          child: const CircularProgressIndicator(
+          child: CircularProgressIndicator(
             color: AppColors.primary,
           ),
         ),
@@ -160,7 +160,7 @@ class _AdminVerificationScreenState
                 color: AppColors.info.withValues(alpha: 0.1),
                 borderRadius: AppRadius.smAll,
               ),
-              child: const Icon(
+              child: Icon(
                 TablerIcons.photo,
                 color: AppColors.info,
                 size: 20,
@@ -207,7 +207,7 @@ class _AdminVerificationScreenState
         const SizedBox(width: AppSpacing.sm),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 13,
             color: AppColors.textPrimary,
@@ -238,7 +238,7 @@ class _AdminVerificationScreenState
                 ),
                 child: Text(
                   '${_pending.length} pending',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.warning,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -253,7 +253,7 @@ class _AdminVerificationScreenState
         ],
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
           : _pending.isEmpty
@@ -279,14 +279,14 @@ class _AdminVerificationScreenState
               color: AppColors.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               TablerIcons.circle_check,
               size: 56,
               color: AppColors.success,
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          const Text(
+          Text(
             'All Caught Up',
             style: TextStyle(
               fontSize: 18,
@@ -295,7 +295,7 @@ class _AdminVerificationScreenState
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text(
+          Text(
             'No pending verifications to review.',
             style: TextStyle(
               fontSize: 14,
@@ -316,7 +316,7 @@ class _AdminVerificationScreenState
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -353,7 +353,7 @@ class _AdminVerificationScreenState
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                           color: AppColors.textPrimary,
@@ -377,7 +377,7 @@ class _AdminVerificationScreenState
                                   ? type[0].toUpperCase() +
                                       type.substring(1)
                                   : 'User',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.secondary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -388,7 +388,7 @@ class _AdminVerificationScreenState
                             const SizedBox(width: AppSpacing.sm),
                             Text(
                               phone,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textTertiary,
                                 fontSize: 12,
                               ),
@@ -428,7 +428,7 @@ class _AdminVerificationScreenState
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     TablerIcons.clock,
                     size: 14,
                     color: AppColors.textTertiary,
@@ -436,7 +436,7 @@ class _AdminVerificationScreenState
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Submitted ${submittedAt.toLocal().toString().substring(0, 16)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textTertiary,
                       fontSize: 12,
                     ),
@@ -492,7 +492,7 @@ class _AdminVerificationScreenState
                         label: const Text('Reject'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
+                          side: BorderSide(color: AppColors.error),
                           shape: RoundedRectangleBorder(
                             borderRadius: AppRadius.mdAll,
                           ),

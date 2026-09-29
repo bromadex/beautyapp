@@ -37,7 +37,7 @@ class ReviewCard extends StatelessWidget {
                     clientName.isNotEmpty
                         ? clientName[0].toUpperCase()
                         : '?',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),

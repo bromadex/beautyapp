@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
@@ -85,7 +86,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
     try {
       await supabase.from('bookings').update({'status': 'cancelled'}).eq('id', booking['id']);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking cancelled'), backgroundColor: AppColors.warning),
+        SnackBar(content: Text('Booking cancelled'), backgroundColor: AppColors.warning),
       );
       _loadBookings();
     } catch (e) {
@@ -141,7 +142,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
           const SizedBox(height: AppSpacing.sm),
 
           if (_loading)
-            const Expanded(child: Center(child: CircularProgressIndicator(color: AppColors.primary)))
+            Expanded(child: const LoadingPlaceholder())
           else if (_bookings.isEmpty)
             Expanded(
               child: Center(
@@ -152,7 +153,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       _statusFilter == 'all' ? 'No bookings yet' : 'No ${StatusColors.label(_statusFilter).toLowerCase()} bookings',
-                      style: const TextStyle(color: AppColors.textTertiary),
+                      style: TextStyle(color: AppColors.textTertiary),
                     ),
                   ],
                 ),
@@ -190,7 +191,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -232,30 +233,30 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
-                      const Icon(TablerIcons.user, size: 14, color: AppColors.textTertiary),
+                      Icon(TablerIcons.user, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
-                      Text('Client: $clientName', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text('Client: $clientName', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(TablerIcons.leaf, size: 14, color: AppColors.textTertiary),
+                      Icon(TablerIcons.leaf, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
-                      Text('Provider: $providerName', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text('Provider: $providerName', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(TablerIcons.clock, size: 14, color: AppColors.textTertiary),
+                      Icon(TablerIcons.clock, size: 14, color: AppColors.textTertiary),
                       const SizedBox(width: AppSpacing.xs),
-                      Text('$date at $time', style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                      Text('$date at $time', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
                       const Spacer(),
                       if (price != null)
                         Text(
                           'R${(price as num).toStringAsFixed(0)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.primary),
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.primary),
                         ),
                     ],
                   ),

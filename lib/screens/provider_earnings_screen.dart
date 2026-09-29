@@ -113,7 +113,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
               onAction: _load,
             )
           : _data == null
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
               : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
     );
   }
@@ -156,7 +156,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
         // Total for the period
         Container(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+          decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Received $_periodLabel',
                 style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),
@@ -226,7 +226,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
           const SizedBox(height: 20),
           _Heading('Still to collect · ${money(d.owedTotal)}'),
           const SizedBox(height: 4),
-          const Text('Finished appointments that aren\'t marked as paid yet.',
+          Text('Finished appointments that aren\'t marked as paid yet.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
           _Panel(
@@ -251,11 +251,11 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
         if (list.isEmpty)
           _Panel(
             child: Column(children: [
-              const Icon(TablerIcons.receipt, size: 32, color: AppColors.textTertiary),
+              Icon(TablerIcons.receipt, size: 32, color: AppColors.textTertiary),
               const SizedBox(height: 8),
               Text('No payments $_periodLabel', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'When you confirm a payment, or mark a booking as paid, it shows here.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -266,7 +266,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
           ..._grouped(list),
 
         const SizedBox(height: 20),
-        const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(TablerIcons.rosette_discount_check, size: 18, color: AppColors.success),
           SizedBox(width: 8),
           Expanded(
@@ -291,8 +291,8 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
       out.add(Padding(
         padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
         child: Row(children: [
-          Expanded(child: Text(d, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary))),
-          Text(money(dayTotal), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          Expanded(child: Text(d, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary))),
+          Text(money(dayTotal), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
         ]),
       ));
       out.add(_Panel(padding: EdgeInsets.zero, child: Column(children: rows)));
@@ -339,7 +339,7 @@ class _Panel extends StatelessWidget {
         padding: padding,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.mdAll,
           border: Border.all(color: AppColors.border),
         ),
@@ -383,7 +383,7 @@ class _Row extends StatelessWidget {
                 Text(subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ]),
             ),
             const SizedBox(width: 8),

@@ -122,13 +122,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
               label: const Text('Add product'),
             ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+                  decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Text('$_active of $_allowance',
@@ -163,7 +163,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   ]),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Advertising only: clients message you on WhatsApp to buy. Medical products, like skin '
                   'lightening creams or injectables, aren\'t allowed.',
                   style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
@@ -190,7 +190,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               child: (p['image_url'] ?? '').toString().isEmpty
                                   ? Container(
                                       color: AppColors.primarySoft,
-                                      child: const Icon(TablerIcons.shopping_bag, color: AppColors.primary))
+                                      child: Icon(TablerIcons.shopping_bag, color: AppColors.primary))
                                   : Image.network(p['image_url'], fit: BoxFit.cover),
                             ),
                           ),
@@ -312,7 +312,7 @@ class _ProductSheetState extends State<_ProductSheet> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not save. Try again.'), backgroundColor: AppColors.error));
+            .showSnackBar(SnackBar(content: Text('Could not save. Try again.'), backgroundColor: AppColors.error));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -341,7 +341,7 @@ class _ProductSheetState extends State<_ProductSheet> {
                   ? Image.memory(_newImage!, fit: BoxFit.cover)
                   : (_imageUrl ?? '').isNotEmpty
                       ? Image.network(_imageUrl!, fit: BoxFit.cover)
-                      : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(TablerIcons.photo_plus, color: AppColors.primary, size: 28),
                           SizedBox(height: 6),
                           Text('Add a photo', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),

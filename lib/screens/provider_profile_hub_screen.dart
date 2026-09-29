@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ProviderProfileHubScreen extends StatefulWidget {
   const ProviderProfileHubScreen({super.key});
@@ -60,7 +61,7 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: const LoadingPlaceholder(kind: PlaceholderKind.profile),
       );
     }
 
@@ -266,7 +267,7 @@ class _HubTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.border),
           ),
@@ -285,7 +286,7 @@ class _HubTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     const SizedBox(height: 2),
                     Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
                   ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AvailabilityScreen extends StatefulWidget {
   const AvailabilityScreen({super.key});
@@ -196,7 +197,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         ],
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : SingleChildScrollView(
               padding: AppSpacing.screenPadding,
               child: Column(

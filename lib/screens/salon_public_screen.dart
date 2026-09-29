@@ -69,7 +69,7 @@ class _SalonPublicScreenState extends State<SalonPublicScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) return const Scaffold(body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     final s = _salon;
     if (s == null) {
       return Scaffold(
@@ -82,7 +82,7 @@ class _SalonPublicScreenState extends State<SalonPublicScreen> {
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         Container(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+          decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
           child: Row(children: [
             Container(
               width: 56,
@@ -116,7 +116,7 @@ class _SalonPublicScreenState extends State<SalonPublicScreen> {
                 Flexible(child: Text(m['full_name'] ?? 'Beauty pro', style: const TextStyle(fontWeight: FontWeight.w800))),
                 if (m['is_verified'] == true) ...[
                   const SizedBox(width: 4),
-                  const Icon(TablerIcons.rosette_discount_check_filled, size: 16, color: AppColors.primary),
+                  Icon(TablerIcons.rosette_discount_check_filled, size: 16, color: AppColors.primary),
                 ],
               ]),
               subtitle: Text([

@@ -95,8 +95,8 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
       maxChildSize: 0.85,
       expand: false,
       builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: AppColors.card,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -115,7 +115,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Select Location',
                     style: TextStyle(
                       fontSize: 18,
@@ -221,9 +221,9 @@ class _CityTile extends StatelessWidget {
         ),
       ),
       subtitle: Text(subtitle,
-          style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+          style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
       trailing: isSelected
-          ? const Icon(TablerIcons.circle_check_filled,
+          ? Icon(TablerIcons.circle_check_filled,
               color: AppColors.primary, size: 22)
           : null,
       onTap: onTap,

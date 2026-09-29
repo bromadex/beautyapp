@@ -6,6 +6,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
+import '../utils/booking_helpers.dart';
 
 class ClientBookingsScreen extends StatefulWidget {
   const ClientBookingsScreen({super.key});
@@ -78,7 +79,11 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
   }
 
   Future<void> _cancel(Map<String, dynamic> b) async {
-    final ok = await showDialog<bool>(
+    if (paidSoFar(b) > 0) {
+      if (!await confirmPaidCancel(context, b, byPro: false)) return;
+      if (!mounted) return;
+    }
+    final ok = paidSoFar(b) > 0 ? true : await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel this booking?'),
@@ -140,7 +145,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
           ),
         ),
         body: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingPlaceholder()
             : _error != null
                 ? EmptyState(
                     icon: TablerIcons.wifi_off,
@@ -260,7 +265,7 @@ class _ReceiptCard extends StatelessWidget {
                     const Spacer(),
                     if (b['ref'] != null)
                       Text('#${b['ref']}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
                   ]),
                   const SizedBox(height: 12),
@@ -271,9 +276,9 @@ class _ReceiptCard extends StatelessWidget {
                       decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.smAll),
                       child: Column(children: [
                         Text(dt == null ? '' : _months[dt.month - 1],
-                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
                         Text(dt == null ? '–' : '${dt.day}',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
                       ]),
                     ),
@@ -288,12 +293,12 @@ class _ReceiptCard extends StatelessWidget {
                       ]),
                     ),
                     Text('\$${total.toStringAsFixed(total % 1 == 0 ? 0 : 2)}',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                   ]),
                   if (depositDue) ...[
                     const SizedBox(height: 10),
                     Text('Deposit of \$${(b['deposit_amount'] as num).toStringAsFixed(2)} not paid yet',
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warning)),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warning)),
                   ],
                   const SizedBox(height: 6),
                   const Divider(),
@@ -323,7 +328,7 @@ class _ReceiptCard extends StatelessWidget {
                       ),
                     ],
                     const Spacer(),
-                    const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
+                    Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
                   ]),
                 ]),
               ),

@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/firebase_config.dart';
 import '../router.dart';
 import '../supabase_client.dart';
-import '../theme.dart';
+import '../widgets/permission_explainer.dart';
 
 /// Stage 22: FCM push notifications (basic).
 ///
@@ -106,39 +106,18 @@ class PushService {
   }
 
   static Future<bool?> _showPermissionDialog(BuildContext context) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-        icon: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(TablerIcons.bell_ringing,
-              color: AppColors.primary, size: 32),
-        ),
-        title: const Text('Never miss an appointment', textAlign: TextAlign.center),
-        content: const Text(
-          'We\'ll tell you when your pro confirms, when they message you, and an hour before every booking.',
-          textAlign: TextAlign.center,
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        actions: [
-          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Turn on notifications'),
-            ),
-            const SizedBox(height: 4),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Maybe later'),
-            ),
-          ]),
-        ],
-      ),
+    return PermissionExplainer.show(
+      context,
+      icon: TablerIcons.bell_ringing,
+      title: 'Never miss an appointment',
+      body: 'Turn on notifications so BeauTap can tell you what\'s happening with your bookings.',
+      points: const [
+        'When a booking is confirmed or moved',
+        'When someone messages you or a payment arrives',
+        'An hour before every appointment',
+      ],
+      allowLabel: 'Turn on notifications',
+      laterLabel: 'Maybe later',
     );
   }
 }

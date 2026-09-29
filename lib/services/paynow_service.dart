@@ -191,13 +191,13 @@ class _PaymentWaitDialogState extends State<_PaymentWaitDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: AppSpacing.md),
-          const CircularProgressIndicator(color: AppColors.primary),
+          CircularProgressIndicator(color: AppColors.primary),
           const SizedBox(height: AppSpacing.xl),
           Text(
             widget.isMobileMoney
                 ? 'Approve on Your Phone'
                 : 'Complete Payment in Browser',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary),
@@ -209,7 +209,7 @@ class _PaymentWaitDialogState extends State<_PaymentWaitDialog> {
                     ? 'Enter your mobile money PIN when the prompt appears on your phone.'
                     : 'Finish the payment on the Paynow page, then return here.'),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13, color: AppColors.textSecondary, height: 1.4),
           ),
           if (widget.isMobileMoney) ...[
@@ -220,7 +220,7 @@ class _PaymentWaitDialogState extends State<_PaymentWaitDialog> {
                 color: AppColors.warning.withValues(alpha: 0.08),
                 borderRadius: AppRadius.smAll,
               ),
-              child: const Text(
+              child: Text(
                 'No prompt? Make sure the SIM for your mobile money account is in this phone and has network signal — WiFi alone is not enough for the USSD prompt.',
                 style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, height: 1.4),
               ),

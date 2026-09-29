@@ -96,7 +96,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     final includesCtrl = TextEditingController(text: existing?['includes'] ?? '');
     final aftercareCtrl = TextEditingController(text: existing?['aftercare'] ?? '');
     String? selectedCategoryId = existing?['category_id'];
-    String locationMode = existing?['location_mode'] ?? 'client';
+    String locationMode = existing?['location_mode'] ?? 'either';
     bool patchTest = existing?['patch_test'] == true;
     String? imageUrl = existing?['image_url'];
     Uint8List? newImage;
@@ -155,7 +155,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   if (notes.isEmpty) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(notes.join(' '), style: const TextStyle(fontSize: 12.5, color: AppColors.warningText)),
+                    child: Text(notes.join(' '), style: TextStyle(fontSize: 12.5, color: AppColors.warningText)),
                   );
                 }),
                 const SizedBox(height: AppSpacing.lg),
@@ -168,7 +168,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(value: 'client', label: Text('Client\'s place')),
-                    ButtonSegment(value: 'studio', label: Text('My studio')),
+                    ButtonSegment(value: 'studio', label: Text('My place')),
                     ButtonSegment(value: 'either', label: Text('Either')),
                   ],
                   selected: {locationMode},
@@ -176,6 +176,8 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                       ? null
                       : (v) => setDialogState(() => locationMode = v.first),
                 ),
+                const SizedBox(height: 4),
+                Text('"My place" means your salon or your home.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Patch test needed', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
@@ -206,7 +208,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                         ? Image.memory(newImage!, fit: BoxFit.cover)
                         : imageUrl != null
                             ? Image.network(imageUrl, fit: BoxFit.cover)
-                            : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(TablerIcons.photo_plus, color: AppColors.textTertiary),
                                 SizedBox(height: 4),
                                 Text('Add a photo of this service',
@@ -480,7 +482,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
       builder: (ctx) => AlertDialog(
         title: Text(existing == null ? 'Add an option' : 'Edit option'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('e.g. Regular, Premium, Bridal — each with its own price and time.',
+          Text('e.g. Regular, Premium, Bridal — each with its own price and time.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
           TextField(
@@ -596,12 +598,12 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
           }
         },
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onPrimary,
         icon: const Icon(TablerIcons.plus),
         label: const Text('Add'),
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder()
           : TabBarView(
               controller: _tabCtrl,
               children: [
@@ -709,17 +711,17 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                         child: Text(
                           '$catName · ${s['duration_minutes']} min',
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ),
                     ]),
                     const SizedBox(height: 2),
                     Text(
                       [
-                        switch (s['location_mode']) { 'studio' => 'At your studio', 'either' => 'Home or studio', _ => 'At client\'s place' },
+                        switch (s['location_mode']) { 'studio' => 'At your place', 'either' => 'Their place or yours', _ => 'At client\'s place' },
                         if (s['patch_test'] == true) 'Patch test',
                       ].join(' · '),
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                     if (s['review_status'] == 'flagged' || s['review_status'] == 'rejected') ...[
                       const SizedBox(height: 6),
@@ -747,21 +749,21 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                 decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: AppRadius.smAll),
-                child: Text('\$${s['price']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primary)),
+                child: Text('\$${s['price']}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.primary)),
               ),
               const SizedBox(width: AppSpacing.xs),
               PopupMenuButton(
-                icon: const Icon(TablerIcons.dots_vertical, color: AppColors.textTertiary),
+                icon: Icon(TablerIcons.dots_vertical, color: AppColors.textTertiary),
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                 itemBuilder: (_) => [
                   PopupMenuItem(onTap: () => _showAddEditDialog(existing: s),
-                    child: const Row(children: [Icon(TablerIcons.pencil, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Edit')])),
+                    child: Row(children: [Icon(TablerIcons.pencil, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Edit')])),
                   PopupMenuItem(onTap: () => _showAddonDialog(s['id']),
-                    child: const Row(children: [Icon(TablerIcons.circle_plus, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Add Add-on')])),
+                    child: Row(children: [Icon(TablerIcons.circle_plus, size: 20, color: AppColors.textSecondary), SizedBox(width: AppSpacing.md), Text('Add Add-on')])),
                   PopupMenuItem(onTap: () => _toggleActive(s),
                     child: Row(children: [Icon(isActive ? TablerIcons.eye_off : TablerIcons.eye, size: 20, color: AppColors.textSecondary), const SizedBox(width: AppSpacing.md), Text(isActive ? 'Deactivate' : 'Activate')])),
                   PopupMenuItem(onTap: () => _deleteService(s['id']),
-                    child: const Row(children: [Icon(TablerIcons.trash, size: 20, color: AppColors.error), SizedBox(width: AppSpacing.md), Text('Delete', style: TextStyle(color: AppColors.error))])),
+                    child: Row(children: [Icon(TablerIcons.trash, size: 20, color: AppColors.error), SizedBox(width: AppSpacing.md), Text('Delete', style: TextStyle(color: AppColors.error))])),
                 ],
               ),
             ]),
@@ -776,19 +778,19 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   child: Row(children: [
                     Icon(TablerIcons.circle_plus, size: 14, color: AppColors.textTertiary),
                     const SizedBox(width: AppSpacing.sm),
-                    Expanded(child: Text(a['name'], style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                    Text('+\$${a['price']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    Expanded(child: Text(a['name'], style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+                    Text('+\$${a['price']}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
                     if ((a['duration_minutes'] ?? 0) > 0)
-                      Text(' +${a['duration_minutes']}min', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                      Text(' +${a['duration_minutes']}min', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
                     const SizedBox(width: AppSpacing.sm),
                     GestureDetector(
                       onTap: () => _showAddonDialog(s['id'], existing: a),
-                      child: const Icon(TablerIcons.pencil, size: 14, color: AppColors.textTertiary),
+                      child: Icon(TablerIcons.pencil, size: 14, color: AppColors.textTertiary),
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     GestureDetector(
                       onTap: () => _deleteAddon(a['id']),
-                      child: const Icon(TablerIcons.x, size: 14, color: AppColors.error),
+                      child: Icon(TablerIcons.x, size: 14, color: AppColors.error),
                     ),
                   ]),
                 )).toList(),
@@ -824,19 +826,19 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
           leading: Container(
             width: 40, height: 40,
             decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: AppRadius.smAll),
-            child: const Icon(TablerIcons.circle_plus, color: AppColors.primary, size: 20),
+            child: Icon(TablerIcons.circle_plus, color: AppColors.primary, size: 20),
           ),
           title: Text(a['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           subtitle: Text('For: ${a['_service_name']}', style: const TextStyle(fontSize: 12)),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('+\$${a['price']}', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+              Text('+\$${a['price']}', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
               PopupMenuButton(
-                icon: const Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
+                icon: Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
                 itemBuilder: (_) => [
                   PopupMenuItem(onTap: () => _showAddonDialog(a['_service_id'], existing: a), child: const Text('Edit')),
-                  PopupMenuItem(onTap: () => _deleteAddon(a['id']), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
+                  PopupMenuItem(onTap: () => _deleteAddon(a['id']), child: Text('Delete', style: TextStyle(color: AppColors.error))),
                 ],
               ),
             ],
@@ -879,14 +881,14 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   subtitle: Text('${t['duration_minutes']} min'),
                   trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                     Text('\$${t['price']}',
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+                        style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
                     PopupMenuButton(
-                      icon: const Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
+                      icon: Icon(TablerIcons.dots_vertical, size: 20, color: AppColors.textTertiary),
                       itemBuilder: (_) => [
                         PopupMenuItem(onTap: () => _showTierDialog(svc['id'], existing: t), child: const Text('Edit')),
                         PopupMenuItem(
                             onTap: () => _deleteTier(t['id']),
-                            child: const Text('Delete', style: TextStyle(color: AppColors.error))),
+                            child: Text('Delete', style: TextStyle(color: AppColors.error))),
                       ],
                     ),
                   ]),
@@ -911,9 +913,9 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
               child: Icon(icon, size: 48, color: AppColors.primary),
             ),
             const SizedBox(height: AppSpacing.xxl),
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: AppSpacing.sm),
-            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
+            Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
           ],
         ),
       ),

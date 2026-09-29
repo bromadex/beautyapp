@@ -84,7 +84,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Favourite pros')),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder()
           : RefreshIndicator(
               color: AppColors.primary,
               onRefresh: _load,
@@ -116,7 +116,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 const SizedBox(height: AppSpacing.sm),
-                                const Text(
+                                Text(
                                   'Save your favourite beauty pros for quick booking.',
                                   style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                                 ),
@@ -197,7 +197,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                                   Expanded(
                                                     child: Text(
                                                       location,
-                                                      style: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                                                      style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
                                                   ),
@@ -230,7 +230,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                                   const SizedBox(width: 2),
                                                   Text(
                                                     '${rating.toStringAsFixed(1)} ($totalReviews)',
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 12,
                                                       color: AppColors.textSecondary,
                                                     ),

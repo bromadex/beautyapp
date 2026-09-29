@@ -80,7 +80,7 @@ class PaymentMethodCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       )),
@@ -92,7 +92,7 @@ class PaymentMethodCard extends StatelessWidget {
               opacity: selected ? 1.0 : 0.0,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   shape: BoxShape.circle,
                 ),

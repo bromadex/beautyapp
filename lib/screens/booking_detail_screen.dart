@@ -173,7 +173,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.circle_check,
+          child: Icon(TablerIcons.circle_check,
               color: AppColors.success, size: 32),
         ),
         title: const Text('Complete Service?'),
@@ -216,6 +216,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   Future<void> _cancelBooking() async {
+    final b0 = _booking!;
+    if (!await confirmPaidCancel(context, b0,
+        byPro: _isProvider,
+        otherName: (b0[_isProvider ? 'client' : 'provider'] as Map?)?['full_name'])) {
+      return;
+    }
+    if (!mounted) return;
     final fee = _lateCancelFee;
     final reason = await showDialog<String>(
       context: context,
@@ -322,6 +329,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   Map<String, dynamic>? get _openPayment => _payments.where((p) => p['status'] == 'claimed').firstOrNull;
 
   Future<void> _decidePayment(Map<String, dynamic> p, bool received) async {
+    if (received &&
+        !await confirmReceived(context,
+            what: 'Confirm you received \$${amountText(p['amount'] as num)} by ${payMethodLabel(p['method'])}?')) {
+      return;
+    }
+    if (!mounted) return;
     if (!received) {
       final ok = await showDialog<bool>(
         context: context,
@@ -426,7 +439,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     }
     if (_error != null) {
       return Scaffold(
@@ -443,7 +456,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(TablerIcons.alert_circle,
+                  child: Icon(TablerIcons.alert_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -471,9 +484,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final provider = b['provider'] as Map?;
     final hideStudio = !_isProvider && b['at_studio'] == true && status == 'pending';
     final address  = hideStudio
-        ? 'At the pro\'s studio. The address shows once the pro confirms.'
+        ? 'At the pro\'s place. The address shows once the pro confirms.'
         : b['at_studio'] == true
-            ? 'Studio: ${b['address'] ?? ''}'
+            ? 'Pro\'s place: ${b['address'] ?? ''}'
             : (b['address'] as String? ?? '');
 
     final arrivedAt   = b['provider_arrived_at']  as String?;
@@ -729,6 +742,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 subtitle: 'The client paid you in cash or another way',
                 color: AppColors.success,
                 onTap: () async {
+                  final left = ((b['total_price'] as num?) ?? 0) - (b['deposit_paid'] == true ? ((b['deposit_amount'] as num?) ?? 0) : 0);
+                  if (!await confirmReceived(context,
+                      what: 'Mark this booking as paid? You\'re saying ${client?['full_name'] ?? 'the client'} has paid you ${money(left)}.')) {
+                    return;
+                  }
                   await supabase.from('bookings').update({'payment_status': 'paid'}).eq('id', widget.bookingId);
                   _load();
                 },
@@ -782,7 +800,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(TablerIcons.circle_check_filled,
+                          Icon(TablerIcons.circle_check_filled,
                               color: AppColors.success, size: 22),
                           const SizedBox(width: AppSpacing.sm),
                           Text('You have reviewed this booking',
@@ -1221,7 +1239,7 @@ class _PaymentClaimCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          const Icon(TablerIcons.cash_banknote, color: AppColors.warningText),
+          Icon(TablerIcons.cash_banknote, color: AppColors.warningText),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text('Did you receive this $kind?',

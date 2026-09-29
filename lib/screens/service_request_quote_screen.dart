@@ -170,7 +170,7 @@ class _ServiceRequestQuoteScreenState
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
+          body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     }
 
     final r = _request!;
@@ -218,7 +218,7 @@ class _ServiceRequestQuoteScreenState
                     runSpacing: AppSpacing.sm,
                     children: [
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(TablerIcons.map_pin,
+                        Icon(TablerIcons.map_pin,
                             size: 16, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(r['location'] ?? '',
@@ -228,7 +228,7 @@ class _ServiceRequestQuoteScreenState
                         Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(TablerIcons.currency_dollar,
+                              Icon(TablerIcons.currency_dollar,
                                   size: 16,
                                   color: AppColors.textTertiary),
                               Text(
@@ -241,7 +241,7 @@ class _ServiceRequestQuoteScreenState
                               ),
                             ]),
                       Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(TablerIcons.user,
+                        Icon(TablerIcons.user,
                             size: 16, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(r['client']?['full_name'] ?? 'Client',
@@ -283,7 +283,7 @@ class _ServiceRequestQuoteScreenState
                           child: Text(
                             (q['provider']?['full_name'] ?? '?')[0]
                                 .toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.bold),
                           ),
@@ -370,11 +370,11 @@ class _ServiceRequestQuoteScreenState
               FilledButton.icon(
                 onPressed: _submitting ? null : _submitQuote,
                 icon: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2, color: AppColors.onPrimary))
                     : const Icon(TablerIcons.send),
                 label: Text(
                     _submitting ? 'Sending...' : 'Send Quote'),
@@ -392,7 +392,7 @@ class _ServiceRequestQuoteScreenState
                       color: AppColors.success.withValues(alpha: 0.2)),
                 ),
                 child: Row(children: [
-                  const Icon(TablerIcons.circle_check_filled,
+                  Icon(TablerIcons.circle_check_filled,
                       color: AppColors.success, size: 22),
                   const SizedBox(width: AppSpacing.sm),
                   const Expanded(

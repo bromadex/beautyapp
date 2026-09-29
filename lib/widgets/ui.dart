@@ -13,7 +13,7 @@ class BrandMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: AppColors.forest,
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
       child: Stack(children: [
@@ -35,7 +35,7 @@ class BrandMark extends StatelessWidget {
           child: Container(
             width: size * 0.13,
             height: size * 0.13,
-            decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
           ),
         ),
       ]),
@@ -127,16 +127,16 @@ class SoftBanner extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                 if (message != null) ...[
                   const SizedBox(height: 2),
-                  Text(message!, style: const TextStyle(fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
+                  Text(message!, style: TextStyle(fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
                 ],
               ]),
             ),
             if (actionLabel != null) ...[
               const SizedBox(width: AppSpacing.sm),
-              Text(actionLabel!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
+              Text(actionLabel!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
             ] else if (onTap != null)
               Icon(TablerIcons.chevron_right, color: color),
           ]),
@@ -149,14 +149,16 @@ class SoftBanner extends StatelessWidget {
 /// Small rounded label, e.g. status or "Verified".
 class Pill extends StatelessWidget {
   final String label;
-  final Color color;
+  final Color? _color;
   final IconData? icon;
   final bool solid;
-  const Pill({super.key, required this.label, this.color = AppColors.primary, this.icon, this.solid = false});
+  const Pill({super.key, required this.label, Color? color, this.icon, this.solid = false}) : _color = color;
+
+  Color get color => _color ?? AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
-    final fg = solid ? Colors.white : color;
+    final fg = solid ? AppColors.onPrimary : color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -179,14 +181,14 @@ class RatingPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (reviews == 0) {
-      return const Pill(label: 'New', color: AppColors.primary, solid: true);
+      return Pill(label: 'New', color: AppColors.primary, solid: true);
     }
     return Row(mainAxisSize: MainAxisSize.min, children: [
       const Icon(TablerIcons.star_filled, size: 16, color: Color(0xFFA8822F)),
       const SizedBox(width: 3),
       Text(rating.toStringAsFixed(1),
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-      Text(' ($reviews)', style: const TextStyle(fontSize: 12.5, color: AppColors.textTertiary)),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+      Text(' ($reviews)', style: TextStyle(fontSize: 12.5, color: AppColors.textTertiary)),
     ]);
   }
 }
@@ -211,7 +213,7 @@ class PersonAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
+      decoration: BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
       clipBehavior: Clip.antiAlias,
       child: (url != null && url!.isNotEmpty)
           ? Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback)
@@ -249,7 +251,7 @@ class EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
           const SizedBox(height: AppSpacing.sm),
           Text(message, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary), textAlign: TextAlign.center),
@@ -335,8 +337,8 @@ class BeauNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: SafeArea(
@@ -412,8 +414,121 @@ class ForestHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.primary,
+      color: AppColors.forest,
       child: SafeArea(bottom: false, child: Padding(padding: padding, child: child)),
+    );
+  }
+}
+
+/// Wrap bottom-sheet content so it never grows past 90% of the screen and
+/// scrolls when it's taller (small phones, long lists, keyboard open).
+class SheetScroll extends StatelessWidget {
+  final Widget child;
+  const SheetScroll({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+        child: SingleChildScrollView(child: child),
+      );
+}
+
+enum PlaceholderKind { list, detail, profile }
+
+/// Grey shapes that pulse while a screen loads, laid out like the content
+/// that's coming, so the page doesn't jump when it arrives.
+class LoadingPlaceholder extends StatefulWidget {
+  final PlaceholderKind kind;
+  const LoadingPlaceholder({super.key, this.kind = PlaceholderKind.list});
+
+  @override
+  State<LoadingPlaceholder> createState() => _LoadingPlaceholderState();
+}
+
+class _LoadingPlaceholderState extends State<LoadingPlaceholder> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _box({double? w, double h = 14, double r = 6}) => Container(
+        width: w,
+        height: h,
+        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(r)),
+      );
+
+  Widget _card({bool avatar = true}) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(children: [
+          if (avatar) ...[_box(w: 44, h: 44, r: 22), const SizedBox(width: 12)],
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _box(w: 160, h: 14),
+              const SizedBox(height: 8),
+              _box(w: 110, h: 12),
+            ]),
+          ),
+          _box(w: 44, h: 16),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> children = switch (widget.kind) {
+      PlaceholderKind.list => [for (var i = 0; i < 6; i++) _card()],
+      PlaceholderKind.detail => [
+          _box(h: 120, r: 20),
+          const SizedBox(height: 16),
+          _box(w: 180, h: 18),
+          const SizedBox(height: 10),
+          _box(h: 12),
+          const SizedBox(height: 6),
+          _box(w: 240, h: 12),
+          const SizedBox(height: 20),
+          _card(avatar: false),
+          _card(avatar: false),
+          _card(avatar: false),
+        ],
+      PlaceholderKind.profile => [
+          Row(children: [
+            _box(w: 72, h: 72, r: 36),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _box(w: 160, h: 20),
+                const SizedBox(height: 8),
+                _box(w: 120, h: 12),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 20),
+          Row(children: [Expanded(child: _box(h: 60, r: 12)), const SizedBox(width: 10), Expanded(child: _box(h: 60, r: 12))]),
+          const SizedBox(height: 20),
+          _box(w: 100, h: 16),
+          const SizedBox(height: 10),
+          _card(avatar: false),
+          _card(avatar: false),
+        ],
+    };
+    return SafeArea(
+      child: FadeTransition(
+        opacity: Tween(begin: 0.45, end: 1.0).animate(_c),
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: children,
+        ),
+      ),
     );
   }
 }

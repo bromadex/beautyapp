@@ -177,7 +177,7 @@ class _BookingScreenState extends State<BookingScreen> {
       .fold(0, (s, a) => s + ((a['duration_minutes'] as num?)?.toInt() ?? 0));
   int get _totalMinutes => _baseMinutes + _addonsMinutes;
 
-  String get _mode => (_service['location_mode'] ?? 'client') as String;
+  String get _mode => (_service['location_mode'] ?? 'either') as String;
   bool get _studio => _mode == 'studio' || (_mode == 'either' && _atStudio);
   Map<String, dynamic>? get _cat => _service['service_categories'] as Map<String, dynamic>?;
   bool get _isMassage => _cat?['studio_only'] == true && _cat?['needs_certificate'] == true;
@@ -185,7 +185,7 @@ class _BookingScreenState extends State<BookingScreen> {
   bool get _needsAck => _isMassage || _minAge != null;
   String get _studioArea {
     final a = (_providerProfile?['address'] ?? _provider?['location'] ?? '').toString();
-    return a.isEmpty ? 'their studio' : a.split(',').last.trim();
+    return a.isEmpty ? 'their area' : a.split(',').last.trim();
   }
 
   double get _travelFee {
@@ -238,7 +238,9 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _useMyLocation() async {
     setState(() => _locating = true);
     try {
-      final pos = await LocationService().getCurrentPosition();
+      final pos = await LocationService().getCurrentPosition(
+          context: context,
+          reason: 'So your pro knows where to come and the travel fee is worked out correctly.');
       if (pos != null && mounted) {
         setState(() {
           _lat = pos.latitude;
@@ -346,7 +348,7 @@ class _BookingScreenState extends State<BookingScreen> {
             'service_id': _serviceId,
             if (_tierId != null) 'tier_id': _tierId,
             'booking_time': slotToDateTime(_day!, _time!).toIso8601String(),
-            'address': _studio ? 'At the pro\'s studio' : _addressCtrl.text.trim(),
+            'address': _studio ? 'At the pro\'s place' : _addressCtrl.text.trim(),
             'at_studio': _studio,
             'client_ack': _ack,
             'status': 'pending',
@@ -390,18 +392,19 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Future<void> _showDone(String bookingId, String ref, double deposit) async {
     await showModalBottomSheet(
+      isScrollControlled: true,
       context: context,
       isDismissible: false,
       enableDrag: false,
       showDragHandle: false,
-      builder: (ctx) => Padding(
+      builder: (ctx) => SheetScroll(child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 72,
             height: 72,
             decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: const Icon(TablerIcons.check, color: AppColors.success, size: 40),
+            child: Icon(TablerIcons.check, color: AppColors.success, size: 40),
           ),
           const SizedBox(height: 16),
           Text('Request sent!', style: Theme.of(ctx).textTheme.headlineSmall),
@@ -415,7 +418,7 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
           if (_isGuest) ...[
             const SizedBox(height: 16),
-            const SoftBanner(
+            SoftBanner(
               icon: TablerIcons.bookmark_plus,
               color: AppColors.primary,
               title: 'Keep your bookings safe',
@@ -456,7 +459,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
           ),
         ]),
-      ),
+      )),
     );
   }
 
@@ -464,7 +467,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) return const Scaffold(body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
@@ -508,7 +511,7 @@ class _BookingScreenState extends State<BookingScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: Center(
                 child: Text('${_step + 1} / ${_stepTitles.length}',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               ),
             ),
           ],
@@ -627,12 +630,12 @@ class _BookingScreenState extends State<BookingScreen> {
       Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.mdAll,
           border: Border.all(color: AppColors.border),
         ),
         child: Row(children: [
-          const Icon(TablerIcons.clock, color: AppColors.primary, size: 24),
+          Icon(TablerIcons.clock, color: AppColors.primary, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -643,7 +646,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w800)),
                   if (addonNames.isNotEmpty) TextSpan(text: ' + $addonNames'),
                 ]),
-                style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 15, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 2),
               Text('${_durationLabel(_totalMinutes)} with ${_provider?['full_name'] ?? 'your pro'}',
@@ -655,7 +658,9 @@ class _BookingScreenState extends State<BookingScreen> {
       const SizedBox(height: 6),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Text('Only free times are shown. Book at least $notice h ahead.',
+        child: Text(notice > 0
+            ? 'Only free times are shown. Book at least $notice ${notice == 1 ? 'hour' : 'hours'} ahead.'
+            : 'Only free times are shown.',
             style: Theme.of(context).textTheme.bodySmall),
       ),
       const SizedBox(height: 14),
@@ -702,8 +707,8 @@ class _BookingScreenState extends State<BookingScreen> {
         SegmentedButton<bool>(
           showSelectedIcon: false,
           segments: const [
-            ButtonSegment(value: false, label: Text('At my place'), icon: Icon(TablerIcons.home, size: 18)),
-            ButtonSegment(value: true, label: Text('At the studio'), icon: Icon(TablerIcons.building_store, size: 18)),
+            ButtonSegment(value: false, label: Text('Come to me'), icon: Icon(TablerIcons.home, size: 18)),
+            ButtonSegment(value: true, label: Text('I\'ll go to them'), icon: Icon(TablerIcons.building_store, size: 18)),
           ],
           selected: {_atStudio},
           onSelectionChanged: (v) => setState(() => _atStudio = v.first),
@@ -715,18 +720,32 @@ class _BookingScreenState extends State<BookingScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.mdAll),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(TablerIcons.building_store, color: AppColors.primary, size: 22),
+            Icon(TablerIcons.building_store, color: AppColors.primary, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'At ${(_provider?['full_name'] ?? 'the pro').toString().split(' ').first}\'s studio in $_studioArea. '
+                'At ${(_provider?['full_name'] ?? 'the pro').toString().split(' ').first}\'s place (salon or home) in $_studioArea. '
                 'You\'ll see the exact address once your booking is confirmed.',
                 style: const TextStyle(fontSize: 14, height: 1.4),
               ),
             ),
           ]),
         )
-      else
+      else ...[
+        if (_mode == 'client')
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(children: [
+              Icon(TablerIcons.home, size: 18, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${(_provider?['full_name'] ?? 'This pro').toString().split(' ').first} comes to you for this service.',
+                  style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                ),
+              ),
+            ]),
+          ),
         TextField(
           controller: _addressCtrl,
           maxLines: 2,
@@ -737,6 +756,7 @@ class _BookingScreenState extends State<BookingScreen> {
             prefixIcon: Icon(TablerIcons.map_pin),
           ),
         ),
+      ],
       if (hasTravel && !_studio)
         Align(
           alignment: Alignment.centerLeft,
@@ -788,7 +808,9 @@ class _BookingScreenState extends State<BookingScreen> {
         _depositPercent > 0
             ? 'This pro asks for a $_depositPercent% deposit (${_money(_deposit)}). After you book, send it to them '
                 'directly within 2 hours and tap "I\'ve paid". The rest is paid ${_payment == 'cash' ? 'in cash' : 'by ${payMethodLabel(_payment)}'} on the day.'
-            : _payment == 'cash'
+            : !_takesTransfers
+                ? '${(_provider?['full_name'] ?? 'This pro').toString().split(' ').first} only takes cash for now. Pay them on the day.'
+                : _payment == 'cash'
                 ? 'Pay the pro in cash on the day.'
                 : 'You pay the pro directly. BeauTap never holds your money.',
         style: Theme.of(context).textTheme.bodySmall,
@@ -866,7 +888,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 text: '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]} · $timeLabel ($_totalMinutes min)'),
             _InfoLine(
                 icon: _studio ? TablerIcons.building_store : TablerIcons.map_pin,
-                text: _studio ? 'At the pro\'s studio, $_studioArea' : _addressCtrl.text.trim()),
+                text: _studio ? 'At the pro\'s place, $_studioArea' : _addressCtrl.text.trim()),
             _InfoLine(
                 icon: TablerIcons.cash,
                 text: _payment == 'cash' ? 'Pay cash' : 'Pay by ${payMethodLabel(_payment)}'),
@@ -894,7 +916,7 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
       if (_service['patch_test'] == true) ...[
         const SizedBox(height: 12),
-        const SoftBanner(
+        SoftBanner(
           icon: TablerIcons.alert_circle,
           color: AppColors.warningText,
           title: 'Patch test needed',
@@ -916,7 +938,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   'Professional therapeutic massage only. Inappropriate requests will get my account banned.',
                 if (_minAge != null) 'I am $_minAge or older.',
               ].join(' '),
-              style: const TextStyle(fontSize: 14, height: 1.4, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, height: 1.4, color: AppColors.textPrimary),
             ),
           ),
         ),
@@ -951,7 +973,7 @@ class _StepBar extends StatelessWidget {
                 duration: const Duration(milliseconds: 250),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: i <= step ? AppColors.primary : const Color(0xFFDDE2DE),
+                  color: i <= step ? AppColors.primary : AppColors.border,
                   borderRadius: AppRadius.pill,
                 ),
               ),
@@ -982,8 +1004,8 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
@@ -994,15 +1016,15 @@ class _BottomBar extends StatelessWidget {
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
               Text(total,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ]),
             const SizedBox(width: 16),
             Expanded(
               child: FilledButton(
                 onPressed: onPressed,
                 child: busy
-                    ? const SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(
+                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary))
                     : Text(label, overflow: TextOverflow.ellipsis),
               ),
             ),
@@ -1041,7 +1063,7 @@ class _SelectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final border = selected ? AppColors.primary : AppColors.border;
     return Material(
-      color: selected ? AppColors.primarySoft : Colors.white,
+      color: selected ? AppColors.primarySoft : AppColors.card,
       shape: RoundedRectangleBorder(
           borderRadius: AppRadius.mdAll, side: BorderSide(color: border, width: selected ? 1.6 : 1)),
       child: InkWell(

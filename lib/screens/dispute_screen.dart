@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class DisputeScreen extends StatefulWidget {
   final String bookingId;
@@ -81,7 +82,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                 color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(TablerIcons.circle_check,
+              child: Icon(TablerIcons.circle_check,
                   color: AppColors.success, size: 32),
             ),
             title: const Text('Report Submitted'),
@@ -121,7 +122,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Report an Issue')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : SingleChildScrollView(
               padding: AppSpacing.screenPadding,
               child: Column(
@@ -144,7 +145,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                               color: AppColors.warning.withValues(alpha: 0.1),
                               borderRadius: AppRadius.mdAll,
                             ),
-                            child: const Icon(TablerIcons.flag,
+                            child: Icon(TablerIcons.flag,
                                 color: AppColors.warning, size: 22),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -221,11 +222,11 @@ class _DisputeScreenState extends State<DisputeScreen> {
                   FilledButton.icon(
                     onPressed: _submitting ? null : _submit,
                     icon: _submitting
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                                strokeWidth: 2, color: AppColors.onPrimary))
                         : const Icon(TablerIcons.send),
                     label: Text(
                         _submitting ? 'Submitting...' : 'Submit Report'),

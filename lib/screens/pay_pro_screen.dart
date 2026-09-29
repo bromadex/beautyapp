@@ -230,7 +230,7 @@ class _PayProScreenState extends State<PayProScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) return const Scaffold(body: LoadingPlaceholder(kind: PlaceholderKind.detail));
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(),
@@ -313,15 +313,15 @@ class _PayProScreenState extends State<PayProScreen> {
           ? SafeArea(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: AppColors.card,
                   border: Border(top: BorderSide(color: AppColors.border)),
                 ),
                 child: FilledButton(
                   onPressed: _sending ? null : _submit,
                   child: _sending
-                      ? const SizedBox(
-                          height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? SizedBox(
+                          height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary))
                       : const Text('I\'ve paid'),
                 ),
               ),
@@ -340,7 +340,7 @@ class _PayProScreenState extends State<PayProScreen> {
     };
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+      decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
@@ -398,7 +398,7 @@ class _PayProScreenState extends State<PayProScreen> {
   Widget _sendYourselfCard(double amount) {
     final m = _method!;
     final amt = _money(amount);
-    final strong = const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary);
+    final strong = TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary);
     final Widget sentence;
     if (m.id == 'bank') {
       sentence = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -433,13 +433,13 @@ class _PayProScreenState extends State<PayProScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(m.ussd(amount) != null ? 'OR SEND IT YOURSELF' : 'HOW TO PAY',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.6, color: AppColors.textSecondary)),
         const SizedBox(height: 10),
         DefaultTextStyle.merge(style: const TextStyle(fontSize: 17, height: 1.35), child: sentence),
@@ -474,7 +474,7 @@ class _PayProScreenState extends State<PayProScreen> {
           const SizedBox(height: 12),
           Text(
             hint,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
         ],
       ]),
@@ -484,7 +484,7 @@ class _PayProScreenState extends State<PayProScreen> {
   Widget _otherMethods() {
     final others = _methods.where((m) => m.id != _methodId).toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('$_firstName also accepts', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+      Text('$_firstName also accepts', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final m in others)
@@ -493,12 +493,12 @@ class _PayProScreenState extends State<PayProScreen> {
             label: Text(m.label),
             backgroundColor: AppColors.primarySoft,
             side: BorderSide.none,
-            labelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
+            labelStyle: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
             onPressed: () => setState(() => _methodId = m.id),
           ),
         if (_pp?['accepts_cash'] != false)
           Chip(
-            avatar: const Icon(TablerIcons.cash, size: 16, color: AppColors.textSecondary),
+            avatar: Icon(TablerIcons.cash, size: 16, color: AppColors.textSecondary),
             label: const Text('Cash on the day'),
             side: BorderSide.none,
             backgroundColor: AppColors.surfaceMuted,
@@ -545,7 +545,7 @@ class _PayProScreenState extends State<PayProScreen> {
           borderRadius: AppRadius.mdAll,
           child: CustomPaint(
             painter: _DashedBorder(),
-            child: const SizedBox(
+            child: SizedBox(
               height: 52,
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(TablerIcons.photo_up, size: 20, color: AppColors.textPrimary),
@@ -566,7 +566,7 @@ class _PayProScreenState extends State<PayProScreen> {
         Container(
           width: 56,
           height: 56,
-          decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppColors.card, shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 28),
         ),
         const SizedBox(height: 12),

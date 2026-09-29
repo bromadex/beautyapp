@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../theme.dart';
 
 /// Helpers for bookings that may be walk-ins (no BeauTap account).
 
@@ -66,4 +68,70 @@ Future<void> shareOnWhatsApp(String text, {String? phone}) async {
               : digits;
   await launchUrl(Uri.parse('https://wa.me/$to?text=${Uri.encodeComponent(text)}'),
       mode: LaunchMode.externalApplication);
+}
+
+/// Money the client has already sent the pro for this booking.
+double paidSoFar(Map b) {
+  num n(String k) => (b[k] as num?) ?? 0;
+  if (b['payment_status'] == 'paid') return n('total_price').toDouble();
+  if (b['deposit_paid'] == true) return n('deposit_amount').toDouble();
+  return 0;
+}
+
+/// Before cancelling a booking the client has paid for: the pro must agree to
+/// refund; the client is told the deposit may be kept. Returns false to stop.
+Future<bool> confirmPaidCancel(BuildContext context, Map b, {required bool byPro, String? otherName}) async {
+  final paid = paidSoFar(b);
+  if (paid <= 0) return true;
+  var agreed = !byPro;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, set) => AlertDialog(
+        title: Text(byPro ? 'They\'ve already paid you' : 'You\'ve already paid'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(byPro
+              ? '${otherName ?? 'The client'} has paid you ${money(paid)}. BeauTap doesn\'t hold the money, '
+                  'so if you cancel you must send it back yourself.'
+              : 'You paid ${money(paid)}. Depending on the pro\'s cancellation policy, a deposit may not be refunded. '
+                  'Message them to agree a refund.'),
+          if (byPro) ...[
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: agreed,
+              onChanged: (v) => set(() => agreed = v ?? false),
+              title: Text('I\'ll refund ${money(paid)} to ${otherName ?? 'the client'}'),
+            ),
+          ],
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep booking')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: agreed ? () => Navigator.pop(ctx, true) : null,
+            child: const Text('Cancel anyway'),
+          ),
+        ],
+      ),
+    ),
+  );
+  return ok == true;
+}
+
+/// "You can't undo this" check before recording money as received.
+Future<bool> confirmReceived(BuildContext context, {required String what}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Are you sure?'),
+      content: Text('$what You can\'t undo this, so only confirm once the money is in your account or hand.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not yet')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, I have it')),
+      ],
+    ),
+  );
+  return ok == true;
 }

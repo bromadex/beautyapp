@@ -69,7 +69,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
         label: const Text('Add booking'),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : RefreshIndicator(
               onRefresh: _load,
               child: _clients.isEmpty
@@ -141,7 +141,7 @@ class _Stat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -150,7 +150,7 @@ class _Stat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
+            style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
       ]),
     );
   }
@@ -184,7 +184,7 @@ class _ClientRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.mdAll,
           border: Border.all(color: AppColors.border),
         ),
@@ -200,7 +200,7 @@ class _ClientRow extends StatelessWidget {
                 ),
                 if (c['client_id'] == null) ...[
                   const SizedBox(width: 6),
-                  const Pill(label: 'Walk-in', color: AppColors.textTertiary),
+                  Pill(label: 'Walk-in', color: AppColors.textTertiary),
                 ],
               ]),
               const SizedBox(height: 2),
@@ -210,7 +210,7 @@ class _ClientRow extends StatelessWidget {
                   if (visits > 0) money((c['total_spent'] as num?) ?? 0),
                   if (next != null) 'next ${_shortDate(next)}' else if (c['last_visit'] != null) 'last ${_shortDate(c['last_visit'])}',
                 ].join(' · '),
-                style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
               ),
               if (tags.isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -220,7 +220,7 @@ class _ClientRow extends StatelessWidget {
               ],
             ]),
           ),
-          const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
+          Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
         ]),
       ),
     );
@@ -341,7 +341,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) return const Scaffold(body: LoadingPlaceholder());
     final c = _client;
     if (c == null) {
       return Scaffold(
@@ -387,7 +387,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
         if (noShows > 0) ...[
           const SizedBox(height: 10),
           Text('$noShows no-show${noShows == 1 ? '' : 's'}',
-              style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
         ],
         const SizedBox(height: 14),
         Row(children: [
@@ -459,7 +459,7 @@ class _ClientDetailScreenState extends State<ClientDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text('${_shortDate(n['created_at'])} — ${n['note']}',
-                  style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+                  style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
             ),
         ],
         const SizedBox(height: 24),

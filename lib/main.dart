@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'router.dart';
 import 'supabase_client.dart';
 import 'theme.dart';
+import 'services/appearance.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,7 @@ Future<void> main() async {
   );
 
   await _applyPendingOAuthUserType();
+  await Appearance.instance.load();
 
   runApp(const BeautyApp());
 }
@@ -54,15 +56,44 @@ Future<void> _applyPendingOAuthUserType() async {
   } catch (_) {}
 }
 
-class BeautyApp extends StatelessWidget {
+class BeautyApp extends StatefulWidget {
   const BeautyApp({super.key});
 
   @override
+  State<BeautyApp> createState() => _BeautyAppState();
+}
+
+class _BeautyAppState extends State<BeautyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Appearance.instance.addListener(_onAppearance);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    Appearance.instance.removeListener(_onAppearance);
+    super.dispose();
+  }
+
+  void _onAppearance() => setState(() {});
+
+  // Phone switched between light and dark
+  @override
+  void didChangePlatformBrightness() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final dark = Appearance.instance.isDark(WidgetsBinding.instance.platformDispatcher.platformBrightness);
+    AppColors.isDark = dark;
     return MaterialApp.router(
       title: 'BeauTap',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
+      theme: AppTheme.current,
+      // Colours are read when widgets build, so rebuild everything when the mode flips.
+      builder: (context, child) => KeyedSubtree(key: ValueKey(dark), child: child ?? const SizedBox()),
       routerConfig: appRouter,
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {

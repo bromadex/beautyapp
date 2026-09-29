@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) {
         bool sending = false;
         bool sent = false;
-        return StatefulBuilder(
+        return SheetScroll(child: StatefulBuilder(
           builder: (ctx, setSheetState) => Padding(
             padding: EdgeInsets.only(
               left: AppSpacing.xxl,
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: AppSpacing.md),
                     Text(
                       sent ? 'Check your email' : 'Reset Password',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (sent) ...[
                   Text(
                     'We sent a password reset link to ${resetEmailCtrl.text.trim()}. Check your inbox and follow the link.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                       height: 1.5,
@@ -220,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text('Got it'),
                   ),
                 ] else ...[
-                  const Text(
+                  Text(
                     'Enter your email and we\'ll send you a link to reset your password.',
                     style: TextStyle(
                       fontSize: 14,
@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-        );
+        ));
       },
     );
   }

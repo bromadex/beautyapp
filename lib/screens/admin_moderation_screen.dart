@@ -114,7 +114,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
           ]),
         ),
         body: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingPlaceholder()
             : TabBarView(children: [
                 RefreshIndicator(onRefresh: _load, child: _buildReported()),
                 RefreshIndicator(onRefresh: _load, child: _buildFlagged()),
@@ -147,7 +147,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.lgAll,
             border: Border.all(color: AppColors.border),
           ),
@@ -157,7 +157,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                 child: Text('${r['client']?['full_name'] ?? 'Client'} → ${r['provider']?['full_name'] ?? 'Pro'}',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
-              Text('★' * rating + '☆' * (5 - rating), style: const TextStyle(color: AppColors.warning)),
+              Text('★' * rating + '☆' * (5 - rating), style: TextStyle(color: AppColors.warning)),
             ]),
             const SizedBox(height: 6),
             Text((r['comment'] ?? '').toString().isEmpty ? '(no comment)' : r['comment'],
@@ -178,7 +178,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
             ]),
             const SizedBox(height: 4),
             Text('Posted ${_ago(r['created_at'])}',
-                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
             const SizedBox(height: 10),
             Row(children: [
               Expanded(
@@ -235,14 +235,14 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(f['service_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             Text('${f['pro_name'] ?? 'Pro'} · ${f['service_categories']?['name'] ?? ''} · \$${f['price']}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             if ((f['description'] ?? '').toString().isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(f['description'], style: const TextStyle(fontSize: 14, height: 1.4)),
@@ -280,7 +280,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
     }
     final top = (_demand.first['requests'] as num).toDouble();
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Where clients want BeauTap next (last 90 days). Recruit beauty pros here first.',
+      Text('Where clients want BeauTap next (last 90 days). Recruit beauty pros here first.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       const SizedBox(height: 12),
       for (final d in _demand)
@@ -288,7 +288,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.card,
             borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.border),
           ),
@@ -313,7 +313,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
                 if (d['top_category'] != null) 'mostly ${d['top_category']}',
                 'last ${_ago(d['last_at'])}',
               ].join(' · '),
-              style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
             ),
           ]),
         ),

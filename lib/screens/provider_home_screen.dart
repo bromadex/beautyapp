@@ -11,6 +11,7 @@ import '../services/push_service.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
+import '../utils/pay_methods.dart';
 
 class ProviderHomeScreen extends StatefulWidget {
   const ProviderHomeScreen({super.key});
@@ -107,7 +108,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.rosette_discount_check,
+          child: Icon(TablerIcons.rosette_discount_check,
               color: AppColors.success, size: 48),
         ),
         title: const Text('Well Done!'),
@@ -259,7 +260,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     try {
       final n = DateTime.now();
       final start = DateTime(n.year, n.month, n.day);
-      const sel = 'id, booking_time, status, total_price, payment_status, source, walkin_name, walkin_phone, client_id, '
+      const sel = 'deposit_amount, deposit_paid, id, booking_time, status, total_price, payment_status, source, walkin_name, walkin_phone, client_id, '
           'services(service_name, duration_minutes), service_tiers(name, duration_minutes), '
           'client:profiles!bookings_client_id_fkey(full_name, phone)';
       final results = await Future.wait<dynamic>([
@@ -312,6 +313,13 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   }
 
   Future<void> _respond(Map<String, dynamic> b, bool accept) async {
+    final paid = paidSoFar(b);
+    if (!accept && paid > 0) {
+      if (!await confirmPaidCancel(context, b,
+          byPro: true, otherName: (b['client'] as Map?)?['full_name'] ?? b['walkin_name'])) {
+        return;
+      }
+    }
     try {
       await supabase.from('bookings').update({
         'status': accept ? 'confirmed' : 'cancelled',
@@ -323,7 +331,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
         title: accept ? 'Booking confirmed' : 'Booking declined',
         body: accept
             ? 'Your ${b['services']?['service_name'] ?? 'booking'} is confirmed.'
-            : 'Your pro can\'t take this booking. Try another time or pro.',
+            : 'Your pro can\'t take this booking. Try another time or pro.'
+                '${paid > 0 ? ' They\'ll refund the ${money(paid)} you paid.' : ''}',
         referenceId: b['id'],
       );
       if (mounted) {
@@ -378,8 +387,8 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       bottomNavigationBar: isVerified
           ? Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: AppColors.card,
                 border: Border(top: BorderSide(color: AppColors.border)),
               ),
               child: Row(children: [
@@ -567,7 +576,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           ] else
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.card,
                                 borderRadius: AppRadius.mdAll,
                                 border: Border.all(color: AppColors.border),
                               ),
@@ -597,6 +606,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           if (_providerProfile == null) ...[
                             const SizedBox(height: 8),
                             _SetupCard(onTap: () => context.push('/provider/profile/edit')),
+                          ] else if (payMethodsOf(_providerProfile, includeCash: false).isEmpty) ...[
+                            SoftBanner(
+                              icon: TablerIcons.device_mobile,
+                              color: AppColors.primary,
+                              title: 'Add EcoCash so clients can pay you',
+                              message: 'Right now clients can only choose cash. Add your EcoCash number, '
+                                  'InnBucks or bank details to take deposits and payments before the day.',
+                              actionLabel: 'Add',
+                              onTap: () => context.push('/provider/settings').then((_) => _loadData()),
+                            ),
                           ],
                         ],
                       ],
@@ -664,15 +683,8 @@ class _NextBookingCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A1A2E), Color(0xFF2D2B55)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppRadius.lgAll,
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF1A1A2E).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
-        ],
+        color: AppColors.forest,
+        borderRadius: AppRadius.xlAll,
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -710,7 +722,7 @@ class _NextBookingCard extends StatelessWidget {
                 Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: AppColors.forest,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -746,6 +758,7 @@ class _NextBookingCard extends StatelessWidget {
                       icon: const Icon(TablerIcons.receipt, size: 16),
                       label: const Text('Details'),
                       style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
                         foregroundColor: Colors.white,
                         side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                         padding: EdgeInsets.zero,
@@ -765,7 +778,7 @@ class _NextBookingCard extends StatelessWidget {
                       label: const Text('Message'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.onPrimary,
                         padding: EdgeInsets.zero,
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
@@ -791,7 +804,7 @@ class _NoBookingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.lgAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -806,7 +819,7 @@ class _NoBookingCard extends StatelessWidget {
             child: Icon(TablerIcons.calendar, color: AppColors.info, size: 22),
           ),
           const SizedBox(height: 12),
-          const Text('No Upcoming Bookings', style: TextStyle(
+          Text('No Upcoming Bookings', style: TextStyle(
             fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
           )),
           const SizedBox(height: 4),
@@ -867,11 +880,11 @@ class _StatsRow extends StatelessWidget {
         )),
         const SizedBox(width: 8),
         Expanded(child: _StatCard(
-          topColor: const Color(0xFFD97706),
+          topColor: AppColors.gold,
           label: 'RATING',
           value: avgRating > 0 ? avgRating.toStringAsFixed(1) : '—',
           subtitle: totalReviews > 0 ? '★ $totalReviews reviews' : null,
-          subtitleColor: const Color(0xFFD97706),
+          subtitleColor: AppColors.goldText,
         )),
       ],
     );
@@ -893,7 +906,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),
@@ -911,7 +924,7 @@ class _StatCard extends StatelessWidget {
                   color: AppColors.textTertiary, letterSpacing: 0.8,
                 )),
                 const SizedBox(height: 6),
-                Text(value, style: const TextStyle(
+                Text(value, style: TextStyle(
                   fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
                 )),
                 if (subtitle != null) ...[
@@ -947,7 +960,7 @@ class _SetupCard extends StatelessWidget {
         children: [
           Icon(TablerIcons.rocket, size: 36, color: AppColors.info),
           const SizedBox(height: 10),
-          const Text('Complete your provider profile to appear in search results.',
+          Text('Complete your provider profile to appear in search results.',
               textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           const SizedBox(height: 12),
           FilledButton(onPressed: onTap, child: const Text('Set Up Profile')),
@@ -1019,12 +1032,12 @@ class _SectionTitle extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: AppRadius.xsAll),
-            child: Text('$count', style: const TextStyle(color: AppColors.warningText, fontWeight: FontWeight.w800, fontSize: 13)),
+            child: Text('$count', style: TextStyle(color: AppColors.warningText, fontWeight: FontWeight.w800, fontSize: 13)),
           ),
         ],
         const Spacer(),
         if (trailing != null)
-          Text(trailing!, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          Text(trailing!, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
       ]),
     );
   }
@@ -1107,20 +1120,20 @@ class _PlanBanner extends StatelessWidget {
                 Text.rich(TextSpan(children: [
                   const TextSpan(text: 'Free plan', style: TextStyle(fontWeight: FontWeight.w800)),
                   TextSpan(text: ' · $used of $limit app bookings'),
-                ]), style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+                ]), style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
                     value: limit == 0 ? 0 : (used / limit).clamp(0, 1).toDouble(),
                     minHeight: 4,
-                    backgroundColor: const Color(0xFFE6D8B8),
+                    backgroundColor: AppColors.cream,
                     color: AppColors.primary,
                   ),
                 ),
               ]),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Text('Go Pro', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
             ),
@@ -1173,11 +1186,11 @@ class _TodayRow extends StatelessWidget {
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(money((b['total_price'] as num?) ?? 0), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             if (paid)
-              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Paid', color: AppColors.success))
+              Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Paid', color: AppColors.success))
             else if (isManualBooking(b))
-              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Walk-in', color: Color(0xFF3E4A45)))
+              Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Walk-in', color: AppColors.textSecondary))
             else if (done)
-              const Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Done', color: AppColors.success)),
+              Padding(padding: EdgeInsets.only(top: 4), child: Pill(label: 'Done', color: AppColors.success)),
           ]),
         ]),
       ),
@@ -1204,7 +1217,7 @@ class _RequestCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),

@@ -69,7 +69,7 @@ class _VerificationPendingScreenState
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.rosette_discount_check,
+          child: Icon(TablerIcons.rosette_discount_check,
               color: AppColors.success, size: 48),
         ),
         title: const Text('Well Done!'),
@@ -164,7 +164,7 @@ class _VerificationPendingScreenState
                     ? 'Your submission was not approved. Please re-submit with clearer photos.'
                     : 'Your documents have been submitted and are being reviewed. This usually takes 24 hours.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 14,
                   height: 1.5,
@@ -195,7 +195,7 @@ class _VerificationPendingScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Admin Note',
                               style: TextStyle(
                                 color: AppColors.error,
@@ -225,7 +225,7 @@ class _VerificationPendingScreenState
                 Container(
                   padding: AppSpacing.cardPadding,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.card,
                     borderRadius: AppRadius.mdAll,
                     border: Border.all(color: AppColors.border),
                   ),
@@ -237,14 +237,14 @@ class _VerificationPendingScreenState
                           color: AppColors.info.withValues(alpha: 0.1),
                           borderRadius: AppRadius.smAll,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           TablerIcons.clock,
                           size: 20,
                           color: AppColors.info,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -280,7 +280,7 @@ class _VerificationPendingScreenState
                   label: const Text('Re-Submit Documents'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.onPrimary,
                     padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.lg,
                     ),

@@ -205,7 +205,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                     onPressed: _loading ? null : (_bothSelected ? _submit : null),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.onPrimary,
                       disabledBackgroundColor: AppColors.border,
                       disabledForegroundColor: AppColors.textTertiary,
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -214,9 +214,9 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                       shadowColor: AppColors.primary.withValues(alpha: 0.3),
                     ),
                     child: _loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20, width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -333,7 +333,7 @@ class _UploadCard extends StatelessWidget {
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: AppRadius.lgAll,
           border: Border.all(
             color: hasImage ? AppColors.success : AppColors.border,
@@ -403,7 +403,7 @@ class _UploadCard extends StatelessWidget {
             children: [
               Icon(TablerIcons.circle_check_filled, color: AppColors.success, size: 18),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -438,7 +438,7 @@ class _UploadCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 const SizedBox(height: 3),
                 Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary, height: 1.3)),
               ],

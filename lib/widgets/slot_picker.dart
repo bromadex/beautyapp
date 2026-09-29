@@ -168,7 +168,7 @@ class _SlotPickerState extends State<SlotPicker> {
           joined
               ? 'You\'re on the waitlist. We\'ll notify you if a time opens on this day.'
               : 'No free times on this day.',
-          style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
         ),
         if (widget.allowWaitlist && !joined) ...[
           const SizedBox(height: 10),
@@ -197,9 +197,9 @@ class _SlotPickerState extends State<SlotPicker> {
         height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: sel ? AppColors.primary : Colors.white,
+          color: sel ? AppColors.forest : AppColors.card,
           borderRadius: AppRadius.smAll,
-          border: Border.all(color: sel ? AppColors.primary : AppColors.border),
+          border: Border.all(color: sel ? AppColors.forest : AppColors.border),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           if (sel) ...[
@@ -276,9 +276,9 @@ class _SlotPickerState extends State<SlotPicker> {
                 width: 64,
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : (open ? Colors.white : const Color(0xFFE9ECE9)),
+                  color: selected ? AppColors.forest : (open ? AppColors.card : AppColors.surfaceMuted),
                   borderRadius: AppRadius.mdAll,
-                  border: Border.all(color: selected ? AppColors.primary : (open ? AppColors.border : Colors.transparent)),
+                  border: Border.all(color: selected ? AppColors.forest : (open ? AppColors.border : Colors.transparent)),
                 ),
                 child: Column(children: [
                   Expanded(
@@ -319,7 +319,7 @@ class _SlotPickerState extends State<SlotPicker> {
             widget.allowWaitlist
                 ? 'No free times in these two weeks. Tap "More dates", or tap a day to get notified if a time opens.'
                 : 'No free times in these two weeks. Tap "More dates", or message the pro.',
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         )
       else if (_selectedDay != null) ...[
@@ -349,13 +349,13 @@ class _SlotPickerState extends State<SlotPicker> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               child: Row(children: [
-                const Icon(TablerIcons.bell_ringing, size: 22, color: AppColors.goldText),
+                Icon(TablerIcons.bell_ringing, size: 22, color: AppColors.goldText),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text.rich(TextSpan(children: [
                     TextSpan(text: '${_weekdays[fullDay.day.weekday - 1]} ${fullDay.day.day} is full. '),
                     const TextSpan(text: 'Notify me if a time opens', style: TextStyle(fontWeight: FontWeight.w800)),
-                  ]), style: const TextStyle(fontSize: 14.5, color: AppColors.textPrimary)),
+                  ]), style: TextStyle(fontSize: 14.5, color: AppColors.textPrimary)),
                 ),
               ]),
             ),

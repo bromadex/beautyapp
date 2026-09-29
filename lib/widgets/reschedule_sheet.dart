@@ -57,29 +57,37 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
   @override
   Widget build(BuildContext context) {
     final isClient = widget.booking['client_id'] == supabase.auth.currentUser?.id;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(context).padding.bottom),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Move booking', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 4),
-        Text(
-          isClient
-              ? 'Pick a new free time. Your pro will be asked to confirm it.'
-              : 'Pick a new time. Your client will be notified.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+    // Times scroll; the button stays at the bottom so it is always reachable.
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Move booking', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 4),
+              Text(
+                isClient
+                    ? 'Pick a new free time. Your pro will be asked to confirm it.'
+                    : 'Pick a new time. Your client will be notified.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              SlotPicker(
+                providerId: widget.booking['provider_id'],
+                minutes: bookingMinutes(widget.booking),
+                onChanged: (d, t) => setState(() {
+                  _day = d;
+                  _time = t;
+                }),
+              ),
+            ]),
+          ),
         ),
-        const SizedBox(height: 16),
-        SlotPicker(
-          providerId: widget.booking['provider_id'],
-          minutes: bookingMinutes(widget.booking),
-          onChanged: (d, t) => setState(() {
-            _day = d;
-            _time = t;
-          }),
-        ),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
+        Container(
+          padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + MediaQuery.of(context).padding.bottom),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border))),
           child: FilledButton(
             onPressed: _time == null || _saving ? null : _save,
             child: Text(_saving ? 'Moving…' : 'Move to this time'),

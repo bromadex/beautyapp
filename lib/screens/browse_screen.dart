@@ -369,7 +369,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => StatefulBuilder(
+      builder: (_) => SheetScroll(child: StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.only(
             left: AppSpacing.xxl,
@@ -564,7 +564,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 
@@ -609,18 +609,18 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           borderRadius: AppRadius.pill,
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(TablerIcons.map_pin_filled, size: 16, color: AppColors.primary),
+                          Icon(TablerIcons.map_pin_filled, size: 16, color: AppColors.primary),
                           const SizedBox(width: 4),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 110),
                             child: Text(
                               _selectedCity,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
                             ),
                           ),
-                          const Icon(TablerIcons.chevron_down, size: 18, color: AppColors.primary),
+                          Icon(TablerIcons.chevron_down, size: 18, color: AppColors.primary),
                         ]),
                       ),
                     ),
@@ -634,7 +634,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: 'Search beauty pros or services',
-                      prefixIcon: const Icon(TablerIcons.search, color: AppColors.primary),
+                      prefixIcon: Icon(TablerIcons.search, color: AppColors.primary),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
                         if (_searchCtrl.text.isNotEmpty)
@@ -655,7 +655,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                               tooltip: 'Filters',
                               onPressed: _showFilterSheet,
                               style: IconButton.styleFrom(backgroundColor: AppColors.primarySoft),
-                              icon: const Icon(TablerIcons.adjustments_horizontal, size: 20, color: AppColors.primary),
+                              icon: Icon(TablerIcons.adjustments_horizontal, size: 20, color: AppColors.primary),
                             ),
                           ),
                         ),
@@ -706,7 +706,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
                 Expanded(
                   child: _loading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const LoadingPlaceholder()
                       : RefreshIndicator(
                           onRefresh: _loadProviders,
                           child: filtered.isEmpty
@@ -784,7 +784,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       isScrollControlled: true,
       builder: (ctx) {
         bool sending = false;
-        return StatefulBuilder(
+        return SheetScroll(child: StatefulBuilder(
           builder: (ctx, setSheet) => Padding(
             padding: EdgeInsets.fromLTRB(
                 20, 0, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom),
@@ -832,7 +832,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
               ),
             ]),
           ),
-        );
+        ));
       },
     );
     cityCtrl.dispose();
@@ -960,7 +960,7 @@ class _ProviderCard extends StatelessWidget {
                       ),
                       if (verified) ...[
                         const SizedBox(width: 4),
-                        const Icon(TablerIcons.rosette_discount_check, size: 17, color: AppColors.info),
+                        Icon(TablerIcons.rosette_discount_check, size: 17, color: AppColors.info),
                       ],
                     ]),
                     const SizedBox(height: 3),
@@ -977,7 +977,7 @@ class _ProviderCard extends StatelessWidget {
                       RatingPill(rating: rating, reviews: totalReviews),
                       if (isFeatured) ...[
                         const SizedBox(width: 8),
-                        const Pill(label: 'Featured', color: AppColors.secondary, icon: TablerIcons.star_filled),
+                        Pill(label: 'Featured', color: AppColors.secondary, icon: TablerIcons.star_filled),
                       ],
                     ]),
                   ]),
@@ -986,7 +986,7 @@ class _ProviderCard extends StatelessWidget {
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                     Text('from', style: Theme.of(context).textTheme.bodySmall),
                     Text(priceText,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
                   ]),
               ]),
               if (catNames.isNotEmpty) ...[
@@ -1003,7 +1003,7 @@ class _ProviderCard extends StatelessWidget {
                               borderRadius: AppRadius.pill,
                             ),
                             child: Text(n,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                           ))
                       .toList(),

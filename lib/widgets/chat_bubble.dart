@@ -41,16 +41,9 @@ class ChatBubble extends StatelessWidget {
                   : const EdgeInsets.symmetric(
                       horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               decoration: BoxDecoration(
-                gradient: isMine && imageUrl == null
-                    ? const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFFFF6BAE)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
                 color: imageUrl != null
                     ? Colors.transparent
-                    : (isMine ? null : AppColors.surfaceMuted),
+                    : (isMine ? AppColors.forest : AppColors.surfaceMuted),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(AppRadius.xl),
                   topRight: Radius.circular(AppRadius.xl),
@@ -91,7 +84,7 @@ class ChatBubble extends StatelessWidget {
                             color: AppColors.surfaceMuted,
                             borderRadius: AppRadius.mdAll,
                           ),
-                          child: const Icon(TablerIcons.photo_off,
+                          child: Icon(TablerIcons.photo_off,
                               size: 40, color: AppColors.textTertiary),
                         ),
                       ),
@@ -108,7 +101,7 @@ class ChatBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(time,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 10, color: AppColors.textTertiary)),
                 if (isMine) ...[
                   const SizedBox(width: AppSpacing.xs),

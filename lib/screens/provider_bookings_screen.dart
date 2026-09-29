@@ -5,6 +5,7 @@ import '../supabase_client.dart';
 import '../widgets/booking_card.dart';
 import '../theme.dart';
 import '../utils/booking_helpers.dart';
+import '../widgets/ui.dart';
 
 class ProviderBookingsScreen extends StatefulWidget {
   const ProviderBookingsScreen({super.key});
@@ -102,7 +103,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
             color: AppColors.success.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.circle_check,
+          child: Icon(TablerIcons.circle_check,
               color: AppColors.success, size: 32),
         ),
         title: const Text('Mark as Completed?'),
@@ -128,7 +129,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: LoadingPlaceholder());
     }
     if (_error != null) {
       return Scaffold(
@@ -145,7 +146,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(TablerIcons.alert_circle,
+                  child: Icon(TablerIcons.alert_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import 'paynow_service.dart';
+import '../widgets/ui.dart';
 
 /// What BeauTap charges pros. Keep in step with public._fee_price().
 class BeauTapFee {
@@ -50,15 +51,16 @@ class FeeCheckout {
     if (!context.mounted) return FeeOutcome.cancelled;
 
     final choice = await showModalBottomSheet<String>(
+      isScrollControlled: true,
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
+      builder: (ctx) => SheetScroll(child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('Pay \$${fee.amount.toStringAsFixed(0)}', style: Theme.of(ctx).textTheme.headlineSmall),
             const SizedBox(height: 4),
-            Text(fee.label, style: const TextStyle(color: AppColors.textSecondary)),
+            Text(fee.label, style: TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             _Option(
               icon: TablerIcons.bolt,
@@ -77,7 +79,7 @@ class FeeCheckout {
             ],
           ]),
         ),
-      ),
+      )),
     );
     if (choice == null || !context.mounted) return FeeOutcome.cancelled;
 
@@ -132,10 +134,10 @@ class _Option extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               ]),
             ),
-            const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
+            Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
           ]),
         ),
       );

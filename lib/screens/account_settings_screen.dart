@@ -6,6 +6,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/avatar_widget.dart';
 import '../widgets/ui.dart';
+import '../services/appearance.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -242,7 +243,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             color: AppColors.error.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(TablerIcons.alert_triangle, color: AppColors.error, size: 28),
+          child: Icon(TablerIcons.alert_triangle, color: AppColors.error, size: 28),
         ),
         title: const Text('Delete Account?'),
         content: const Text(
@@ -427,12 +428,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                 const SizedBox(height: 6),
                                 GestureDetector(
                                   onTap: _changePhoto,
-                                  child: const Text('Change photo',
+                                  child: Text('Change photo',
                                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
                                 ),
                               ]),
                             ),
-                            if (_isDeactivated) const Pill(label: 'Deactivated', color: AppColors.warning),
+                            if (_isDeactivated) Pill(label: 'Deactivated', color: AppColors.warning),
                           ]),
                           const SizedBox(height: 20),
                           TextField(
@@ -467,7 +468,26 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         ]),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
+                    Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    ValueListenableBuilder<AppearanceMode>(
+                      valueListenable: Appearance.instance,
+                      builder: (context, mode, _) => SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<AppearanceMode>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(value: AppearanceMode.system, label: Text('System'), icon: Icon(TablerIcons.device_mobile, size: 18)),
+                            ButtonSegment(value: AppearanceMode.light, label: Text('Light'), icon: Icon(TablerIcons.sun, size: 18)),
+                            ButtonSegment(value: AppearanceMode.dark, label: Text('Dark'), icon: Icon(TablerIcons.moon, size: 18)),
+                          ],
+                          selected: {mode},
+                          onSelectionChanged: (v) => Appearance.instance.set(v.first),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     OutlinedButton.icon(
                       onPressed: _signOut,
                       icon: const Icon(TablerIcons.logout, size: 20),
@@ -476,7 +496,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     // Deactivate section
-                    const Text('Account Status', style: TextStyle(
+                    Text('Account Status', style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5,
                     )),
                     const SizedBox(height: AppSpacing.md),
@@ -494,7 +514,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     // Danger zone
-                    const Text('Danger Zone', style: TextStyle(
+                    Text('Danger Zone', style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error, letterSpacing: 0.5,
                     )),
                     const SizedBox(height: AppSpacing.md),
@@ -541,7 +561,7 @@ class _SettingsTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: isDanger ? AppColors.error.withValues(alpha: 0.03) : Colors.white,
+          color: isDanger ? AppColors.error.withValues(alpha: 0.03) : AppColors.card,
           borderRadius: AppRadius.mdAll,
           border: Border.all(
             color: isDanger

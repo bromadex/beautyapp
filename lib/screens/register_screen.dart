@@ -732,7 +732,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildSectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,

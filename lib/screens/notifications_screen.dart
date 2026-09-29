@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -194,8 +195,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder()
           : _notifications.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
@@ -227,17 +227,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(TablerIcons.bell_off,
+            child: Icon(TablerIcons.bell_off,
                 size: 56, color: AppColors.primary),
           ),
           const SizedBox(height: AppSpacing.xl),
-          const Text('No Notifications',
+          Text('No Notifications',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary)),
           const SizedBox(height: AppSpacing.sm),
-          const Text("You're all caught up!",
+          Text("You're all caught up!",
               style:
                   TextStyle(fontSize: 14, color: AppColors.textSecondary)),
         ],
@@ -310,7 +310,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     const SizedBox(height: 3),
                     Text(
                       n['body'] ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                         height: 1.3,
@@ -321,7 +321,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       _timeAgo(n['created_at']),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 11, color: AppColors.textTertiary),
                     ),
                   ],

@@ -132,7 +132,7 @@ class BookingCard extends StatelessWidget {
                     onPressed: () => onDeclineOffer?.call(booking['id']),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.error),
+                      side: BorderSide(color: AppColors.error),
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -145,7 +145,7 @@ class BookingCard extends StatelessWidget {
                     onPressed: () => _showCounterDialog(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.warning,
-                      side: const BorderSide(color: AppColors.warning),
+                      side: BorderSide(color: AppColors.warning),
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -180,7 +180,7 @@ class BookingCard extends StatelessWidget {
                     onPressed: () => onDeclineOffer?.call(booking['id']),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.error),
+                      side: BorderSide(color: AppColors.error),
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -324,7 +324,7 @@ class BookingCard extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.error,
                           shape: BoxShape.circle,
                         ),
@@ -403,7 +403,7 @@ class BookingCard extends StatelessWidget {
                         onPressed: onDecline,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
+                          side: BorderSide(color: AppColors.error),
                         ),
                         child: const Text('Decline'),
                       ),
@@ -432,7 +432,7 @@ class BookingCard extends StatelessWidget {
                         onPressed: onCancel,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
+                          side: BorderSide(color: AppColors.error),
                         ),
                         child: const Text('Cancel'),
                       ),

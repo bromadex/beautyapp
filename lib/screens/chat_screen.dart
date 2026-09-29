@@ -284,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: AppColors.error.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(TablerIcons.message_circle,
+                  child: Icon(TablerIcons.message_circle,
                       size: 48, color: AppColors.error),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -322,7 +322,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(
               _chatTitle(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
@@ -394,7 +394,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             color: AppColors.primary.withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(TablerIcons.message_circle,
+                          child: Icon(TablerIcons.message_circle,
                               size: 40, color: AppColors.primary),
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -448,7 +448,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (canChat)
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.card,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -531,7 +531,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             )
                           : Container(
                               key: const ValueKey('send'),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 gradient: AppColors.primaryGradient,
                                 shape: BoxShape.circle,
                               ),
@@ -629,7 +629,7 @@ class _DateSeparator extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               color: AppColors.textTertiary,
               fontWeight: FontWeight.w500,

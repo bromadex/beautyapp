@@ -142,7 +142,7 @@ class _SalonScreenState extends State<SalonScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Salon')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : RefreshIndicator(onRefresh: _load, child: _salon == null ? _noSalon() : _mySalon(_salon!)),
     );
   }
@@ -151,7 +151,7 @@ class _SalonScreenState extends State<SalonScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(TablerIcons.building_store, color: AppColors.gold, size: 32),
           const SizedBox(height: 10),
@@ -192,7 +192,7 @@ class _SalonScreenState extends State<SalonScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       Container(
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: AppColors.primary, borderRadius: AppRadius.xlAll),
+        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(
@@ -258,13 +258,13 @@ class _SalonScreenState extends State<SalonScreen> {
         const SizedBox(height: 16),
         Text('Invite your team', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        const Text('Staff sign up as beauty pros, then join with this code.',
+        Text('Staff sign up as beauty pros, then join with this code.',
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-              color: Colors.white, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
+              color: AppColors.card, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
           child: Row(children: [
             Text(code, style: monoStyle.copyWith(fontSize: 22, color: AppColors.textPrimary, letterSpacing: 2)),
             const Spacer(),
@@ -303,7 +303,7 @@ class _SalonScreenState extends State<SalonScreen> {
       const SizedBox(height: 4),
       Container(
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
+            color: AppColors.card, borderRadius: AppRadius.mdAll, border: Border.all(color: AppColors.border)),
         child: Column(children: [
           for (final m in members) _memberRow(m, owner: owner, active: active),
         ]),
@@ -320,7 +320,7 @@ class _SalonScreenState extends State<SalonScreen> {
                     await _run(() => supabase.rpc('close_salon'), done: 'Salon closed');
                   }
                 },
-          child: const Text('Close salon', style: TextStyle(color: AppColors.error)),
+          child: Text('Close salon', style: TextStyle(color: AppColors.error)),
         )
       else
         TextButton(
@@ -331,7 +331,7 @@ class _SalonScreenState extends State<SalonScreen> {
                     await _run(() => supabase.rpc('leave_salon'), done: 'You left the salon');
                   }
                 },
-          child: const Text('Leave salon', style: TextStyle(color: AppColors.error)),
+          child: Text('Leave salon', style: TextStyle(color: AppColors.error)),
         ),
     ]);
   }
@@ -353,7 +353,7 @@ class _SalonScreenState extends State<SalonScreen> {
       trailing: owner && !isOwner
           ? IconButton(
               tooltip: 'Remove',
-              icon: const Icon(TablerIcons.user_minus, color: AppColors.textTertiary),
+              icon: Icon(TablerIcons.user_minus, color: AppColors.textTertiary),
               onPressed: _busy
                   ? null
                   : () async {

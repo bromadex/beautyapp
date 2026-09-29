@@ -4,6 +4,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class GalleryManagementScreen extends StatefulWidget {
   const GalleryManagementScreen({super.key});
@@ -109,7 +110,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: AppRadius.smAll,
                 ),
-                child: const Icon(TablerIcons.photo_plus,
+                child: Icon(TablerIcons.photo_plus,
                     color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -138,7 +139,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                         width: double.infinity,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppColors.surfaceMuted,
-                          child: const Icon(TablerIcons.photo_off,
+                          child: Icon(TablerIcons.photo_off,
                               size: 48, color: AppColors.textTertiary),
                         ),
                       ),
@@ -257,7 +258,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                   ),
                   child: Text(
                     '${_images.length} photos',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: AppColors.primary,
@@ -271,15 +272,14 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploading ? null : _uploadImage,
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onPrimary,
         icon: const Icon(TablerIcons.photo_plus),
         label: const Text('Add Photo'),
       ),
       body: Stack(
         children: [
           _loading
-              ? Center(
-                  child: CircularProgressIndicator(color: AppColors.primary))
+              ? const LoadingPlaceholder()
               : _images.isEmpty
                   ? _buildEmptyState()
                   : _buildGalleryGrid(),
@@ -306,7 +306,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                     children: [
                       CircularProgressIndicator(color: AppColors.primary),
                       const SizedBox(height: AppSpacing.xl),
-                      const Text(
+                      Text(
                         'Uploading photo...',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
@@ -336,14 +336,14 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                 color: AppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 TablerIcons.camera,
                 size: 48,
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(height: AppSpacing.xxl),
-            const Text(
+            Text(
               'Your gallery is empty',
               style: TextStyle(
                 fontSize: 18,
@@ -352,7 +352,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Showcase your best work to attract\nmore clients to your services.',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -368,7 +368,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
               label: const Text('Add Your First Photo'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.onPrimary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.xxl,
                   vertical: AppSpacing.lg,
@@ -449,7 +449,7 @@ class _GalleryImageCardState extends State<_GalleryImageCard> {
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   color: AppColors.surfaceMuted,
-                  child: const Icon(TablerIcons.photo_off,
+                  child: Icon(TablerIcons.photo_off,
                       color: AppColors.textTertiary),
                 ),
               ),

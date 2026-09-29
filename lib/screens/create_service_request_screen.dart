@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class CreateServiceRequestScreen extends StatefulWidget {
   const CreateServiceRequestScreen({super.key});
@@ -120,7 +121,7 @@ class _CreateServiceRequestScreenState
     return Scaffold(
       appBar: AppBar(title: const Text('Post a Request')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
           : SingleChildScrollView(
               padding: AppSpacing.screenPadding,
               child: Column(
@@ -267,11 +268,11 @@ class _CreateServiceRequestScreenState
                   FilledButton.icon(
                     onPressed: _submitting ? null : _submit,
                     icon: _submitting
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                                strokeWidth: 2, color: AppColors.onPrimary))
                         : const Icon(TablerIcons.send),
                     label: Text(_submitting
                         ? 'Posting...'

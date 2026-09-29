@@ -104,7 +104,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: LoadingPlaceholder());
     }
 
     final name = (_profile?['full_name'] ?? '').toString();
@@ -181,12 +181,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                       ]),
                       const SizedBox(height: 16),
                       Material(
-                        color: Colors.white,
+                        color: AppColors.card,
                         borderRadius: AppRadius.mdAll,
                         child: InkWell(
                           borderRadius: AppRadius.mdAll,
                           onTap: () => context.go('/browse'),
-                          child: const SizedBox(
+                          child: SizedBox(
                             height: 52,
                             child: Row(children: [
                               SizedBox(width: 14),
@@ -351,7 +351,7 @@ class _CategoryChip extends StatelessWidget {
         Text(label,
             maxLines: 2,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
       ]),
     );
   }
@@ -427,9 +427,9 @@ class _NextBookingCard extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.mdAll),
               child: Column(children: [
                 Text(dt != null ? months[dt.month - 1] : '',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
                 Text(dt != null ? '${dt.day}' : '--',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
               ]),
             ),
             const SizedBox(width: 14),
@@ -451,7 +451,7 @@ class _NextBookingCard extends StatelessWidget {
                 ),
               ]),
             ),
-            const Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
+            Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
           ]),
         ),
       ),
@@ -474,8 +474,8 @@ class _StylistCard extends StatelessWidget {
     return SizedBox(
       width: 200,
       child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: const BorderSide(color: AppColors.border)),
+        color: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: BorderSide(color: AppColors.border)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/provider/${provider['provider_id']}'),
@@ -489,7 +489,7 @@ class _StylistCard extends StatelessWidget {
                 else
                   const _PhotoPlaceholder(),
                 if (featured)
-                  const Positioned(
+                  Positioned(
                     right: 8,
                     bottom: 8,
                     child: Pill(label: 'Featured', color: AppColors.gold, solid: true),
@@ -524,7 +524,7 @@ class _PhotoPlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.primarySoft,
       alignment: Alignment.center,
-      child: const Icon(TablerIcons.photo, color: AppColors.textTertiary, size: 28),
+      child: Icon(TablerIcons.photo, color: AppColors.textTertiary, size: 28),
     );
   }
 }
@@ -537,7 +537,7 @@ class _HowItWorks extends StatelessWidget {
     const steps = [
       (TablerIcons.search, 'Find a beauty pro', 'Browse verified pros, prices and real reviews.'),
       (TablerIcons.calendar_check, 'Book a time', 'Pick a slot that suits you — pay cash, EcoCash or card.'),
-      (TablerIcons.home, 'Get it done', 'At home or at their studio. Rate them afterwards.'),
+      (TablerIcons.home, 'Get it done', 'At your place or theirs. Rate them afterwards.'),
     ];
     return Card(
       child: Padding(
@@ -550,7 +550,7 @@ class _HowItWorks extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle),
                   child: Icon(steps[i].$1, color: AppColors.primary, size: 20),
                 ),
                 const SizedBox(width: 12),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminBusinessScreen extends StatefulWidget {
   const AdminBusinessScreen({super.key});
@@ -77,7 +78,7 @@ class _AdminBusinessScreenState extends State<AdminBusinessScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Business Verifications')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPlaceholder()
           : _items.isEmpty
               ? Center(child: Text('Nothing waiting for review',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)))

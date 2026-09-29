@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -355,7 +356,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
         children: [
           Icon(icon, size: 18, color: AppColors.textTertiary),
           const SizedBox(width: AppSpacing.md),
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+          Text(label, style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
           const Spacer(),
           Flexible(
             child: Text(
@@ -399,7 +400,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
         ),
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const LoadingPlaceholder()
           : Column(
               children: [
                 Padding(
@@ -427,7 +428,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                       ? Center(
                           child: Text(
                             _searchQuery.isNotEmpty ? 'No users match your search' : 'No users found',
-                            style: const TextStyle(color: AppColors.textTertiary),
+                            style: TextStyle(color: AppColors.textTertiary),
                           ),
                         )
                       : ListView.separated(
@@ -460,7 +461,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
               ? AppColors.error.withValues(alpha: 0.03)
               : isDeactivated
                   ? AppColors.info.withValues(alpha: 0.03)
-                  : Colors.white,
+                  : AppColors.card,
           borderRadius: AppRadius.lgAll,
           border: Border.all(
             color: isBanned
@@ -504,14 +505,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                       ),
                       if (isVerified) ...[
                         const SizedBox(width: AppSpacing.xs),
-                        const Icon(TablerIcons.rosette_discount_check, color: AppColors.success, size: 14),
+                        Icon(TablerIcons.rosette_discount_check, color: AppColors.success, size: 14),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     phone.isNotEmpty ? phone : 'No phone',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
