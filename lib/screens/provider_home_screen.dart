@@ -539,6 +539,20 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           const SizedBox(height: 14),
                         ],
 
+                        if (_providerProfile != null &&
+                            (_providerProfile!['city_id'] == null ||
+                                (_providerProfile!['area'] ?? '').toString().trim().isEmpty)) ...[
+                          SoftBanner(
+                            icon: TablerIcons.map_pin_exclamation,
+                            color: AppColors.error,
+                            title: 'Set where you work',
+                            message: 'Clients can\'t find or book you until you add your city and area.',
+                            actionLabel: 'Set now',
+                            onTap: () => context.push('/provider/location').then((_) => _loadData()),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
                         if (isVerified) ...[
                           if (!hasActiveSubscription) ...[
                             _PlanBanner(

@@ -8,7 +8,10 @@ class SmartMatchService {
     final providers = await supabase
         .from('provider_profiles')
         .select('*, profiles(id, full_name, location, avatar_url)')
-        .or('is_hidden.eq.false,is_hidden.is.null');
+        .or('is_hidden.eq.false,is_hidden.is.null')
+        // only pros who have said where they work
+        .not('city_id', 'is', null)
+        .not('area', 'is', null);
     final providerList = List<Map<String, dynamic>>.from(providers);
 
     // Client's past bookings for preference learning
@@ -161,7 +164,10 @@ class SmartMatchService {
     final providers = await supabase
         .from('provider_profiles')
         .select('*, profiles(id, full_name, location, avatar_url)')
-        .or('is_hidden.eq.false,is_hidden.is.null');
+        .or('is_hidden.eq.false,is_hidden.is.null')
+        // only pros who have said where they work
+        .not('city_id', 'is', null)
+        .not('area', 'is', null);
     final providerList = List<Map<String, dynamic>>.from(providers);
 
     final matched = providerList.where((p) {
@@ -186,6 +192,9 @@ class SmartMatchService {
         .from('provider_profiles')
         .select('*, profiles(id, full_name, location, avatar_url)')
         .or('is_hidden.eq.false,is_hidden.is.null')
+        // only pros who have said where they work
+        .not('city_id', 'is', null)
+        .not('area', 'is', null)
         .order('average_rating', ascending: false)
         .order('total_reviews', ascending: false)
         .limit(limit * 2);

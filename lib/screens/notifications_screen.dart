@@ -66,6 +66,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (refId == null) {
       if (type == 'products') context.push('/provider/products');
+      if (type == 'location') context.push('/provider/location');
       return;
     }
 

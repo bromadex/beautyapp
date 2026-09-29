@@ -176,6 +176,12 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                 onTap: () => context.push('/provider/promotions'),
               ),
               _HubTile(
+                icon: TablerIcons.map_pin,
+                label: 'Where you work',
+                subtitle: 'Your city and area. Change it if you move',
+                onTap: () => context.push('/provider/location'),
+              ),
+              _HubTile(
                 icon: TablerIcons.shopping_bag,
                 label: 'Products',
                 subtitle: 'Advertise what you sell. 3 free',

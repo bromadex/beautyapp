@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/avatar_widget.dart';
-import '../services/location_service.dart';
 
 class ProviderProfileEditorScreen extends StatefulWidget {
   const ProviderProfileEditorScreen({super.key});
@@ -25,7 +24,6 @@ class _ProviderProfileEditorScreenState
   bool _radiusSupported = true;
   bool _loading = false;
   bool _saving  = false;
-  bool _locating = false;
   String? _avatarUrl;
   String _fullName = '';
 
@@ -53,12 +51,12 @@ class _ProviderProfileEditorScreenState
 
       final data = await supabase
           .from('provider_profiles')
-          .select()
+          .select('*, cities(name)')
           .eq('provider_id', uid)
           .single();
       _bioCtrl.text     = data['bio']     ?? '';
       _titleCtrl.text   = data['title']   ?? '';
-      _addressCtrl.text = data['address'] ?? '';
+      _addressCtrl.text = [data['area'], (data['cities'] as Map?)?['name']].where((x) => (x ?? '').toString().isNotEmpty).join(', ');
       _latCtrl.text     = data['latitude']?.toString()  ?? '';
       _lngCtrl.text     = data['longitude']?.toString() ?? '';
       if (data.containsKey('service_radius_km')) {
@@ -70,45 +68,6 @@ class _ProviderProfileEditorScreenState
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _detectLocation() async {
-    setState(() => _locating = true);
-    try {
-      final pos = await LocationService().getCurrentPosition(
-        context: context,
-        reason: 'So clients near you can find you, and travel fees are worked out from your base.',
-      );
-      if (pos == null) return;
-      setState(() {
-        _latCtrl.text = pos.latitude.toStringAsFixed(6);
-        _lngCtrl.text = pos.longitude.toStringAsFixed(6);
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Location detected!'),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Could not detect location. Please enter your address manually.'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _locating = false);
-    }
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -118,9 +77,6 @@ class _ProviderProfileEditorScreenState
       'provider_id': userId,
       'bio':         _bioCtrl.text.trim(),
       'title':       _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
-      'address':     _addressCtrl.text.trim(),
-      'latitude':    double.tryParse(_latCtrl.text.trim()),
-      'longitude':   double.tryParse(_lngCtrl.text.trim()),
       if (_radiusSupported) 'service_radius_km': _radiusKm,
     };
 
@@ -293,71 +249,21 @@ class _ProviderProfileEditorScreenState
               _buildSectionDivider(),
 
               // -- Location Section --
-              _buildSectionHeader('Location', TablerIcons.map_pin),
-              TextFormField(
-                controller: _addressCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Service Area / Address',
-                  hintText: 'e.g. Borrowdale, Harare',
-                  prefixIcon: Icon(TablerIcons.map),
-                ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Please add your address' : null,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _locating ? null : _detectLocation,
-                  icon: _locating
-                      ? SizedBox(
-                          height: 16, width: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.primary,
-                          ),
-                        )
-                      : const Icon(TablerIcons.current_location, size: 18),
-                  label: Text(_locating
-                      ? 'Detecting...'
-                      : _latCtrl.text.isNotEmpty
-                          ? 'Location set (${_latCtrl.text}, ${_lngCtrl.text})'
-                          : 'Use my current location'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                    shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                  ),
+              _buildSectionHeader('Where you work', TablerIcons.map_pin),
+              Material(
+                color: AppColors.card,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: BorderSide(color: AppColors.border)),
+                child: ListTile(
+                  leading: Icon(TablerIcons.map_pin, color: AppColors.primary),
+                  title: Text(_addressCtrl.text.isEmpty ? 'Set your city and area' : _addressCtrl.text),
+                  subtitle: const Text('Clients find and book you by this. Change it if you move.'),
+                  trailing: const Icon(TablerIcons.chevron_right),
+                  onTap: () async {
+                    await context.push('/provider/location');
+                    _load();
+                  },
                 ),
               ),
-              if (_latCtrl.text.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.08),
-                    borderRadius: AppRadius.smAll,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(TablerIcons.circle_check,
-                          size: 14, color: AppColors.success),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Coordinates saved — clients nearby will find you.',
-                          style: TextStyle(fontSize: 12, color: AppColors.success),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
               if (_radiusSupported) ...[
                 _buildSectionDivider(),
 

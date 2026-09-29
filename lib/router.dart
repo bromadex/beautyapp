@@ -32,6 +32,7 @@ import 'screens/referrals_screen.dart';
 import 'screens/salon_screen.dart';
 import 'screens/salon_public_screen.dart';
 import 'screens/products_screen.dart';
+import 'screens/provider_location_screen.dart';
 import 'services/fee_checkout.dart';
 import 'screens/provider_earnings_screen.dart';
 import 'screens/browse_screen.dart';
@@ -88,6 +89,7 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/referrals') &&
         !loc.startsWith('/provider/salon') &&
         !loc.startsWith('/provider/products') &&
+        !loc.startsWith('/provider/location') &&
         !loc.startsWith('/provider/service-requests');
     if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
 
@@ -357,6 +359,11 @@ final appRouter = GoRouter(
       path: '/provider/salon',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const SalonScreen(),
+    ),
+    GoRoute(
+      path: '/provider/location',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProviderLocationScreen(),
     ),
     GoRoute(
       path: '/provider/products',

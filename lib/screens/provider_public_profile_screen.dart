@@ -1039,7 +1039,8 @@ class _ProviderPublicProfileScreenState
         if (p is num && (minPrice == null || p < minPrice)) minPrice = p;
       }
     }
-    final canBook = status != 'offline' && _services.isNotEmpty;
+    final hasLocation = _providerProfile?['city_id'] != null && (_providerProfile?['area'] ?? '').toString().trim().isNotEmpty;
+    final canBook = status != 'offline' && _services.isNotEmpty && hasLocation;
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
       decoration: BoxDecoration(
@@ -1059,7 +1060,11 @@ class _ProviderPublicProfileScreenState
           child: FilledButton(
             onPressed: canBook ? () => _showServicePicker(context) : null,
             child: Text(!canBook
-                ? (_services.isEmpty ? 'No services yet' : 'Not taking bookings right now')
+                ? (_services.isEmpty
+                    ? 'No services yet'
+                    : !hasLocation
+                        ? 'Not taking bookings yet'
+                        : 'Not taking bookings right now')
                 : _isLoggedIn
                     ? 'Book'
                     : 'Sign in to book'),

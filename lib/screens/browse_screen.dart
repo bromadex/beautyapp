@@ -154,12 +154,15 @@ class _BrowseScreenState extends State<BrowseScreen> {
     try {
       final data = await supabase
           .from('provider_profiles')
-          .select('*, profiles(full_name, location, avatar_url, is_verified, is_business_verified, '
+          .select('*, cities(name), profiles(full_name, location, avatar_url, is_verified, is_business_verified, '
               'services(id, service_name, price, category_id, is_active, location_mode), '
               'subscriptions(status, end_date))')
           .or('is_hidden.eq.false,is_hidden.is.null');
 
-      final providers = List<Map<String, dynamic>>.from(data);
+      // Only pros who have said where they work can be found.
+      final providers = List<Map<String, dynamic>>.from(data)
+          .where((p) => p['city_id'] != null && (p['area'] ?? '').toString().trim().isNotEmpty)
+          .toList();
       for (final p in providers) {
         final prof = p['profiles'] as Map<String, dynamic>? ?? {};
         p['services'] = prof['services'] ?? [];
@@ -208,6 +211,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
   bool _matchesLocation(Map<String, dynamic> p) {
     if (_selectedCity == 'All Zimbabwe') return true;
+    final city = (p['cities'] as Map?)?['name']?.toString().toLowerCase();
+    if (city != null && city == _selectedCity.toLowerCase()) return true;
     final loc =
         (p['profiles']?['location'] ?? '').toString().toLowerCase();
     final cityLower = _selectedCity.toLowerCase();

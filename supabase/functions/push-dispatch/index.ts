@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
         referral: "/provider/referrals",
         salon: "/provider/salon",
         products: "/provider/products",
+        location: "/provider/location",
       };
       if (routes[record.type]) route = routes[record.type];
       if (record.type === "waitlist") {
