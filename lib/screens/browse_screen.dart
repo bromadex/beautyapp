@@ -720,7 +720,83 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 })
             : null,
       ),
+      const SizedBox(height: 8),
+      Center(
+        child: TextButton.icon(
+          onPressed: _requestArea,
+          icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+          label: const Text('Not in your area yet? Request it'),
+        ),
+      ),
     ]);
+  }
+
+  Future<void> _requestArea() async {
+    final cityCtrl = TextEditingController(text: _selectedCity == 'All Zimbabwe' ? '' : _selectedCity);
+    String? category = _selectedCategoryIds.length == 1
+        ? _categories.where((c) => c['id'] == _selectedCategoryIds.first).map((c) => c['name'] as String).firstOrNull
+        : null;
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        bool sending = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 0, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text('Bring BeauTap to your area', style: Theme.of(ctx).textTheme.headlineSmall),
+              const SizedBox(height: 4),
+              Text('Tell us where you are. We invite stylists to the areas people ask for most.',
+                  style: Theme.of(ctx).textTheme.bodyMedium),
+              const SizedBox(height: 16),
+              TextField(
+                controller: cityCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Town or suburb', hintText: 'e.g. Chitungwiza, Kwekwe'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: category,
+                decoration: const InputDecoration(labelText: 'Service you want (optional)'),
+                items: [
+                  for (final c in _categories)
+                    DropdownMenuItem(value: c['name'] as String, child: Text(c['name'] as String)),
+                ],
+                onChanged: (v) => category = v,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        if (cityCtrl.text.trim().length < 2) return;
+                        setSheet(() => sending = true);
+                        try {
+                          await supabase.rpc('request_area',
+                              params: {'p_city': cityCtrl.text.trim(), 'p_category': category});
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (_) {
+                          setSheet(() => sending = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Could not send. Check your connection.')));
+                          }
+                        }
+                      },
+                child: Text(sending ? 'Sending…' : 'Request my area'),
+              ),
+            ]),
+          ),
+        );
+      },
+    );
+    cityCtrl.dispose();
+    if (sent == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thanks! We\'ll let stylists know people are waiting there.')));
+    }
   }
 }
 

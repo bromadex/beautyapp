@@ -569,6 +569,8 @@ class _BookingScreenState extends State<BookingScreen> {
         key: ValueKey('$_serviceId-$_totalMinutes'),
         providerId: widget.providerId,
         minutes: _totalMinutes,
+        allowWaitlist: true,
+        serviceId: _serviceId,
         initialDate: _day,
         initialTime: _time,
         onChanged: (d, t) => setState(() {

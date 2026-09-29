@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/star_rating_widget.dart';
@@ -16,6 +17,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
   List<Map<String, dynamic>> _reviews = [];
   Map<String, dynamic>? _providerProfile;
   bool _loading = true;
+  Set<String> _myVotes = {};
 
   @override
   void initState() {
@@ -38,6 +40,12 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
             .order('created_at', ascending: false),
       ]);
 
+      final uid = supabase.auth.currentUser?.id;
+      if (uid != null) {
+        final votes = await supabase.from('review_votes').select('review_id').eq('user_id', uid);
+        _myVotes = {for (final v in votes) v['review_id'] as String};
+      }
+      if (!mounted) return;
       setState(() {
         _providerProfile = results[0] as Map<String, dynamic>?;
         _reviews = List<Map<String, dynamic>>.from(results[1] as List);
@@ -98,10 +106,78 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     }
   }
 
+  void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: error ? AppColors.error : null),
+    );
+  }
+
+  Future<void> _toggleHelpful(Map<String, dynamic> review) async {
+    if (supabase.auth.currentUser == null) {
+      _snack('Sign in to mark reviews as helpful');
+      return;
+    }
+    try {
+      final res = Map<String, dynamic>.from(
+          await supabase.rpc('toggle_review_helpful', params: {'p_review': review['id']}) as Map);
+      setState(() {
+        review['helpful_count'] = res['count'];
+        res['voted'] == true ? _myVotes.add(review['id']) : _myVotes.remove(review['id']);
+      });
+    } on PostgrestException catch (e) {
+      _snack(e.message, error: true);
+    }
+  }
+
+  Future<void> _report(Map<String, dynamic> review) async {
+    if (supabase.auth.currentUser == null) {
+      _snack('Sign in to report a review');
+      return;
+    }
+    const reasons = ['Fake or not a real client', 'Rude or abusive', 'Personal information', 'Spam or advertising'];
+    String? picked;
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.of(ctx).padding.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Report review', style: Theme.of(ctx).textTheme.headlineSmall),
+            const SizedBox(height: 4),
+            Text('Our team checks every report. The reviewer isn\'t told who reported it.',
+                style: Theme.of(ctx).textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            RadioGroup<String>(
+              groupValue: picked,
+              onChanged: (v) => setSheet(() => picked = v),
+              child: Column(children: [
+                for (final r in reasons)
+                  RadioListTile<String>(value: r, title: Text(r), contentPadding: EdgeInsets.zero),
+              ]),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: picked == null ? null : () => Navigator.pop(ctx, true),
+              child: const Text('Send report'),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (ok != true || picked == null) return;
+    try {
+      await supabase.rpc('report_review', params: {'p_review': review['id'], 'p_reason': picked});
+      _snack('Thanks. We\'ll take a look.');
+    } on PostgrestException catch (e) {
+      _snack(e.message, error: true);
+    }
+  }
+
   /// Build the star distribution bars (5 down to 1).
   Map<int, int> get _ratingDistribution {
     final dist = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
-    for (final r in _reviews) {
+    for (final r in _reviews.where((r) => r['is_hidden'] != true)) {
       final star = (r['rating'] as num?)?.toInt() ?? 0;
       if (star >= 1 && star <= 5) dist[star] = dist[star]! + 1;
     }
@@ -276,10 +352,41 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                       final hasReply = review['provider_reply'] != null &&
                           (review['provider_reply'] as String).isNotEmpty;
 
+                      final uid = supabase.auth.currentUser?.id;
+                      final isParty = uid == review['client_id'] || uid == review['provider_id'];
+                      final helpful = (review['helpful_count'] as num?)?.toInt() ?? 0;
+                      final voted = _myVotes.contains(review['id']);
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (review['is_hidden'] == true)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text('Hidden by BeauTap after a report. Only you can see it.',
+                                  style: TextStyle(fontSize: 12, color: AppColors.error)),
+                            ),
                           ReviewCard(review: review),
+                          if (review['is_hidden'] != true)
+                            Row(children: [
+                              TextButton.icon(
+                                onPressed: isParty ? null : () => _toggleHelpful(review),
+                                icon: Icon(voted ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined, size: 16),
+                                label: Text(helpful > 0 ? 'Helpful · $helpful' : 'Helpful'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: voted ? AppColors.primary : AppColors.textSecondary,
+                                  textStyle: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                              if (uid != review['client_id'])
+                                TextButton(
+                                  onPressed: () => _report(review),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.textTertiary,
+                                    textStyle: const TextStyle(fontSize: 13),
+                                  ),
+                                  child: const Text('Report'),
+                                ),
+                            ]),
                           if (isOwner && !hasReply)
                             Padding(
                               padding: const EdgeInsets.only(

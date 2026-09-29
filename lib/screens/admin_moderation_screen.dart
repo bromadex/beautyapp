@@ -1,0 +1,235 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../supabase_client.dart';
+import '../theme.dart';
+import '../widgets/ui.dart';
+
+/// Admin: reported reviews to hide or keep, and cities clients are asking for.
+class AdminModerationScreen extends StatefulWidget {
+  final int initialTab;
+  const AdminModerationScreen({super.key, this.initialTab = 0});
+
+  @override
+  State<AdminModerationScreen> createState() => _AdminModerationScreenState();
+}
+
+class _AdminModerationScreenState extends State<AdminModerationScreen> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _reported = [];
+  List<Map<String, dynamic>> _demand = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final results = await Future.wait<dynamic>([
+        supabase
+            .from('review_reports')
+            .select('reason, created_at, review_id, reviews(id, rating, comment, after_service_image_url, created_at, '
+                'client:profiles!reviews_client_id_fkey(full_name), provider:profiles!reviews_provider_id_fkey(full_name))')
+            .eq('status', 'open')
+            .order('created_at'),
+        supabase.rpc('area_demand', params: {'p_days': 90}),
+      ]);
+      // One card per review, listing every reason it was reported for.
+      final byReview = <String, Map<String, dynamic>>{};
+      for (final r in List<Map<String, dynamic>>.from(results[0] as List)) {
+        final review = r['reviews'] as Map<String, dynamic>?;
+        if (review == null) continue;
+        final entry = byReview.putIfAbsent(r['review_id'], () => {'review': review, 'reasons': <String>[]});
+        (entry['reasons'] as List<String>).add(r['reason']);
+      }
+      if (mounted) {
+        setState(() {
+          _reported = byReview.values.toList();
+          _demand = List<Map<String, dynamic>>.from(results[1] as List);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load: $e')));
+      }
+    }
+  }
+
+  Future<void> _decide(String reviewId, bool hide) async {
+    try {
+      await supabase.rpc('moderate_review', params: {'p_review': reviewId, 'p_hide': hide});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(hide ? 'Review hidden. The rating has been updated.' : 'Review kept')));
+      }
+      _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
+  }
+
+  String _ago(String iso) {
+    final d = DateTime.now().difference(DateTime.parse(iso).toLocal());
+    if (d.inDays > 0) return '${d.inDays}d ago';
+    if (d.inHours > 0) return '${d.inHours}h ago';
+    return '${d.inMinutes}m ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      initialIndex: widget.initialTab,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Reviews & Demand'),
+          bottom: TabBar(tabs: [
+            Tab(text: 'Reported (${_reported.length})'),
+            const Tab(text: 'Area requests'),
+          ]),
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(children: [
+                RefreshIndicator(onRefresh: _load, child: _buildReported()),
+                RefreshIndicator(onRefresh: _load, child: _buildDemand()),
+              ]),
+      ),
+    );
+  }
+
+  Widget _buildReported() {
+    if (_reported.isEmpty) {
+      return ListView(children: const [
+        SizedBox(height: 80),
+        EmptyState(
+          icon: Icons.verified_user_outlined,
+          title: 'Nothing to review',
+          message: 'Reviews that clients or stylists report will appear here.',
+        ),
+      ]);
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _reported.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final item = _reported[i];
+        final r = item['review'] as Map<String, dynamic>;
+        final reasons = item['reasons'] as List<String>;
+        final rating = (r['rating'] as num?)?.toInt() ?? 0;
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.lgAll,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text('${r['client']?['full_name'] ?? 'Client'} → ${r['provider']?['full_name'] ?? 'Stylist'}',
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              Text('★' * rating + '☆' * (5 - rating), style: const TextStyle(color: AppColors.warning)),
+            ]),
+            const SizedBox(height: 6),
+            Text((r['comment'] ?? '').toString().isEmpty ? '(no comment)' : r['comment'],
+                style: const TextStyle(fontSize: 14, height: 1.4)),
+            if (r['after_service_image_url'] != null) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: AppRadius.smAll,
+                child: Image.network(r['after_service_image_url'], height: 120, fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink()),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final reason in reasons.toSet())
+                Pill(label: '$reason${reasons.where((x) => x == reason).length > 1 ? ' ×${reasons.where((x) => x == reason).length}' : ''}',
+                    color: AppColors.error),
+            ]),
+            const SizedBox(height: 4),
+            Text('Posted ${_ago(r['created_at'])}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(onPressed: () => _decide(r['id'], false), child: const Text('Keep')),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => _decide(r['id'], true),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                  child: const Text('Hide review'),
+                ),
+              ),
+            ]),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _buildDemand() {
+    if (_demand.isEmpty) {
+      return ListView(children: const [
+        SizedBox(height: 80),
+        EmptyState(
+          icon: Icons.map_outlined,
+          title: 'No requests yet',
+          message: 'When clients can\'t find a stylist nearby they can ask for their area. Requests from the last 90 days show here.',
+        ),
+      ]);
+    }
+    final top = (_demand.first['requests'] as num).toDouble();
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      const Text('Where clients want BeauTap next (last 90 days). Recruit stylists here first.',
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      const SizedBox(height: 12),
+      for (final d in _demand)
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(d['city'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+              Text('${d['requests']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            ]),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: AppRadius.smAll,
+              child: LinearProgressIndicator(
+                value: (d['requests'] as num) / top,
+                minHeight: 6,
+                backgroundColor: AppColors.surfaceMuted,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              [
+                '${d['people']} signed-in ${d['people'] == 1 ? 'person' : 'people'}',
+                if (d['top_category'] != null) 'mostly ${d['top_category']}',
+                'last ${_ago(d['last_at'])}',
+              ].join(' · '),
+              style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+            ),
+          ]),
+        ),
+    ]);
+  }
+}

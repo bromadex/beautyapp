@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -11,6 +12,10 @@ class SlotPicker extends StatefulWidget {
   final String? initialTime;
   final void Function(DateTime date, String time) onChanged;
 
+  /// Offer "notify me" on days with no free time (client booking only).
+  final bool allowWaitlist;
+  final String? serviceId;
+
   const SlotPicker({
     super.key,
     required this.providerId,
@@ -18,6 +23,8 @@ class SlotPicker extends StatefulWidget {
     required this.onChanged,
     this.initialDate,
     this.initialTime,
+    this.allowWaitlist = false,
+    this.serviceId,
   });
 
   @override
@@ -36,6 +43,8 @@ class _SlotPickerState extends State<SlotPicker> {
   List<String> _slots = [];
   bool _loadingSlots = false;
   String? _selectedTime;
+  final Set<DateTime> _waitlisted = {};
+  bool _joining = false;
 
   @override
   void initState() {
@@ -128,6 +137,51 @@ class _SlotPickerState extends State<SlotPicker> {
     }
   }
 
+  Future<void> _joinWaitlist(DateTime day) async {
+    setState(() => _joining = true);
+    try {
+      await supabase.rpc('join_waitlist', params: {
+        'p_provider': widget.providerId,
+        'p_day': _iso(day),
+        'p_minutes': widget.minutes,
+        'p_service': widget.serviceId,
+      });
+      if (mounted) setState(() => _waitlisted.add(day));
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) setState(() => _joining = false);
+    }
+  }
+
+  Widget _waitlistBox(DateTime day) {
+    final joined = _waitlisted.contains(day);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(
+          joined
+              ? 'You\'re on the waitlist. We\'ll notify you if a time opens on this day.'
+              : 'No free times on this day.',
+          style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+        ),
+        if (widget.allowWaitlist && !joined) ...[
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _joining ? null : () => _joinWaitlist(day),
+            icon: const Icon(Icons.notifications_active_outlined, size: 18),
+            label: Text(_joining ? 'Adding…' : 'Notify me if a time opens'),
+          ),
+        ],
+      ]),
+    );
+  }
+
   String _label(String hhmm) {
     final h = int.parse(hhmm.substring(0, 2));
     final m = hhmm.substring(3);
@@ -172,7 +226,7 @@ class _SlotPickerState extends State<SlotPicker> {
             final diff = d.day.difference(_today).inDays;
             final tag = diff == 0 ? 'TODAY' : diff == 1 ? 'TMRW' : _weekdays[d.day.weekday - 1].toUpperCase();
             return InkWell(
-              onTap: open ? () => _selectDay(d.day) : null,
+              onTap: open || widget.allowWaitlist ? () => _selectDay(d.day) : null,
               borderRadius: AppRadius.mdAll,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
@@ -207,13 +261,15 @@ class _SlotPickerState extends State<SlotPicker> {
         ),
       ),
       const SizedBox(height: 20),
-      if (!anyOpen)
+      if (!anyOpen && _selectedDay == null)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
-          child: const Text(
-            'No free times in these two weeks. Tap "More dates", or message the stylist.',
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+          child: Text(
+            widget.allowWaitlist
+                ? 'No free times in these two weeks. Tap "More dates", or tap a day to get notified if a time opens.'
+                : 'No free times in these two weeks. Tap "More dates", or message the stylist.',
+            style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
           ),
         )
       else if (_selectedDay != null) ...[
@@ -228,7 +284,7 @@ class _SlotPickerState extends State<SlotPicker> {
             child: Center(child: CircularProgressIndicator()),
           )
         else if (_slots.isEmpty)
-          const Text('No free times on this day.', style: TextStyle(color: AppColors.textSecondary))
+          _waitlistBox(_selectedDay!)
         else
           Wrap(
             spacing: 8,

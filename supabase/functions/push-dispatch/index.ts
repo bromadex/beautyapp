@@ -3,6 +3,7 @@
 //   1. bookings INSERT              → provider ("New booking request")
 //   2. bookings UPDATE → confirmed  → client   ("Booking confirmed")
 //   3. messages INSERT              → receiver ("New message")
+//   4. notifications INSERT (review_request, waitlist) → that user
 //
 // Configure Database Webhooks (Dashboard → Database → Webhooks) on:
 //   - bookings: INSERT + UPDATE → this function
@@ -72,6 +73,21 @@ Deno.serve(async (req) => {
           route: `/chat/${record.booking_id}`,
           bookingId: String(record.booking_id),
         },
+      });
+    } else if (table === "notifications" && type === "INSERT") {
+      // Server-created nudges: review requests and waitlist openings.
+      const ref = (record.reference_id ?? "").toString();
+      let route = "/notifications";
+      if (record.type === "review_request") route = `/review/${ref}`;
+      if (record.type === "waitlist") {
+        const [providerId, serviceId] = ref.split("|");
+        route = serviceId ? `/book/${providerId}/${serviceId}` : `/provider/${providerId}`;
+      }
+      await pushToUser(admin, sa, {
+        userId: record.user_id,
+        title: record.title ?? "BeauTap",
+        body: record.body ?? "",
+        data: { route },
       });
     }
   } catch (e) {

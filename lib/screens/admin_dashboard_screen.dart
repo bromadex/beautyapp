@@ -249,6 +249,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _ActionItem(Icons.bar_chart_rounded, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),
       _ActionItem(Icons.flag_rounded, 'Disputes', AppColors.error, () => context.push('/admin/disputes')),
       _ActionItem(Icons.storefront_rounded, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
+      _ActionItem(Icons.rate_review_outlined, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation')),
+      _ActionItem(Icons.map_outlined, 'Area demand', AppColors.info, () => context.push('/admin/moderation?tab=demand')),
     ];
 
     return GridView.count(

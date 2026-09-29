@@ -14,6 +14,7 @@ import 'screens/admin_bookings_screen.dart';
 import 'screens/admin_analytics_screen.dart';
 import 'screens/admin_disputes_screen.dart';
 import 'screens/admin_business_screen.dart';
+import 'screens/admin_moderation_screen.dart';
 import 'screens/provider_profile_editor_screen.dart';
 import 'screens/service_management_screen.dart';
 import 'screens/gallery_management_screen.dart';
@@ -206,6 +207,13 @@ final appRouter = GoRouter(
       path: '/admin/business',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const AdminBusinessScreen(),
+    ),
+
+    GoRoute(
+      path: '/admin/moderation',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => AdminModerationScreen(
+          initialTab: state.uri.queryParameters['tab'] == 'demand' ? 1 : 0),
     ),
 
     // Provider Management (Stage 3)

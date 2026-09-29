@@ -82,6 +82,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'promotion':
         context.push('/provider/promotions');
         break;
+      case 'review_request':
+        context.push('/review/$refId');
+        break;
+      case 'waitlist':
+        final parts = refId.toString().split('|');
+        final serviceId = parts.length > 1 ? parts[1] : '';
+        context.push(serviceId.isEmpty ? '/provider/${parts[0]}' : '/book/${parts[0]}/$serviceId');
+        break;
     }
   }
 
@@ -99,6 +107,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.chat_bubble_outline_rounded;
       case 'promotion':
         return Icons.local_offer_outlined;
+      case 'review_request':
+        return Icons.rate_review_outlined;
+      case 'waitlist':
+        return Icons.event_available_rounded;
       default:
         return Icons.notifications_outlined;
     }
@@ -118,6 +130,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return AppColors.primary;
       case 'promotion':
         return AppColors.accent;
+      case 'review_request':
+        return AppColors.warning;
+      case 'waitlist':
+        return AppColors.success;
       default:
         return AppColors.textTertiary;
     }
