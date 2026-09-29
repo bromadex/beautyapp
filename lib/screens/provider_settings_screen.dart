@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:url_launcher/url_launcher.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/certificates_section.dart';
 
 class ProviderSettingsScreen extends StatefulWidget {
   const ProviderSettingsScreen({super.key});
@@ -602,6 +603,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             _buildBusinessSection(),
+
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionHeader(icon: TablerIcons.certificate, title: 'Certificates'),
+            const SizedBox(height: AppSpacing.md),
+            const CertificatesSection(),
 
             const SizedBox(height: AppSpacing.xxxl),
 

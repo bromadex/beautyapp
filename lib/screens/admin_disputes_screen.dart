@@ -23,6 +23,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
     'payment_issue': 'Payment issue',
     'no_show': 'No-show',
     'misconduct': 'Misconduct',
+    'sexual_conduct': 'Inappropriate or sexual conduct',
     'other': 'Other',
   };
 

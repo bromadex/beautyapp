@@ -252,6 +252,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _ActionItem(TablerIcons.building_store, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
       _ActionItem(TablerIcons.message_star, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation')),
       _ActionItem(TablerIcons.map, 'Area demand', AppColors.info, () => context.push('/admin/moderation?tab=demand')),
+      _ActionItem(TablerIcons.shield_check, 'Flagged services', AppColors.error, () => context.push('/admin/moderation?tab=flagged')),
     ];
 
     return GridView.count(

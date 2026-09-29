@@ -63,6 +63,8 @@ class _BookingScreenState extends State<BookingScreen> {
   double _discount = 0;
   String? _promoError;
   Map<String, dynamic>? _loyalty;
+  bool _atStudio = false;
+  bool _ack = false;
   bool _applyingPromo = false;
 
   @override
@@ -95,7 +97,7 @@ class _BookingScreenState extends State<BookingScreen> {
         supabase.from('provider_profiles').select().eq('provider_id', widget.providerId).maybeSingle(),
         supabase
             .from('services')
-            .select('*, service_categories(name)')
+            .select('*, service_categories(name, studio_only, needs_certificate, min_age, patch_test)')
             .eq('provider_id', widget.providerId)
             .eq('is_active', true)
             .order('created_at', ascending: true),
@@ -109,7 +111,7 @@ class _BookingScreenState extends State<BookingScreen> {
       _me = results[4] as Map<String, dynamic>?;
       if (_provider == null || _services.isEmpty) {
         setState(() {
-          _error = 'This stylist has no services to book yet.';
+          _error = 'This pro has no services to book yet.';
           _loading = false;
         });
         return;
@@ -174,7 +176,19 @@ class _BookingScreenState extends State<BookingScreen> {
       .fold(0, (s, a) => s + ((a['duration_minutes'] as num?)?.toInt() ?? 0));
   int get _totalMinutes => _baseMinutes + _addonsMinutes;
 
+  String get _mode => (_service['location_mode'] ?? 'client') as String;
+  bool get _studio => _mode == 'studio' || (_mode == 'either' && _atStudio);
+  Map<String, dynamic>? get _cat => _service['service_categories'] as Map<String, dynamic>?;
+  bool get _isMassage => _cat?['studio_only'] == true && _cat?['needs_certificate'] == true;
+  int? get _minAge => (_cat?['min_age'] as num?)?.toInt();
+  bool get _needsAck => _isMassage || _minAge != null;
+  String get _studioArea {
+    final a = (_providerProfile?['address'] ?? _provider?['location'] ?? '').toString();
+    return a.isEmpty ? 'their studio' : a.split(',').last.trim();
+  }
+
   double get _travelFee {
+    if (_studio) return 0;
     final pp = _providerProfile;
     final perKm = (pp?['travel_fee_per_km'] as num?)?.toDouble() ?? 0;
     final lat = (pp?['latitude'] as num?)?.toDouble();
@@ -221,7 +235,7 @@ class _BookingScreenState extends State<BookingScreen> {
           _lng = pos.longitude;
         });
       } else if (mounted) {
-        _toast('Location unavailable — the stylist will agree any travel fee with you.');
+        _toast('Location unavailable — the pro will agree any travel fee with you.');
       }
     } catch (_) {
     } finally {
@@ -279,11 +293,16 @@ class _BookingScreenState extends State<BookingScreen> {
           return false;
         }
         if (_phoneCtrl.text.trim().replaceAll(RegExp(r'\D'), '').length < 9) {
-          _toast('Please enter a phone number the stylist can reach you on');
+          _toast('Please enter a phone number the pro can reach you on');
           return false;
         }
-        if (_addressCtrl.text.trim().isEmpty) {
-          _toast('Please enter where the stylist should come');
+        if (!_studio && _addressCtrl.text.trim().isEmpty) {
+          _toast('Please enter where the pro should come');
+          return false;
+        }
+      case 3:
+        if (_needsAck && !_ack) {
+          _toast('Please tick the box to accept the rules for this service');
           return false;
         }
     }
@@ -317,7 +336,9 @@ class _BookingScreenState extends State<BookingScreen> {
             'service_id': _serviceId,
             if (_tierId != null) 'tier_id': _tierId,
             'booking_time': slotToDateTime(_day!, _time!).toIso8601String(),
-            'address': _addressCtrl.text.trim(),
+            'address': _studio ? 'At the pro\'s studio' : _addressCtrl.text.trim(),
+            'at_studio': _studio,
+            'client_ack': _ack,
             'status': 'pending',
             'total_price': _total,
             'promo_code': _promo?['code'],
@@ -387,7 +408,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Text('Request sent!', style: Theme.of(ctx).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
-            '${_provider?['full_name'] ?? 'Your stylist'} will confirm shortly. '
+            '${_provider?['full_name'] ?? 'Your pro'} will confirm shortly. '
             'Your reference is $ref.'
             '${deposit > 0 && !depositPaid ? '\n\nYour ${_money(deposit)} deposit is still unpaid — you can pay it from the booking page.' : ''}',
             textAlign: TextAlign.center,
@@ -655,18 +676,49 @@ class _BookingScreenState extends State<BookingScreen> {
           prefixIcon: Icon(TablerIcons.phone),
         ),
       ),
-      const SizedBox(height: 12),
-      TextField(
-        controller: _addressCtrl,
-        maxLines: 2,
-        minLines: 1,
-        decoration: const InputDecoration(
-          labelText: 'Where should the stylist come?',
-          hintText: 'e.g. 12 Borrowdale Rd, Harare',
-          prefixIcon: Icon(TablerIcons.map_pin),
+      const SizedBox(height: 16),
+      if (_mode == 'either') ...[
+        const Text('Where?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: false, label: Text('At my place'), icon: Icon(TablerIcons.home, size: 18)),
+            ButtonSegment(value: true, label: Text('At the studio'), icon: Icon(TablerIcons.building_store, size: 18)),
+          ],
+          selected: {_atStudio},
+          onSelectionChanged: (v) => setState(() => _atStudio = v.first),
         ),
-      ),
-      if (hasTravel)
+        const SizedBox(height: 12),
+      ],
+      if (_studio)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.mdAll),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(TablerIcons.building_store, color: AppColors.primary, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'At ${(_provider?['full_name'] ?? 'the pro').toString().split(' ').first}\'s studio in $_studioArea. '
+                'You\'ll see the exact address once your booking is confirmed.',
+                style: const TextStyle(fontSize: 14, height: 1.4),
+              ),
+            ),
+          ]),
+        )
+      else
+        TextField(
+          controller: _addressCtrl,
+          maxLines: 2,
+          minLines: 1,
+          decoration: const InputDecoration(
+            labelText: 'Where should the pro come?',
+            hintText: 'e.g. 12 Borrowdale Rd, Harare',
+            prefixIcon: Icon(TablerIcons.map_pin),
+          ),
+        ),
+      if (hasTravel && !_studio)
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
@@ -687,7 +739,7 @@ class _BookingScreenState extends State<BookingScreen> {
         maxLines: 3,
         minLines: 1,
         decoration: const InputDecoration(
-          labelText: 'Note for the stylist (optional)',
+          labelText: 'Note for the pro (optional)',
           hintText: 'e.g. Gate code, hair length, bring products',
           prefixIcon: Icon(TablerIcons.notes),
         ),
@@ -716,7 +768,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (_depositPercent > 0) ...[
         const SizedBox(height: 10),
         Text(
-          'This stylist asks for a $_depositPercent% deposit, paid by ${_payment == 'paynow' ? 'card' : 'EcoCash'} when you book. '
+          'This pro asks for a $_depositPercent% deposit, paid by ${_payment == 'paynow' ? 'card' : 'EcoCash'} when you book. '
           'The rest is paid ${_payment == 'cash' ? 'in cash' : 'the same way'} on the day.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -792,7 +844,9 @@ class _BookingScreenState extends State<BookingScreen> {
             _InfoLine(
                 icon: TablerIcons.calendar_event,
                 text: '${days[d.weekday - 1]} ${d.day} ${months[d.month - 1]} · $timeLabel ($_totalMinutes min)'),
-            _InfoLine(icon: TablerIcons.map_pin, text: _addressCtrl.text.trim()),
+            _InfoLine(
+                icon: _studio ? TablerIcons.building_store : TablerIcons.map_pin,
+                text: _studio ? 'At the pro\'s studio, $_studioArea' : _addressCtrl.text.trim()),
             _InfoLine(
                 icon: TablerIcons.cash,
                 text: const {'cash': 'Pay cash', 'ecocash': 'Pay with EcoCash', 'paynow': 'Pay by card'}[_payment]!),
@@ -818,6 +872,35 @@ class _BookingScreenState extends State<BookingScreen> {
           ]),
         ),
       ),
+      if (_service['patch_test'] == true) ...[
+        const SizedBox(height: 12),
+        const SoftBanner(
+          icon: TablerIcons.alert_circle,
+          color: AppColors.warningText,
+          title: 'Patch test needed',
+          message: 'Ask your pro for a small test 24–48 hours before, to check for any reaction.',
+        ),
+      ],
+      if (_needsAck) ...[
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(color: AppColors.warningSoft, borderRadius: AppRadius.mdAll),
+          child: CheckboxListTile(
+            value: _ack,
+            onChanged: (v) => setState(() => _ack = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+            title: Text(
+              [
+                if (_isMassage)
+                  'Professional therapeutic massage only. Inappropriate requests will get my account banned.',
+                if (_minAge != null) 'I am $_minAge or older.',
+              ].join(' '),
+              style: const TextStyle(fontSize: 14, height: 1.4, color: AppColors.textPrimary),
+            ),
+          ),
+        ),
+      ],
       if (_policy != null) ...[
         const SizedBox(height: 12),
         SoftBanner(

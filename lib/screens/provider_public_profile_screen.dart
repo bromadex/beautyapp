@@ -26,6 +26,7 @@ class _ProviderPublicProfileScreenState
   String? _error;
   bool _isFavorited = false;
   Map<String, dynamic>? _loyalty;
+  List<Map<String, dynamic>> _certificates = [];
 
   late final AnimationController _heartController;
   late final Animation<double> _heartScale;
@@ -188,7 +189,7 @@ class _ProviderPublicProfileScreenState
       try {
         final servicesResponse = await supabase
             .from('services')
-            .select('*, service_categories(name, icon), service_tiers(name, price, duration_minutes, is_active, sort_order)')
+            .select('*, service_categories(name, studio_only, min_age, patch_test), service_tiers(name, price, duration_minutes, is_active, sort_order)')
             .eq('provider_id', id)
             .eq('is_active', true)
             .order('created_at');
@@ -197,6 +198,14 @@ class _ProviderPublicProfileScreenState
         _services = [];
       }
 
+
+      try {
+        _certificates = List<Map<String, dynamic>>.from(await supabase
+            .from('provider_certificates')
+            .select('title, issuer, year')
+            .eq('provider_id', id)
+            .order('created_at'));
+      } catch (_) {}
 
       try {
         final galleryResponse = await supabase
@@ -538,13 +547,20 @@ class _ProviderPublicProfileScreenState
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _InfoTile(
-                            top: Text(location.isEmpty ? 'Zimbabwe' : location.split(',').first,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                            bottom: location.contains(',') ? location.split(',').skip(1).join(',').trim() : 'Service area',
-                          ),
+                          child: Builder(builder: (_) {
+                            final modes = _services.map((sv) => sv['location_mode'] ?? 'client').toSet();
+                            final comes = modes.contains('client') || modes.contains('either');
+                            final studio = modes.contains('studio') || modes.contains('either');
+                            final area = location.isEmpty ? 'Zimbabwe' : location;
+                            return _InfoTile(
+                              top: Text(
+                                  comes ? 'Comes to you' : 'At their studio',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                              bottom: comes && studio ? 'or studio, $area' : area,
+                            );
+                          }),
                         ),
                       ]),
                     ),
@@ -588,6 +604,26 @@ class _ProviderPublicProfileScreenState
                       style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
+                  ],
+
+                  if (_certificates.isNotEmpty) ...[
+                    Text('Qualifications', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    for (final c in _certificates)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(children: [
+                          const Icon(TablerIcons.certificate, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              [c['title'], c['issuer'], c['year']].where((x) => x != null).join(' · '),
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    const SizedBox(height: AppSpacing.xl),
                   ],
 
                   // Services
@@ -780,6 +816,21 @@ class _ProviderPublicProfileScreenState
               const SizedBox(height: 4),
               Text('${_priceLabel(s)} · ${s['duration_minutes']} min',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              const SizedBox(height: 10),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                Pill(
+                  label: switch (s['location_mode']) {
+                    'studio' => 'At their studio',
+                    'either' => 'Home or studio',
+                    _ => 'Comes to you',
+                  },
+                  icon: s['location_mode'] == 'studio' ? TablerIcons.building_store : TablerIcons.home,
+                ),
+                if (s['patch_test'] == true)
+                  const Pill(label: 'Patch test first', icon: TablerIcons.alert_circle, color: AppColors.warningText),
+                if (s['service_categories']?['min_age'] != null)
+                  Pill(label: '${s['service_categories']['min_age']}+ only', color: AppColors.errorText),
+              ]),
               if (desc.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Text(desc, style: const TextStyle(fontSize: 14.5, height: 1.5, color: AppColors.textSecondary)),

@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     if (table === "bookings" && type === "INSERT" && record.source !== "manual") {
       await pushToUser(admin, sa, {
         userId: record.provider_id,
-        title: "New Booking Request 💅",
+        title: "New booking request",
         body: "You have a new booking request. Open BeauTap to respond.",
         data: { route: "/provider/home", bookingId: String(record.id) },
       });
@@ -57,15 +57,15 @@ Deno.serve(async (req) => {
     ) {
       await pushToUser(admin, sa, {
         userId: record.client_id,
-        title: "Booking Confirmed ✨",
-        body: "Your stylist confirmed your booking. See the details in BeauTap.",
+        title: "Booking confirmed",
+        body: "Your pro confirmed your booking. See the details in BeauTap.",
         data: { route: `/booking/${record.id}`, bookingId: String(record.id) },
       });
     } else if (table === "messages" && type === "INSERT") {
       const preview = (record.message ?? "").toString();
       await pushToUser(admin, sa, {
         userId: record.receiver_id,
-        title: "New Message 💬",
+        title: "New message",
         body: preview
           ? (preview.length > 80 ? `${preview.slice(0, 80)}…` : preview)
           : "You received a photo",

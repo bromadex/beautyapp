@@ -221,7 +221,7 @@ class SmartMatchService {
     if (rating >= 4.0 && reviews >= 3 && !reasons.contains('Top rated')) reasons.add('Highly rated');
     if (previouslyBooked && !highlyRated) reasons.add('Booked before');
     if (reasons.isEmpty && reviews > 0) reasons.add('${rating.toStringAsFixed(1)} stars');
-    if (reasons.isEmpty) reasons.add('New stylist');
+    if (reasons.isEmpty) reasons.add('New pro');
     return reasons.take(3).toList();
   }
 }

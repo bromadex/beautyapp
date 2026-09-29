@@ -32,6 +32,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   final _searchCtrl = TextEditingController();
   final Set<String> _selectedCategoryIds = {};
   String? _group;
+  String _where = 'any'; // any | home | studio
   double _minRating = 0;
   RangeValues _priceRange = const RangeValues(0, 500);
   String _sortBy = 'rating'; // rating | distance | price_low | newest
@@ -137,7 +138,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     try {
       final data = await supabase
           .from('service_categories')
-          .select()
+          .select('*, service_groups(name)')
           .order('sort_order', ascending: true);
       if (mounted) {
         setState(() {
@@ -154,7 +155,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       final data = await supabase
           .from('provider_profiles')
           .select('*, profiles(full_name, location, avatar_url, is_verified, is_business_verified, '
-              'services(id, service_name, price, category_id, is_active), '
+              'services(id, service_name, price, category_id, is_active, location_mode), '
               'subscriptions(status, end_date))')
           .or('is_hidden.eq.false,is_hidden.is.null');
 
@@ -245,9 +246,16 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
       // Service group
       if (_group != null) {
-        final grp = ServiceGroup.all.firstWhere((g) => g.name == _group);
-        final names = {for (final c in _categories) c['id']: c['name']};
-        if (!services.any((s) => s['is_active'] == true && ServiceGroup.of(names[s['category_id']]) == grp)) {
+        final groupOf = {for (final c in _categories) c['id']: c['service_groups']?['name']};
+        if (!services.any((s) => s['is_active'] == true && groupOf[s['category_id']] == _group)) {
+          return false;
+        }
+      }
+
+      // Where the service happens
+      if (_where != 'any') {
+        final want = _where == 'home' ? 'client' : 'studio';
+        if (!services.any((s) => s['is_active'] == true && (s['location_mode'] == want || s['location_mode'] == 'either'))) {
           return false;
         }
       }
@@ -326,6 +334,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   int get _activeFilterCount {
     int count = 0;
     if (_minRating > 0) count++;
+    if (_where != 'any') count++;
     if (_selectedCategoryIds.isNotEmpty) count++;
     if (_priceRange.start > 0 || _priceRange.end < 500) count++;
     if (_selectedCity != 'All Zimbabwe') count++;
@@ -355,6 +364,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     RangeValues tempPriceRange = _priceRange;
     String tempSort = _sortBy;
     int tempRadius = _radiusKm;
+    String tempWhere = _where;
 
     showModalBottomSheet(
       context: context,
@@ -383,6 +393,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                         tempPriceRange = const RangeValues(0, 500);
                         tempSort = 'rating';
                         tempRadius = 100;
+                        tempWhere = 'any';
                       });
                     },
                     child: const Text('Reset'),
@@ -390,6 +401,19 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Where
+              Text('Where', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  _SortChip('Anywhere', 'any', tempWhere, (v) => setSheetState(() => tempWhere = v)),
+                  _SortChip('Comes to me', 'home', tempWhere, (v) => setSheetState(() => tempWhere = v)),
+                  _SortChip('I go to them', 'studio', tempWhere, (v) => setSheetState(() => tempWhere = v)),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xl),
 
               // Sort by
               Text('Sort by', style: Theme.of(context).textTheme.titleSmall),
@@ -528,6 +552,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       _minRating = tempMinRating;
                       _priceRange = tempPriceRange;
                       _sortBy = tempSort;
+                      _where = tempWhere;
                       _radiusKm = tempRadius;
                     });
                     Navigator.pop(context);
@@ -573,7 +598,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Row(children: [
-                    Expanded(child: Text('Find a stylist', style: Theme.of(context).textTheme.headlineSmall)),
+                    Expanded(child: Text('Find a beauty pro', style: Theme.of(context).textTheme.headlineSmall)),
                     InkWell(
                       onTap: _openLocationPicker,
                       borderRadius: AppRadius.pill,
@@ -608,7 +633,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                     onChanged: (_) => setState(() {}),
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Search stylists or services',
+                      hintText: 'Search beauty pros or services',
                       prefixIcon: const Icon(TablerIcons.search, color: AppColors.primary),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       suffixIcon: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -662,7 +687,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 12, 0),
                   child: Row(children: [
                     Text(
-                      '${filtered.length} stylist${filtered.length == 1 ? '' : 's'}'
+                      '${filtered.length} pro${filtered.length == 1 ? '' : 's'}'
                       '${_selectedCity != 'All Zimbabwe' ? ' in $_selectedCity' : ''}',
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
@@ -725,7 +750,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       const SizedBox(height: 40),
       EmptyState(
         icon: TablerIcons.search_off,
-        title: 'No stylists found',
+        title: 'No beauty pros found',
         message: local
             ? 'Nobody matches in $_selectedCity yet. Try searching all of Zimbabwe.'
             : 'Try a different search or clear some filters.',
@@ -766,7 +791,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Text('Bring BeauTap to your area', style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: 4),
-              Text('Tell us where you are. We invite stylists to the areas people ask for most.',
+              Text('Tell us where you are. We invite beauty pros to the areas people ask for most.',
                   style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
               const SizedBox(height: 16),
               TextField(
@@ -813,7 +838,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     cityCtrl.dispose();
     if (sent == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thanks! We\'ll let stylists know people are waiting there.')));
+          const SnackBar(content: Text('Thanks! We\'ll let beauty pros know people are waiting there.')));
     }
   }
 }
@@ -862,7 +887,7 @@ class _ProviderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = provider;
     final prof = p['profiles'] as Map? ?? {};
-    final name = prof['full_name'] ?? 'Stylist';
+    final name = prof['full_name'] ?? 'Beauty pro';
     final location = (prof['location'] ?? '').toString();
     final status = p['availability_status'] ?? 'offline';
     final rating = (p['average_rating'] as num?)?.toDouble() ?? 0.0;

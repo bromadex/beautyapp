@@ -64,7 +64,7 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
         const SizedBox(height: 4),
         Text(
           isClient
-              ? 'Pick a new free time. Your stylist will be asked to confirm it.'
+              ? 'Pick a new free time. Your pro will be asked to confirm it.'
               : 'Pick a new time. Your client will be notified.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),

@@ -328,7 +328,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     try {
       await supabase.from('bookings').update({
         'status': accept ? 'confirmed' : 'cancelled',
-        if (!accept) 'cancel_reason': 'Declined by stylist',
+        if (!accept) 'cancel_reason': 'Declined by pro',
       }).eq('id', b['id']);
       NotificationService.send(
         userId: b['client_id'],
@@ -336,7 +336,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
         title: accept ? 'Booking confirmed' : 'Booking declined',
         body: accept
             ? 'Your ${b['services']?['service_name'] ?? 'booking'} is confirmed.'
-            : 'Your stylist can\'t take this booking. Try another time or stylist.',
+            : 'Your pro can\'t take this booking. Try another time or pro.',
         referenceId: b['id'],
       );
       if (mounted) {

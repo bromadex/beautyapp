@@ -83,8 +83,8 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel this booking?'),
         content: Text(b['status'] == 'confirmed'
-            ? 'Your stylist has confirmed this booking. Their cancellation policy may apply.'
-            : 'Your stylist will be told you cancelled.'),
+            ? 'Your pro has confirmed this booking. Their cancellation policy may apply.'
+            : 'Your pro will be told you cancelled.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(
@@ -116,7 +116,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Booking moved. Your stylist will confirm the new time.')),
+          const SnackBar(content: Text('Booking moved. Your pro will confirm the new time.')),
         );
       }
     }
@@ -155,7 +155,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                       const EmptyState(
                         icon: TablerIcons.calendar_check,
                         title: 'No upcoming bookings',
-                        message: 'When you book a stylist, your appointment shows up here.',
+                        message: 'When you book a beauty pro, your appointment shows up here.',
                       ),
                       showFind: true,
                     ),
@@ -184,7 +184,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
               child: FilledButton.icon(
                 onPressed: () => context.go('/browse'),
                 icon: const Icon(TablerIcons.search),
-                label: const Text('Find a stylist'),
+                label: const Text('Find a beauty pro'),
               ),
             ),
         ]),
@@ -228,7 +228,7 @@ class _ReceiptCard extends StatelessWidget {
     final b = booking;
     final status = b['status'] as String? ?? 'pending';
     final dt = DateTime.tryParse(b['booking_time'] ?? '')?.toLocal();
-    final stylist = b['profiles']?['full_name'] ?? 'Stylist';
+    final stylist = b['profiles']?['full_name'] ?? 'Beauty pro';
     final service = b['services']?['service_name'] ?? 'Appointment';
     final tier = b['service_tiers']?['name'];
     final total = (b['total_price'] as num?)?.toDouble() ?? 0;
@@ -238,7 +238,7 @@ class _ReceiptCard extends StatelessWidget {
 
     final (Color color, String label) = switch (status) {
       'confirmed' => (AppColors.success, 'Confirmed'),
-      'pending' => (AppColors.warning, b['rescheduled_at'] != null ? 'New time — awaiting stylist' : 'Awaiting stylist'),
+      'pending' => (AppColors.warning, b['rescheduled_at'] != null ? 'New time — awaiting pro' : 'Awaiting pro'),
       'completed' => (AppColors.info, 'Completed'),
       _ => (AppColors.error, noShow ? 'No-show' : 'Cancelled'),
     };

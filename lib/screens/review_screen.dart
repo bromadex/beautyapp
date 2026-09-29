@@ -182,7 +182,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Your review has been submitted. It helps other clients find great stylists!',
+                    'Your review has been submitted. It helps other clients find great beauty pros!',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   ),
@@ -231,7 +231,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       );
     }
 
-    final providerName = _booking?['profiles']?['full_name'] ?? 'your stylist';
+    final providerName = _booking?['profiles']?['full_name'] ?? 'your pro';
     final serviceName = _booking?['services']?['service_name'] ?? 'the service';
     final ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
@@ -340,7 +340,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               controller: _commentCtrl,
               maxLines: 5,
               decoration: InputDecoration(
-                hintText: 'How was the experience? Would you recommend this stylist?',
+                hintText: 'How was the experience? Would you recommend this pro?',
                 alignLabelWithHint: true,
                 border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
               ),
@@ -360,7 +360,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Share a photo of your finished hairstyle. It may appear in the stylist\'s gallery.',
+                'Share a photo of your finished look. It may appear in the pro\'s gallery.',
                 style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
               ),
             ),

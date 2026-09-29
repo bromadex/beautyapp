@@ -127,11 +127,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     await supabase.from('bookings').update({
       'provider_arrived_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', widget.bookingId);
-    final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+    final providerName = _booking?['provider']?['full_name'] ?? 'Your pro';
     NotificationService.send(
       userId: _booking!['client_id'],
       type: 'booking_status',
-      title: 'Stylist Arrived',
+      title: 'Your pro has arrived',
       body: '$providerName has arrived at your location',
       referenceId: widget.bookingId,
     );
@@ -143,7 +143,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       'service_started_at': DateTime.now().toUtc().toIso8601String(),
       'status':             'confirmed',
     }).eq('id', widget.bookingId);
-    final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+    final providerName = _booking?['provider']?['full_name'] ?? 'Your pro';
     NotificationService.send(
       userId: _booking!['client_id'],
       type: 'booking_status',
@@ -180,7 +180,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         'status':               'completed',
         'service_completed_at': DateTime.now().toUtc().toIso8601String(),
       }).eq('id', widget.bookingId);
-      final providerName = _booking?['provider']?['full_name'] ?? 'Your stylist';
+      final providerName = _booking?['provider']?['full_name'] ?? 'Your pro';
       final serviceName = _booking?['services']?['service_name'] ?? 'your service';
       NotificationService.send(
         userId: _booking!['client_id'],
@@ -277,7 +277,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   // -- No-show --
   Future<void> _markNoShow() async {
-    final other = _isProvider ? 'the client' : 'your stylist';
+    final other = _isProvider ? 'the client' : 'your pro';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -413,7 +413,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final cat      = service?['service_categories'] as Map?;
     final client   = b['client']   as Map?;
     final provider = b['provider'] as Map?;
-    final address  = b['address']  as String? ?? '';
+    final hideStudio = !_isProvider && b['at_studio'] == true && status == 'pending';
+    final address  = hideStudio
+        ? 'At the pro\'s studio. The address shows once the pro confirms.'
+        : b['at_studio'] == true
+            ? 'Studio: ${b['address'] ?? ''}'
+            : (b['address'] as String? ?? '');
 
     final arrivedAt   = b['provider_arrived_at']  as String?;
     final startedAt   = b['service_started_at']   as String?;
@@ -532,12 +537,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   ],
                   const SizedBox(height: AppSpacing.sm),
                   _InfoRow(icon: TablerIcons.map_pin, label: address.isNotEmpty ? address : 'No address provided'),
-                  if (address.isNotEmpty && address != 'At the salon') ...[
+                  if (address.isNotEmpty && address != 'At the salon' && !hideStudio) ...[
                     const SizedBox(height: AppSpacing.md),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () => _openMaps(address),
+                        onPressed: () => _openMaps((b['address'] ?? address).toString()),
                         icon: const Icon(TablerIcons.navigation, size: 18),
                         label: const Text('Open in Maps'),
                       ),
@@ -553,7 +558,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 title: b['no_show_by'] != null ? 'NO-SHOW FEE' : 'CANCELLATION FEE',
                 child: _InfoRow(
                   icon: TablerIcons.receipt,
-                  label: '\$${(b['cancellation_fee'] as num).toStringAsFixed(2)} owed to the stylist'
+                  label: '\$${(b['cancellation_fee'] as num).toStringAsFixed(2)} owed to the pro'
                       '${b['cancel_reason'] != null ? ' — ${b['cancel_reason']}' : ''}',
                 ),
               ),
@@ -624,7 +629,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 color: const Color(0xFF25D366),
                 onTap: () => shareOnWhatsApp(
                   receiptText(b,
-                      stylist: provider?['full_name'] ?? 'Your stylist',
+                      stylist: provider?['full_name'] ?? 'Your pro',
                       client: client?['full_name'] ?? 'Client'),
                   phone: _isProvider ? (client?['phone'] as String?) : null,
                 ),
@@ -796,7 +801,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               _ActionCard(
                 icon: TablerIcons.user_off,
                 label: 'Report a No-Show',
-                subtitle: _isProvider ? 'The client did not turn up' : 'Your stylist did not arrive',
+                subtitle: _isProvider ? 'The client did not turn up' : 'Your pro did not arrive',
                 color: AppColors.error,
                 onTap: _markNoShow,
               ),

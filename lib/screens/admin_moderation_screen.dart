@@ -18,6 +18,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _reported = [];
   List<Map<String, dynamic>> _demand = [];
+  List<Map<String, dynamic>> _flagged = [];
 
   @override
   void initState() {
@@ -36,7 +37,21 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
             .eq('status', 'open')
             .order('created_at'),
         supabase.rpc('area_demand', params: {'p_days': 90}),
+        supabase
+            .from('services')
+            .select('id, service_name, description, flag_reason, price, provider_id, service_categories(name)')
+            .eq('review_status', 'flagged')
+            .order('created_at'),
       ]);
+      final flagged = List<Map<String, dynamic>>.from(results[2] as List);
+      final ids = flagged.map((f) => f['provider_id']).toSet().toList();
+      if (ids.isNotEmpty) {
+        final names = await supabase.from('profiles').select('id, full_name').inFilter('id', ids);
+        final byId = {for (final n in names) n['id']: n['full_name']};
+        for (final f in flagged) {
+          f['pro_name'] = byId[f['provider_id']];
+        }
+      }
       // One card per review, listing every reason it was reported for.
       final byReview = <String, Map<String, dynamic>>{};
       for (final r in List<Map<String, dynamic>>.from(results[0] as List)) {
@@ -49,6 +64,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         setState(() {
           _reported = byReview.values.toList();
           _demand = List<Map<String, dynamic>>.from(results[1] as List);
+          _flagged = flagged;
           _loading = false;
         });
       }
@@ -86,13 +102,14 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
-      initialIndex: widget.initialTab,
+      length: 3,
+      initialIndex: widget.initialTab.clamp(0, 2),
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reviews & Demand'),
           bottom: TabBar(tabs: [
             Tab(text: 'Reported (${_reported.length})'),
+            Tab(text: 'Flagged (${_flagged.length})'),
             const Tab(text: 'Area requests'),
           ]),
         ),
@@ -100,6 +117,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
             ? const Center(child: CircularProgressIndicator())
             : TabBarView(children: [
                 RefreshIndicator(onRefresh: _load, child: _buildReported()),
+                RefreshIndicator(onRefresh: _load, child: _buildFlagged()),
                 RefreshIndicator(onRefresh: _load, child: _buildDemand()),
               ]),
       ),
@@ -113,7 +131,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         EmptyState(
           icon: TablerIcons.shield_check,
           title: 'Nothing to review',
-          message: 'Reviews that clients or stylists report will appear here.',
+          message: 'Reviews that clients or beauty pros report will appear here.',
         ),
       ]);
     }
@@ -136,7 +154,7 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(
-                child: Text('${r['client']?['full_name'] ?? 'Client'} → ${r['provider']?['full_name'] ?? 'Stylist'}',
+                child: Text('${r['client']?['full_name'] ?? 'Client'} → ${r['provider']?['full_name'] ?? 'Pro'}',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
               Text('★' * rating + '☆' * (5 - rating), style: const TextStyle(color: AppColors.warning)),
@@ -181,6 +199,74 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
     );
   }
 
+  Future<void> _reviewService(String id, bool approve) async {
+    try {
+      await supabase.rpc('review_service', params: {'p_service': id, 'p_approve': approve});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(approve ? 'Service approved' : 'Service removed. The pro has been told why.')));
+      }
+      _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
+  }
+
+  Widget _buildFlagged() {
+    if (_flagged.isEmpty) {
+      return ListView(children: const [
+        SizedBox(height: 80),
+        EmptyState(
+          icon: TablerIcons.shield_check,
+          title: 'Nothing flagged',
+          message: 'Services that mention medical treatments (fillers, injections, lasers) wait here for your decision.',
+        ),
+      ]);
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _flagged.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final f = _flagged[i];
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(f['service_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            Text('${f['pro_name'] ?? 'Pro'} · ${f['service_categories']?['name'] ?? ''} · \$${f['price']}',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            if ((f['description'] ?? '').toString().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(f['description'], style: const TextStyle(fontSize: 14, height: 1.4)),
+            ],
+            const SizedBox(height: 8),
+            Pill(label: f['flag_reason'] ?? 'Flagged', color: AppColors.warningText),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: OutlinedButton(onPressed: () => _reviewService(f['id'], true), child: const Text('Allow'))),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => _reviewService(f['id'], false),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                  child: const Text('Remove'),
+                ),
+              ),
+            ]),
+          ]),
+        );
+      },
+    );
+  }
+
   Widget _buildDemand() {
     if (_demand.isEmpty) {
       return ListView(children: const [
@@ -188,13 +274,13 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         EmptyState(
           icon: TablerIcons.map,
           title: 'No requests yet',
-          message: 'When clients can\'t find a stylist nearby they can ask for their area. Requests from the last 90 days show here.',
+          message: 'When clients can\'t find a beauty pro nearby they can ask for their area. Requests from the last 90 days show here.',
         ),
       ]);
     }
     final top = (_demand.first['requests'] as num).toDouble();
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Where clients want BeauTap next (last 90 days). Recruit stylists here first.',
+      const Text('Where clients want BeauTap next (last 90 days). Recruit beauty pros here first.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       const SizedBox(height: 12),
       for (final d in _demand)

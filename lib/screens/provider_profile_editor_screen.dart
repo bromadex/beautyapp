@@ -17,6 +17,7 @@ class _ProviderProfileEditorScreenState
     extends State<ProviderProfileEditorScreen> {
   final _formKey     = GlobalKey<FormState>();
   final _bioCtrl     = TextEditingController();
+  final _titleCtrl   = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _latCtrl     = TextEditingController();
   final _lngCtrl     = TextEditingController();
@@ -56,6 +57,7 @@ class _ProviderProfileEditorScreenState
           .eq('provider_id', uid)
           .single();
       _bioCtrl.text     = data['bio']     ?? '';
+      _titleCtrl.text   = data['title']   ?? '';
       _addressCtrl.text = data['address'] ?? '';
       _latCtrl.text     = data['latitude']?.toString()  ?? '';
       _lngCtrl.text     = data['longitude']?.toString() ?? '';
@@ -132,6 +134,7 @@ class _ProviderProfileEditorScreenState
     final payload = {
       'provider_id': userId,
       'bio':         _bioCtrl.text.trim(),
+      'title':       _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
       'address':     _addressCtrl.text.trim(),
       'latitude':    double.tryParse(_latCtrl.text.trim()),
       'longitude':   double.tryParse(_lngCtrl.text.trim()),
@@ -172,7 +175,7 @@ class _ProviderProfileEditorScreenState
 
   @override
   void dispose() {
-    _bioCtrl.dispose(); _addressCtrl.dispose();
+    _bioCtrl.dispose(); _titleCtrl.dispose(); _addressCtrl.dispose();
     _latCtrl.dispose(); _lngCtrl.dispose();
     super.dispose();
   }
@@ -258,6 +261,19 @@ class _ProviderProfileEditorScreenState
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
+
+              // -- Title --
+              _buildSectionHeader('What you do', TablerIcons.id_badge_2),
+              TextFormField(
+                controller: _titleCtrl,
+                maxLength: 40,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Your title',
+                  hintText: 'e.g. Nail tech, Braider, Barber, Lash artist',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
 
               // -- Bio Section --
               _buildSectionHeader('About You', TablerIcons.user),

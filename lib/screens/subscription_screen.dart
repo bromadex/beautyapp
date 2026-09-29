@@ -565,7 +565,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(
-              'The \$3 activation keeps BeauTap free of fake profiles and bots — every stylist on the platform is real and invested. Pay securely via EcoCash, mobile money, or card through Paynow.',
+              'The \$3 activation keeps BeauTap free of fake profiles and bots — every pro on the platform is real and invested. Pay securely via EcoCash, mobile money, or card through Paynow.',
               style: TextStyle(fontSize: 12, color: AppColors.info, height: 1.4),
             ),
           ),

@@ -121,7 +121,7 @@ class PushService {
         ),
         title: const Text('Never miss an appointment', textAlign: TextAlign.center),
         content: const Text(
-          'We\'ll tell you when your stylist confirms, when they message you, and an hour before every booking.',
+          'We\'ll tell you when your pro confirms, when they message you, and an hour before every booking.',
           textAlign: TextAlign.center,
         ),
         actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),

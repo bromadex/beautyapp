@@ -375,7 +375,7 @@ class _RequestCard extends StatelessWidget {
             const Text('Can\'t find what you need?',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
             const SizedBox(height: 6),
-            Text('Post a request and stylists send you their best price.',
+            Text('Post a request and beauty pros send you their best price.',
                 style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.white.withValues(alpha: 0.85))),
             const SizedBox(height: 14),
             FilledButton(
@@ -440,13 +440,13 @@ class _NextBookingCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${dt != null ? '${days[dt.weekday - 1]} · ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}' : ''}'
-                  ' with ${booking['profiles']?['full_name'] ?? 'your stylist'}',
+                  ' with ${booking['profiles']?['full_name'] ?? 'your pro'}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Pill(
-                  label: confirmed ? 'Confirmed' : 'Waiting for stylist',
+                  label: confirmed ? 'Confirmed' : 'Waiting for pro',
                   color: confirmed ? AppColors.success : AppColors.warning,
                 ),
               ]),

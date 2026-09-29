@@ -378,7 +378,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                             Text('Create your free account', style: Theme.of(context).textTheme.titleLarge),
                             const SizedBox(height: 4),
-                            Text('Keep your bookings, chat with stylists and get reminders on any phone.',
+                            Text('Keep your bookings, chat with beauty pros and get reminders on any phone.',
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                             const SizedBox(height: 16),
                             TextField(

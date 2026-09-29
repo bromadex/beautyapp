@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     const { data: prof } = await admin
       .from("profiles").select("user_type").eq("id", user.id).maybeSingle();
     if (prof?.user_type !== "provider") {
-      return jsonResponse({ error: "Only stylists can buy featured placement" }, 403);
+      return jsonResponse({ error: "Only beauty pros can buy featured placement" }, 403);
     }
     amount = FEATURED_WEEK_PRICE;
     providerId = user.id;

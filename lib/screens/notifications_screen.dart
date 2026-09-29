@@ -86,6 +86,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'review_request':
         context.push('/review/$refId');
         break;
+      case 'service_review':
+        context.push('/provider/services');
+        break;
       case 'waitlist':
         final parts = refId.toString().split('|');
         final serviceId = parts.length > 1 ? parts[1] : '';

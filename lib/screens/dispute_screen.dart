@@ -24,6 +24,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
     'payment_issue': 'Payment Issue',
     'no_show': 'No-Show',
     'misconduct': 'Misconduct',
+    'sexual_conduct': 'Inappropriate or sexual conduct',
     'other': 'Other',
   };
 

@@ -302,17 +302,17 @@ class ServiceGroup {
   }
 
   static const all = [
-    ServiceGroup('Hair', TablerIcons.ripple, ['braid', 'wig', 'natural', 'kid', 'loc', 'relax', 'weave', 'colour', 'color', 'hair']),
-    ServiceGroup('Barbering', TablerIcons.scissors, ['barber', 'fade', 'beard', 'groom']),
-    ServiceGroup('Nails', TablerIcons.hand_finger, ['nail', 'manicure', 'pedicure']),
-    ServiceGroup('Lashes & Brows', TablerIcons.eye, ['lash', 'brow']),
+    ServiceGroup('Hair', TablerIcons.ripple, ['braid', 'wig', 'natural', 'kid', 'loc', 'relax', 'weave', 'colour', 'color', 'hair', 'cuts & styling']),
+    ServiceGroup('Barbering', TablerIcons.scissors, ['barber', 'fade', 'beard', 'shave', 'groom']),
+    ServiceGroup('Nails', TablerIcons.hand_finger, ['nail', 'manicure', 'pedicure', 'gel', 'acrylic']),
+    ServiceGroup('Lashes & Brows', TablerIcons.eye, ['lash', 'brow', 'microblad']),
     ServiceGroup('Makeup', TablerIcons.brush, ['makeup', 'make-up']),
-    ServiceGroup('Skin', TablerIcons.droplet, ['skin', 'facial']),
+    ServiceGroup('Skin', TablerIcons.droplet, ['skin', 'facial', 'peel']),
     ServiceGroup('Hair Removal', TablerIcons.feather, ['wax', 'thread', 'sugar', 'removal']),
-    ServiceGroup('Body & Spa', TablerIcons.leaf, ['massage', 'spa', 'body', 'scrub']),
-    ServiceGroup('Glow', TablerIcons.sun_high, ['tan', 'whiten', 'glow']),
+    ServiceGroup('Body & Spa', TablerIcons.leaf, ['massage', 'spa', 'scrub', 'wrap', 'reflex']),
+    ServiceGroup('Glow', TablerIcons.sun_high, ['spray tan', 'whiten', 'glow']),
     ServiceGroup('Body Art', TablerIcons.palette, ['tattoo', 'pierc', 'henna']),
-    ServiceGroup('Bridal & Events', TablerIcons.diamond, ['bridal', 'event', 'wedding']),
+    ServiceGroup('Bridal & Events', TablerIcons.diamond, ['bridal', 'event', 'wedding', 'photoshoot']),
   ];
 
   static ServiceGroup? of(String? categoryName) {

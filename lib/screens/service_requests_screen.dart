@@ -86,7 +86,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> {
                       Text(
                         widget.isProvider
                             ? 'Check back later for client requests'
-                            : 'Post a request and let stylists come to you',
+                            : 'Post a request and let beauty pros come to you',
                         style: TextStyle(color: AppColors.textTertiary),
                       ),
                     ],

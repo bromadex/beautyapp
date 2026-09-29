@@ -71,9 +71,9 @@ class _StylistLinkScreenState extends State<StylistLinkScreen> {
         appBar: AppBar(),
         body: EmptyState(
           icon: TablerIcons.link_off,
-          title: 'Stylist not found',
-          message: 'This booking link doesn\'t exist any more. Check the spelling or browse other stylists.',
-          actionLabel: 'Browse stylists',
+          title: 'Beauty pro not found',
+          message: 'This booking link doesn\'t exist any more. Check the spelling or browse other beauty pros.',
+          actionLabel: 'Browse beauty pros',
           onAction: () => context.go('/browse'),
         ),
       );

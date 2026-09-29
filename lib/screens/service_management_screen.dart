@@ -2,9 +2,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/ui.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
   const ServiceManagementScreen({super.key});
@@ -38,7 +39,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     final userId = supabase.auth.currentUser!.id;
 
     final cats = await supabase
-        .from('service_categories').select().order('sort_order');
+        .from('service_categories').select('*, service_groups(name, sort_order)').order('sort_order');
     final svcs = await supabase
         .from('services')
         .select('*, service_categories(name)')
@@ -95,6 +96,8 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
     final includesCtrl = TextEditingController(text: existing?['includes'] ?? '');
     final aftercareCtrl = TextEditingController(text: existing?['aftercare'] ?? '');
     String? selectedCategoryId = existing?['category_id'];
+    String locationMode = existing?['location_mode'] ?? 'client';
+    bool patchTest = existing?['patch_test'] == true;
     String? imageUrl = existing?['image_url'];
     Uint8List? newImage;
     bool saving = false;
@@ -130,11 +133,55 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                     prefixIcon: Icon(TablerIcons.category),
                   ),
                   borderRadius: AppRadius.mdAll,
+                  isExpanded: true,
                   items: _categories.map((c) => DropdownMenuItem(
                     value: c['id'] as String,
-                    child: Text('${c['name']}'),
+                    child: Text('${c['service_groups']?['name'] ?? 'Other'} · ${c['name']}', overflow: TextOverflow.ellipsis),
                   )).toList(),
-                  onChanged: (v) => setDialogState(() => selectedCategoryId = v),
+                  onChanged: (v) => setDialogState(() {
+                    selectedCategoryId = v;
+                    final cat = _categories.firstWhere((c) => c['id'] == v);
+                    if (cat['studio_only'] == true) locationMode = 'studio';
+                    if (cat['patch_test'] == true) patchTest = true;
+                  }),
+                ),
+                Builder(builder: (_) {
+                  final cat = _categories.where((c) => c['id'] == selectedCategoryId).firstOrNull;
+                  final notes = [
+                    if (cat?['studio_only'] == true) 'Only at your studio.',
+                    if (cat?['needs_certificate'] == true) 'Needs a verified business and a certificate.',
+                    if (cat?['min_age'] != null) 'Clients must be ${cat!['min_age']} or older.',
+                  ];
+                  if (notes.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(notes.join(' '), style: const TextStyle(fontSize: 12.5, color: AppColors.warningText)),
+                  );
+                }),
+                const SizedBox(height: AppSpacing.lg),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Where does it happen?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'client', label: Text('Client\'s place')),
+                    ButtonSegment(value: 'studio', label: Text('My studio')),
+                    ButtonSegment(value: 'either', label: Text('Either')),
+                  ],
+                  selected: {locationMode},
+                  onSelectionChanged: _categories.where((c) => c['id'] == selectedCategoryId).firstOrNull?['studio_only'] == true
+                      ? null
+                      : (v) => setDialogState(() => locationMode = v.first),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Patch test needed', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Clients are told to do a patch test 24–48 h before', style: TextStyle(fontSize: 12.5)),
+                  value: patchTest,
+                  onChanged: (v) => setDialogState(() => patchTest = v),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 InkWell(
@@ -260,6 +307,8 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   'description': opt(descCtrl),
                   'includes': opt(includesCtrl),
                   'aftercare': opt(aftercareCtrl),
+                  'location_mode': locationMode,
+                  'patch_test': patchTest,
                 };
                 setDialogState(() => saving = true);
                 try {
@@ -285,7 +334,9 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   setDialogState(() => saving = false);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Could not save: $e'), backgroundColor: AppColors.error));
+                        SnackBar(
+                            content: Text(e is PostgrestException ? e.message : 'Could not save: $e'),
+                            backgroundColor: AppColors.error));
                   }
                 }
               },
@@ -298,9 +349,16 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
   }
 
   Future<void> _toggleActive(Map<String, dynamic> service) async {
-    await supabase.from('services')
-        .update({'is_active': !(service['is_active'] as bool)})
-        .eq('id', service['id']);
+    try {
+      await supabase.from('services')
+          .update({'is_active': !(service['is_active'] as bool)})
+          .eq('id', service['id']);
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
     _load();
   }
 
@@ -623,7 +681,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                   color: isActive ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceMuted,
                   borderRadius: AppRadius.mdAll,
                 ),
-                child: Icon(TablerIcons.scissors,
+                child: Icon(categoryIcon(catName),
                   color: isActive ? AppColors.primary : AppColors.textTertiary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -647,8 +705,42 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                         color: isActive ? AppColors.success : AppColors.textTertiary,
                       )),
                       const SizedBox(width: AppSpacing.sm),
-                      Text('$catName  --  ${s['duration_minutes']} min', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Flexible(
+                        child: Text(
+                          '$catName · ${s['duration_minutes']} min',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ),
                     ]),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        switch (s['location_mode']) { 'studio' => 'At your studio', 'either' => 'Home or studio', _ => 'At client\'s place' },
+                        if (s['patch_test'] == true) 'Patch test',
+                      ].join(' · '),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    if (s['review_status'] == 'flagged' || s['review_status'] == 'rejected') ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: s['review_status'] == 'rejected' ? AppColors.errorSoft : AppColors.warningSoft,
+                          borderRadius: AppRadius.xsAll,
+                        ),
+                        child: Text(
+                          s['review_status'] == 'rejected'
+                              ? 'Not allowed. ${s['flag_reason'] ?? ''}'
+                              : 'Hidden while BeauTap checks it. ${s['flag_reason'] ?? ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: s['review_status'] == 'rejected' ? AppColors.errorText : AppColors.warningText,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

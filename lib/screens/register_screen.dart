@@ -288,7 +288,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Text(
                         _userType == 'provider'
                             ? 'Grow your beauty business — clients book you directly.'
-                            : 'Book trusted stylists who come to your door.',
+                            : 'Book trusted beauty pros near you.',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -627,7 +627,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   )
                                 : Text(
                                     _userType == 'provider'
-                                        ? 'Create stylist account'
+                                        ? 'Create beauty pro account'
                                         : 'Create account',
                                   ),
                           ),

@@ -247,7 +247,7 @@ final appRouter = GoRouter(
       path: '/admin/moderation',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, state) => AdminModerationScreen(
-          initialTab: state.uri.queryParameters['tab'] == 'demand' ? 1 : 0),
+          initialTab: switch (state.uri.queryParameters['tab']) { 'flagged' => 1, 'demand' => 2, _ => 0 }),
     ),
 
     // Provider Management (Stage 3)

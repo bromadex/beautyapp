@@ -36,7 +36,7 @@ String receiptText(Map b, {required String stylist, required String client}) {
   final lines = <String>[
     '*BeauTap receipt*',
     if (b['ref'] != null) 'Ref: #${b['ref']}',
-    'Stylist: $stylist',
+    'Beauty pro: $stylist',
     'Client: $client',
     if (when.isNotEmpty) 'Date: $when',
     '',

@@ -341,7 +341,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                   const _SummaryRow(
                     label: 'Platform Fee',
-                    value: 'None — stylist keeps 100%',
+                    value: 'None — pro keeps 100%',
                     valueColor: AppColors.success,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -403,7 +403,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const SizedBox(height: AppSpacing.sm),
             PaymentMethodCard(
               title: 'Cash on Delivery',
-              subtitle: 'Pay the stylist in cash after the service',
+              subtitle: 'Pay the pro in cash after the service',
               icon: TablerIcons.cash,
               value: 'cash_on_delivery',
               selectedValue: _selectedMethod,
@@ -467,7 +467,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     const SizedBox(width: AppSpacing.md),
                     const Expanded(
                       child: Text(
-                        'You will pay the stylist directly in cash when the service is done. Please have the exact amount ready.',
+                        'You will pay the pro directly in cash when the service is done. Please have the exact amount ready.',
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,

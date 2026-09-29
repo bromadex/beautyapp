@@ -82,7 +82,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Favourite Stylists')),
+      appBar: AppBar(title: const Text('Favourite pros')),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: AppColors.primary))
           : RefreshIndicator(
@@ -117,14 +117,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 ),
                                 const SizedBox(height: AppSpacing.sm),
                                 const Text(
-                                  'Save your favourite stylists for quick booking.',
+                                  'Save your favourite beauty pros for quick booking.',
                                   style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                                 ),
                                 const SizedBox(height: AppSpacing.xxl),
                                 FilledButton.icon(
                                   onPressed: () => context.go('/browse'),
                                   icon: const Icon(TablerIcons.search),
-                                  label: const Text('Browse Stylists'),
+                                  label: const Text('Browse beauty pros'),
                                 ),
                               ],
                             ),
@@ -140,7 +140,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         final providerId = fav['provider_id'] as String;
                         final profile = fav['profiles'] as Map<String, dynamic>?;
                         final pp = fav['provider_profiles'] as Map<String, dynamic>?;
-                        final name = profile?['full_name'] ?? 'Stylist';
+                        final name = profile?['full_name'] ?? 'Beauty pro';
                         final avatarUrl = profile?['avatar_url'] as String?;
                         final location = profile?['location'] ?? '';
                         final status = pp?['availability_status'] ?? 'offline';

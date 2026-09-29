@@ -72,7 +72,7 @@ class _ServiceRequestQuoteScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('Accept this quote?'),
         content: Text(
-            'A booking request for \$$price will be sent to ${q['provider']?['full_name'] ?? 'the stylist'} '
+            'A booking request for \$$price will be sent to ${q['provider']?['full_name'] ?? 'the pro'} '
             'for your preferred date and time. They will confirm it with you.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
@@ -120,7 +120,7 @@ class _ServiceRequestQuoteScreenState
               .select('full_name')
               .eq('id', uid)
               .maybeSingle())?['full_name'] ??
-          'A stylist';
+          'A beauty pro';
 
       NotificationService.send(
         userId: _request!['client_id'],

@@ -48,14 +48,14 @@ Deno.serve(async (req) => {
     if (b.client_id) {
       await pushToUser(admin, sa, {
         userId: b.client_id,
-        title: "Upcoming Booking ⏰",
-        body: `${service} starts around ${when}. Your stylist is getting ready!`,
+        title: "Upcoming booking",
+        body: `${service} starts around ${when}. Your pro is getting ready.`,
         data: { route: `/booking/${b.id}`, bookingId: String(b.id) },
       });
     }
     await pushToUser(admin, sa, {
       userId: b.provider_id,
-      title: "Upcoming Booking ⏰",
+      title: "Upcoming booking",
       body: `${service} starts around ${when}. Time to head out soon!`,
       data: { route: `/booking/${b.id}`, bookingId: String(b.id) },
     });
