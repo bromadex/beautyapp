@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import 'package:url_launcher/url_launcher.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/pay_methods.dart';
 import '../widgets/certificates_section.dart';
 
 class ProviderSettingsScreen extends StatefulWidget {
@@ -30,6 +31,16 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   final _noticeCtrl = TextEditingController(text: '2');
   final _advanceCtrl = TextEditingController(text: '60');
   final _depositCtrl = TextEditingController(text: '0');
+
+  // How clients pay you
+  bool _acceptsCash = true;
+  final _ecocashCtrl = TextEditingController();
+  final _ecocashNameCtrl = TextEditingController();
+  final _merchantCtrl = TextEditingController();
+  final _innbucksCtrl = TextEditingController();
+  final _onemoneyCtrl = TextEditingController();
+  final _bankCtrl = TextEditingController();
+  final _payNoteCtrl = TextEditingController();
 
   // Cancellation policy
   final _freeCancelCtrl = TextEditingController(text: '24');
@@ -82,6 +93,14 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         _noticeCtrl.text = '${pp['min_notice_hours'] ?? 2}';
         _advanceCtrl.text = '${pp['max_advance_days'] ?? 60}';
         _depositCtrl.text = '${pp['deposit_percent'] ?? 0}';
+        _acceptsCash = pp['accepts_cash'] != false;
+        _ecocashCtrl.text = pp['ecocash_number'] ?? '';
+        _ecocashNameCtrl.text = pp['ecocash_name'] ?? '';
+        _merchantCtrl.text = pp['ecocash_merchant'] ?? '';
+        _innbucksCtrl.text = pp['innbucks_number'] ?? '';
+        _onemoneyCtrl.text = pp['onemoney_number'] ?? '';
+        _bankCtrl.text = pp['bank_details'] ?? '';
+        _payNoteCtrl.text = pp['pay_note'] ?? '';
         _preferredContact = pp['preferred_contact'] ?? 'in_app';
         _savedSlug = pp['slug'] ?? '';
         _slugCtrl.text = _savedSlug;
@@ -123,9 +142,43 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  void _snack(String msg) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppColors.error));
+
+  String? _text(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+
+  bool get _takesTransfers => [_ecocashCtrl, _merchantCtrl, _innbucksCtrl, _onemoneyCtrl, _bankCtrl]
+      .any((c) => c.text.trim().isNotEmpty);
+
   Future<void> _save() async {
-    setState(() => _saving = true);
     final uid = supabase.auth.currentUser!.id;
+
+    // Check the payment numbers before saving anything.
+    final numbers = <String, String?>{};
+    for (final (key, label, ctrl) in [
+      ('ecocash_number', 'EcoCash', _ecocashCtrl),
+      ('innbucks_number', 'InnBucks', _innbucksCtrl),
+      ('onemoney_number', 'OneMoney', _onemoneyCtrl),
+    ]) {
+      final n = normalizeZimMobile(ctrl.text);
+      if (n == '') {
+        _snack('Your $label number doesn\'t look right. Use a number like 077 123 4567.');
+        return;
+      }
+      numbers[key] = n;
+      if (n != null) ctrl.text = n;
+    }
+    final merchant = _merchantCtrl.text.replaceAll(RegExp(r'\s'), '');
+    if (merchant.isNotEmpty && !RegExp(r'^\d{3,10}$').hasMatch(merchant)) {
+      _snack('A merchant code is numbers only.');
+      return;
+    }
+    if (!_acceptsCash && !_takesTransfers) {
+      _snack('Add at least one way for clients to pay you.');
+      return;
+    }
+
+    setState(() => _saving = true);
 
     try {
       final slug = _slugCtrl.text.trim().toLowerCase();
@@ -144,6 +197,12 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
         'max_advance_days': (int.tryParse(_advanceCtrl.text) ?? 60).clamp(1, 365),
         'deposit_percent': (int.tryParse(_depositCtrl.text) ?? 0).clamp(0, 100),
         'preferred_contact': _preferredContact,
+        'accepts_cash': _acceptsCash,
+        ...numbers,
+        'ecocash_merchant': merchant.isEmpty ? null : merchant,
+        'ecocash_name': _text(_ecocashNameCtrl),
+        'bank_details': _text(_bankCtrl),
+        'pay_note': _text(_payNoteCtrl),
       }).eq('provider_id', uid);
 
       await supabase.from('cancellation_policies').upsert({
@@ -377,6 +436,9 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     _noticeCtrl.dispose();
     _advanceCtrl.dispose();
     _depositCtrl.dispose();
+    for (final c in [_ecocashCtrl, _ecocashNameCtrl, _merchantCtrl, _innbucksCtrl, _onemoneyCtrl, _bankCtrl, _payNoteCtrl]) {
+      c.dispose();
+    }
     _freeCancelCtrl.dispose();
     _lateCancelCtrl.dispose();
     _noShowCtrl.dispose();
@@ -385,6 +447,54 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     _slugCtrl.dispose();
     _loyaltyPctCtrl.dispose();
     super.dispose();
+  }
+
+  Widget _payField(TextEditingController c, String label, IconData icon,
+      {String? hint, TextInputType type = TextInputType.phone, int maxLines = 1, int? maxLength}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: TextField(
+        controller: c,
+        keyboardType: type,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon),
+          border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaySection() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text('Clients pay you directly. BeauTap never touches your money.',
+          style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
+      const SizedBox(height: AppSpacing.md),
+      _payField(_ecocashCtrl, 'EcoCash number', TablerIcons.device_mobile, hint: '077 123 4567'),
+      _payField(_ecocashNameCtrl, 'Name on your EcoCash account', TablerIcons.user,
+          hint: 'So clients know it\'s you', type: TextInputType.name, maxLength: 60),
+      _payField(_merchantCtrl, 'EcoCash merchant code (optional)', TablerIcons.building_store,
+          type: TextInputType.number),
+      _payField(_innbucksCtrl, 'InnBucks number (optional)', TablerIcons.wallet),
+      _payField(_onemoneyCtrl, 'OneMoney number (optional)', TablerIcons.device_mobile_dollar),
+      _payField(_bankCtrl, 'Bank details (optional)', TablerIcons.building_bank,
+          hint: 'Bank, account name, account number', type: TextInputType.multiline, maxLines: 3, maxLength: 300),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        value: _acceptsCash,
+        onChanged: (v) => setState(() => _acceptsCash = v),
+        title: const Text('I take cash'),
+        subtitle: const Text('Clients can pay you in cash at the appointment'),
+      ),
+      _payField(_payNoteCtrl, 'Note for clients (optional)', TablerIcons.notes,
+          hint: 'e.g. Use your booking reference as the payment note',
+          type: TextInputType.text, maxLength: 200),
+    ]);
   }
 
   @override
@@ -424,6 +534,10 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
             const SizedBox(height: AppSpacing.sm),
             _buildLoyaltySection(),
             const SizedBox(height: AppSpacing.xxl),
+            _SectionHeader(icon: TablerIcons.wallet, title: 'How Clients Pay You'),
+            const SizedBox(height: AppSpacing.sm),
+            _buildPaySection(),
+            const SizedBox(height: AppSpacing.xxl),
             _SectionHeader(
               icon: TablerIcons.list_check,
               title: 'Booking Rules',
@@ -456,8 +570,15 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
               suffix: '%',
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text('Clients pay the deposit by EcoCash or card when they book. It cuts no-shows.',
-                style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+            Text(
+                _takesTransfers
+                    ? 'Clients send the deposit straight to you after they book. It cuts no-shows.'
+                    : 'Add EcoCash or another way to pay you above, so clients can send a deposit.',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: _takesTransfers || (int.tryParse(_depositCtrl.text) ?? 0) == 0
+                        ? AppColors.textTertiary
+                        : AppColors.warningText)),
 
             const SizedBox(height: AppSpacing.xxl),
 

@@ -25,7 +25,7 @@ import 'screens/client_bookings_screen.dart';
 import 'screens/provider_bookings_screen.dart';
 import 'screens/booking_detail_screen.dart';
 import 'screens/chat_screen.dart';
-import 'screens/payment_screen.dart';
+import 'screens/pay_pro_screen.dart';
 import 'screens/provider_earnings_screen.dart';
 import 'screens/browse_screen.dart';
 import 'screens/review_screen.dart';
@@ -321,12 +321,15 @@ final appRouter = GoRouter(
     ),
 
     // Live Tracking (Stage 6B)
+    // Pay the pro directly (old /payment links land here too)
+    GoRoute(
+      path: '/pay/:bookingId',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => PayProScreen(bookingId: state.pathParameters['bookingId']!),
+    ),
     GoRoute(
       path: '/payment/:bookingId',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, state) => PaymentScreen(
-        bookingId: state.pathParameters['bookingId']!,
-      ),
+      redirect: (_, state) => '/pay/${state.pathParameters['bookingId']}',
     ),
 
     // Reviews (Stage 9)

@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
-import '../services/paynow_service.dart';
+import '../utils/pay_methods.dart';
 import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
@@ -25,6 +25,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   String? _error;
   bool _isProvider = false;
   Map<String, dynamic>? _policy;
+  List<Map<String, dynamic>> _payments = [];
+  bool _deciding = false;
   RealtimeChannel? _channel;
 
   @override
@@ -87,11 +89,18 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           .eq('provider_id', data['provider_id'])
           .maybeSingle();
 
+      final payments = await supabase
+          .from('pro_payments')
+          .select()
+          .eq('booking_id', widget.bookingId)
+          .order('created_at', ascending: false);
+
       fillWalkin(data, 'client');
       if (mounted) {
         setState(() {
           _booking    = data;
           _policy     = policy;
+          _payments   = List<Map<String, dynamic>>.from(payments);
           _isProvider = data['provider_id'] == userId;
           _loading    = false;
         });
@@ -308,40 +317,77 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
-  Future<void> _payDeposit() async {
-    final b = _booking!;
-    final phoneCtrl = TextEditingController(text: (b['client']?['phone'] ?? '').toString());
-    final method = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Pay deposit', style: Theme.of(ctx).textTheme.headlineSmall),
-          const SizedBox(height: 12),
-          TextField(
-            controller: phoneCtrl,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'EcoCash number', prefixIcon: Icon(TablerIcons.device_mobile)),
-          ),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: () => Navigator.pop(ctx, 'ecocash'), child: const Text('Pay with EcoCash')),
-          const SizedBox(height: 8),
-          OutlinedButton(onPressed: () => Navigator.pop(ctx, 'web'), child: const Text('Pay by card')),
-        ]),
-      ),
-    );
-    if (method == null || !mounted) return;
-    final outcome = await PaynowCheckout.run(
-      context,
-      purpose: 'deposit',
-      bookingId: widget.bookingId,
-      method: method,
-      phone: method == 'ecocash' ? phoneCtrl.text.trim() : null,
-    );
-    if (outcome == PaynowOutcome.paid && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deposit paid — thank you!')));
-      _load();
+  // -- Direct payments --
+
+  Map<String, dynamic>? get _openPayment => _payments.where((p) => p['status'] == 'claimed').firstOrNull;
+
+  Future<void> _decidePayment(Map<String, dynamic> p, bool received) async {
+    if (!received) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Not received?'),
+          content: Text('Check your ${payMethodLabel(p['method'])} messages first. '
+              'The client will be asked to check their payment and try again.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Go back')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Not received')),
+          ],
+        ),
+      );
+      if (ok != true) return;
     }
+    setState(() => _deciding = true);
+    try {
+      await supabase.rpc('decide_pro_payment', params: {'p_payment': p['id'], 'p_received': received});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(received ? 'Marked as received' : 'Client told the money hasn\'t arrived'),
+        ));
+      }
+      await _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    } finally {
+      if (mounted) setState(() => _deciding = false);
+    }
+  }
+
+  Future<void> _viewProof(String path) async {
+    try {
+      final url = await supabase.storage.from('payment-proofs').createSignedUrl(path, 600);
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Flexible(child: InteractiveViewer(child: Image.network(url, fit: BoxFit.contain))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ]),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the screenshot')));
+      }
+    }
+  }
+
+  String _paymentSummary(Map<String, dynamic> b) {
+    num n(String k) => (b[k] as num?) ?? 0;
+    final method = payMethodLabel(b['payment_method']);
+    if (b['payment_status'] == 'paid') return 'Paid in full ($method)';
+    if (b['deposit_paid'] == true && n('deposit_amount') > 0) {
+      final left = n('total_price') - n('deposit_amount');
+      return 'Deposit \$${amountText(n('deposit_amount'))} paid · \$${amountText(left)} left to pay';
+    }
+    if (n('deposit_amount') > 0) {
+      return 'Deposit \$${amountText(n('deposit_amount'))} not paid yet';
+    }
+    return 'Not paid yet · paying by $method';
   }
 
   // -- Book Again --
@@ -591,19 +637,48 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ),
             ],
 
+            if (!isManual && status != 'cancelled') ...[
+              const SizedBox(height: AppSpacing.md),
+              _Section(
+                title: 'PAYMENT',
+                child: _InfoRow(icon: TablerIcons.wallet, label: _paymentSummary(b)),
+              ),
+            ],
+
+            // Pro: a client says they've paid
+            if (_isProvider && _openPayment != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              _PaymentClaimCard(
+                payment: _openPayment!,
+                client: client?['full_name'] ?? 'The client',
+                busy: _deciding,
+                onDecide: (ok) => _decidePayment(_openPayment!, ok),
+                onViewProof: _viewProof,
+              ),
+            ],
+
             const SizedBox(height: AppSpacing.xxl),
 
             // Action cards
-            if (!_isProvider &&
+            if (!_isProvider && _openPayment != null) ...[
+              _ActionCard(
+                icon: TablerIcons.clock_hour_4,
+                label: 'Payment sent',
+                subtitle: 'Waiting for ${provider?['full_name'] ?? 'your pro'} to confirm it arrived',
+                color: AppColors.warning,
+                onTap: () => context.push('/pay/${widget.bookingId}'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ] else if (!_isProvider &&
                 (status == 'pending' || status == 'confirmed') &&
                 ((b['deposit_amount'] as num?) ?? 0) > 0 &&
                 b['deposit_paid'] != true) ...[
               _ActionCard(
                 icon: TablerIcons.lock_cog,
-                label: 'Pay \$${(b['deposit_amount'] as num).toStringAsFixed(2)} deposit',
-                subtitle: 'Secure your slot with EcoCash or card',
+                label: 'Pay \$${amountText(b['deposit_amount'] as num)} deposit',
+                subtitle: 'Send it straight to ${provider?['full_name'] ?? 'your pro'} to secure your slot',
                 color: AppColors.primary,
-                onTap: _payDeposit,
+                onTap: () => context.push('/pay/${widget.bookingId}'),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -637,11 +712,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            if (_isProvider && b['payment_status'] != 'paid' && (status == 'confirmed' || status == 'completed')) ...[
+            if (_isProvider && _openPayment == null && b['payment_status'] != 'paid' && (status == 'confirmed' || status == 'completed')) ...[
               _ActionCard(
                 icon: TablerIcons.cash,
                 label: 'Mark as paid',
-                subtitle: 'The client paid you in cash or EcoCash',
+                subtitle: 'The client paid you in cash or another way',
                 color: AppColors.success,
                 onTap: () async {
                   await supabase.from('bookings').update({'payment_status': 'paid'}).eq('id', widget.bookingId);
@@ -662,13 +737,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            if (!_isProvider && status == 'confirmed' && b['payment_status'] == 'unpaid') ...[
+            if (!_isProvider && _openPayment == null &&
+                (status == 'confirmed' || status == 'completed') && b['payment_status'] != 'paid' &&
+                !(((b['deposit_amount'] as num?) ?? 0) > 0 && b['deposit_paid'] != true && status == 'confirmed')) ...[
               _ActionCard(
-                icon: TablerIcons.credit_card,
-                label: 'Pay online',
-                subtitle: 'Pay the balance with EcoCash or card',
+                icon: TablerIcons.wallet,
+                label: 'Pay ${provider?['full_name'] ?? 'your pro'}',
+                subtitle: 'Send by EcoCash and more, or pay cash on the day',
                 color: AppColors.primary,
-                onTap: () => context.push('/payment/${widget.bookingId}'),
+                onTap: () => context.push('/pay/${widget.bookingId}'),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -1103,6 +1180,88 @@ class _ProviderActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PaymentClaimCard extends StatelessWidget {
+  final Map<String, dynamic> payment;
+  final String client;
+  final bool busy;
+  final void Function(bool received) onDecide;
+  final void Function(String path) onViewProof;
+  const _PaymentClaimCard({
+    required this.payment,
+    required this.client,
+    required this.busy,
+    required this.onDecide,
+    required this.onViewProof,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = payment;
+    final kind = switch (p['kind']) { 'deposit' => 'deposit', 'balance' => 'balance', _ => 'payment' };
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.warningSoft,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Icon(TablerIcons.cash_banknote, color: AppColors.warningText),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text('Did you receive this $kind?',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.warningText)),
+          ),
+        ]),
+        const SizedBox(height: AppSpacing.sm),
+        Text.rich(TextSpan(children: [
+          TextSpan(text: '$client says they sent '),
+          TextSpan(
+              text: '\$${amountText(p['amount'] as num)}',
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          TextSpan(text: ' by ${payMethodLabel(p['method'])}.'),
+        ])),
+        if (p['reference'] != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Row(children: [
+            const Text('Transaction ID  '),
+            Flexible(child: SelectableText('${p['reference']}', style: monoStyle.copyWith(color: AppColors.textPrimary))),
+          ]),
+        ],
+        if (p['proof_path'] != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              onPressed: () => onViewProof(p['proof_path']),
+              icon: const Icon(TablerIcons.photo, size: 18),
+              label: const Text('View screenshot'),
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: busy ? null : () => onDecide(false),
+              child: const Text('Not received'),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: FilledButton(
+              onPressed: busy ? null : () => onDecide(true),
+              child: const Text('Received'),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }

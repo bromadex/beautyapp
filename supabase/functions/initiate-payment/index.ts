@@ -76,6 +76,11 @@ Deno.serve(async (req) => {
   let providerId: string | null = null;
   const meta: Record<string, unknown> = {};
 
+  // Clients pay pros directly now; BeauTap only collects its own fees.
+  if (purpose === "booking" || purpose === "deposit") {
+    return jsonResponse({ error: "Pay your pro directly from the booking page" }, 400);
+  }
+
   if (purpose === "booking" || purpose === "deposit") {
     bookingId = String(body.bookingId ?? "");
     const { data: booking } = await admin

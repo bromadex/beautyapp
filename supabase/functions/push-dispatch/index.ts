@@ -3,7 +3,7 @@
 //   1. bookings INSERT              → provider ("New booking request")
 //   2. bookings UPDATE → confirmed  → client   ("Booking confirmed")
 //   3. messages INSERT              → receiver ("New message")
-//   4. notifications INSERT (review_request, waitlist) → that user
+//   4. notifications INSERT (review_request, waitlist, payment) → that user
 //
 // Configure Database Webhooks (Dashboard → Database → Webhooks) on:
 //   - bookings: INSERT + UPDATE → this function
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
       const ref = (record.reference_id ?? "").toString();
       let route = "/notifications";
       if (record.type === "review_request") route = `/review/${ref}`;
+      if (record.type === "payment") route = `/booking/${ref}`;
       if (record.type === "waitlist") {
         const [providerId, serviceId] = ref.split("|");
         route = serviceId ? `/book/${providerId}/${serviceId}` : `/provider/${providerId}`;

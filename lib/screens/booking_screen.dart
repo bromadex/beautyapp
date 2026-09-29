@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../services/location_service.dart';
-import '../services/paynow_service.dart';
+import '../utils/pay_methods.dart';
 import '../theme.dart';
 import '../widgets/slot_picker.dart';
 import '../widgets/ui.dart';
@@ -106,6 +106,7 @@ class _BookingScreenState extends State<BookingScreen> {
       ]);
       _provider = results[0] as Map<String, dynamic>?;
       _providerProfile = results[1] as Map<String, dynamic>?;
+      if (_methods.isNotEmpty) _payment = _methods.first.id;
       _services = List<Map<String, dynamic>>.from(results[2] as List);
       _policy = results[3] as Map<String, dynamic>?;
       _me = results[4] as Map<String, dynamic>?;
@@ -207,7 +208,16 @@ class _BookingScreenState extends State<BookingScreen> {
       ? (_basePrice * ((_loyalty!['percent'] as num).toDouble()) / 100 * 100).roundToDouble() / 100
       : 0;
   double get _total => math.max(0, _basePrice - _discount - _loyaltyDiscount) + _addonsTotal + _travelFee;
-  int get _depositPercent => (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0;
+  List<PayMethod> get _methods {
+    final m = payMethodsOf(_providerProfile);
+    return m.isEmpty ? const [PayMethod('cash', 'Cash', TablerIcons.cash)] : m;
+  }
+
+  bool get _takesTransfers => _methods.any((m) => m.isTransfer);
+
+  // Matches the server: no deposit if the pro has nowhere to receive it.
+  int get _depositPercent =>
+      _takesTransfers ? (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0 : 0;
   double get _deposit => (_total * _depositPercent / 100 * 100).roundToDouble() / 100;
 
   String _money(double v) => '\$${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
@@ -366,20 +376,9 @@ class _BookingScreenState extends State<BookingScreen> {
 
       final fresh = await supabase.from('bookings').select('deposit_amount').eq('id', bookingId).single();
       final deposit = ((fresh['deposit_amount'] as num?) ?? 0).toDouble();
-      var depositPaid = deposit <= 0;
-      if (deposit > 0 && mounted) {
-        final outcome = await PaynowCheckout.run(
-          context,
-          purpose: 'deposit',
-          bookingId: bookingId,
-          method: _payment == 'paynow' ? 'web' : 'ecocash',
-          phone: _payment == 'paynow' ? null : phone,
-        );
-        depositPaid = outcome == PaynowOutcome.paid;
-      }
 
       if (!mounted) return;
-      await _showDone(bookingId, inserted['ref'] ?? '', deposit, depositPaid);
+      await _showDone(bookingId, inserted['ref'] ?? '', deposit);
     } on PostgrestException catch (e) {
       if (mounted) _toast(e.message, error: true);
     } catch (e) {
@@ -389,7 +388,7 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Future<void> _showDone(String bookingId, String ref, double deposit, bool depositPaid) async {
+  Future<void> _showDone(String bookingId, String ref, double deposit) async {
     await showModalBottomSheet(
       context: context,
       isDismissible: false,
@@ -410,7 +409,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Text(
             '${_provider?['full_name'] ?? 'Your pro'} will confirm shortly. '
             'Your reference is $ref.'
-            '${deposit > 0 && !depositPaid ? '\n\nYour ${_money(deposit)} deposit is still unpaid — you can pay it from the booking page.' : ''}',
+            '${deposit > 0 ? '\n\nSend your ${_money(deposit)} deposit to secure the booking.' : ''}',
             textAlign: TextAlign.center,
             style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
@@ -424,15 +423,37 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ],
           const SizedBox(height: 24),
+          if (deposit > 0) ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.go('/booking/$bookingId');
+                  context.push('/pay/$bookingId');
+                },
+                child: Text('Pay ${_money(deposit)} deposit'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                context.go('/booking/$bookingId');
-              },
-              child: const Text('View booking'),
-            ),
+            child: deposit > 0
+                ? OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      context.go('/booking/$bookingId');
+                    },
+                    child: const Text('Later'),
+                  )
+                : FilledButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      context.go('/booking/$bookingId');
+                    },
+                    child: const Text('View booking'),
+                  ),
           ),
         ]),
       ),
@@ -460,9 +481,7 @@ class _BookingScreenState extends State<BookingScreen> {
     final lastStep = _step == 3;
     final buttonLabel = !lastStep
         ? 'Continue'
-        : _deposit > 0
-            ? 'Pay ${_money(_deposit)} deposit & book'
-            : 'Confirm booking';
+        : 'Confirm booking';
 
     return PopScope(
       canPop: _step == 0,
@@ -747,32 +766,33 @@ class _BookingScreenState extends State<BookingScreen> {
       const SizedBox(height: 24),
       Text('How will you pay?', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 10),
-      Row(children: [
-        for (final (id, label, icon) in const [
-          ('cash', 'Cash', TablerIcons.cash),
-          ('ecocash', 'EcoCash', TablerIcons.device_mobile),
-          ('paynow', 'Card', TablerIcons.credit_card),
-        ]) ...[
-          Expanded(
-            child: _SelectCard(
-              selected: _payment == id,
-              onTap: () => setState(() => _payment = id),
-              title: label,
-              icon: icon,
-              compact: true,
+      LayoutBuilder(builder: (context, box) {
+        final perRow = _methods.length >= 3 ? 3 : _methods.length;
+        final w = (box.maxWidth - 8 * (perRow - 1)) / perRow;
+        return Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final m in _methods)
+            SizedBox(
+              width: w,
+              child: _SelectCard(
+                selected: _payment == m.id,
+                onTap: () => setState(() => _payment = m.id),
+                title: m.label,
+                icon: m.icon,
+                compact: true,
+              ),
             ),
-          ),
-          if (id != 'paynow') const SizedBox(width: 8),
-        ],
-      ]),
-      if (_depositPercent > 0) ...[
-        const SizedBox(height: 10),
-        Text(
-          'This pro asks for a $_depositPercent% deposit, paid by ${_payment == 'paynow' ? 'card' : 'EcoCash'} when you book. '
-          'The rest is paid ${_payment == 'cash' ? 'in cash' : 'the same way'} on the day.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+        ]);
+      }),
+      const SizedBox(height: 10),
+      Text(
+        _depositPercent > 0
+            ? 'This pro asks for a $_depositPercent% deposit (${_money(_deposit)}). After you book, send it to them '
+                'directly and tap "I\'ve paid". The rest is paid ${_payment == 'cash' ? 'in cash' : 'by ${payMethodLabel(_payment)}'} on the day.'
+            : _payment == 'cash'
+                ? 'Pay the pro in cash on the day.'
+                : 'You pay the pro directly. BeauTap never holds your money.',
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
       const SizedBox(height: 24),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
@@ -849,7 +869,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 text: _studio ? 'At the pro\'s studio, $_studioArea' : _addressCtrl.text.trim()),
             _InfoLine(
                 icon: TablerIcons.cash,
-                text: const {'cash': 'Pay cash', 'ecocash': 'Pay with EcoCash', 'paynow': 'Pay by card'}[_payment]!),
+                text: _payment == 'cash' ? 'Pay cash' : 'Pay by ${payMethodLabel(_payment)}'),
           ]),
         ),
       ),
@@ -868,7 +888,7 @@ class _BookingScreenState extends State<BookingScreen> {
               row('Loyalty reward (${_loyalty!['percent']}%)', '-${_money(_loyaltyDiscount)}', color: AppColors.success),
             const Divider(height: 20),
             row('Total', _money(_total), bold: true),
-            if (_deposit > 0) row('Deposit due now', _money(_deposit), color: AppColors.primary),
+            if (_deposit > 0) row('Deposit to send the pro', _money(_deposit), color: AppColors.primary),
           ]),
         ),
       ),
