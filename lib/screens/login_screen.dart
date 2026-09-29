@@ -142,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _forgotPassword() {
     final resetEmailCtrl = TextEditingController(text: _emailCtrl.text.trim());
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

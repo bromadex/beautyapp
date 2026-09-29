@@ -208,6 +208,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     final createdAt = DateTime.tryParse(user['created_at'] ?? '');
 
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

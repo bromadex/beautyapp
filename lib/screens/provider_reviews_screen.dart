@@ -140,6 +140,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
     const reasons = ['Fake or not a real client', 'Rude or abusive', 'Personal information', 'Spam or advertising'];
     String? picked;
     final ok = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       builder: (ctx) => SheetScroll(child: StatefulBuilder(

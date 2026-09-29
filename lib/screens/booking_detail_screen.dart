@@ -48,7 +48,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             column: 'id',
             value: widget.bookingId,
           ),
-          callback: (_) => _load(),
+          callback: (_) => _load(quiet: true),
+        )
+        // "I've paid" claims and the pro's answer show up straight away
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'pro_payments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'booking_id',
+            value: widget.bookingId,
+          ),
+          callback: (_) => _load(quiet: true),
         )
         .subscribe();
   }
@@ -59,8 +71,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+  /// [quiet] reloads (live updates) keep the page on screen instead of
+  /// showing the loading placeholder.
+  Future<void> _load({bool quiet = false}) async {
+    if (!quiet) setState(() { _loading = true; _error = null; });
     try {
       final userId = supabase.auth.currentUser!.id;
 

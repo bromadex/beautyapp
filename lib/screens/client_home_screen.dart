@@ -7,6 +7,8 @@ import '../services/push_service.dart';
 import '../services/smart_match_service.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
+import '../widgets/location_picker_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -23,11 +25,39 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   Map<String, dynamic>? _nextBooking;
   late AnimationController _animCtrl;
 
+  /// City chosen in the picker (shared with Browse).
+  String _city = 'All Zimbabwe';
+
+  Future<void> _loadCity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final c = prefs.getString('selected_city');
+      if (c != null && mounted) setState(() => _city = c);
+    } catch (_) {}
+  }
+
+  void _pickCity() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true, // above the bottom tab bar
+      showDragHandle: false, // the sheet draws its own
+      backgroundColor: Colors.transparent,
+      builder: (_) => LocationPickerSheet(
+        currentCity: _city,
+        onCitySelected: (city, lat, lng) {
+          if (mounted) setState(() => _city = city);
+        },
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadData();
+    _loadCity();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) PushService.maybeInit(context);
     });
@@ -111,7 +141,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     final firstName = name.split(' ').first;
     final isGuest = supabase.auth.currentUser?.isAnonymous ?? false;
 
-    final town = (_profile?['location'] ?? '').toString().split(',').first.trim();
 
     return Scaffold(
       body: RefreshIndicator(
@@ -132,13 +161,13 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             InkWell(
-                              onTap: () => context.go('/browse'),
+                              onTap: _pickCity,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                                   const Icon(TablerIcons.map_pin, color: AppColors.goldLight, size: 18),
                                   const SizedBox(width: 4),
-                                  Text(town.isEmpty ? 'Zimbabwe' : town,
+                                  Text(_city == 'All Zimbabwe' ? 'All Zimbabwe' : _city,
                                       style: const TextStyle(
                                           color: AppColors.goldLight, fontSize: 15, fontWeight: FontWeight.w700)),
                                   const SizedBox(width: 2),

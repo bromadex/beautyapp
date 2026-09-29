@@ -99,6 +99,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Future<void> _edit([Map<String, dynamic>? p]) async {
     final saved = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

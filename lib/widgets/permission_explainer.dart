@@ -17,6 +17,7 @@ class PermissionExplainer {
     String laterLabel = 'Not now',
   }) async {
     final ok = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

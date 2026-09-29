@@ -87,6 +87,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
   void _open(Map<String, dynamic> d) {
     final resolutionCtrl = TextEditingController(text: d['resolution'] ?? '');
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(

@@ -44,6 +44,7 @@ class _CertificatesSectionState extends State<CertificatesSection> {
     Uint8List? photo;
     bool saving = false;
     await showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (ctx) => SheetScroll(child: StatefulBuilder(

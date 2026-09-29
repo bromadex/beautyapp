@@ -58,6 +58,7 @@ class _ProviderPublicProfileScreenState
 
   void _promptSignIn({String action = 'continue'}) {
     showModalBottomSheet(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       shape: const RoundedRectangleBorder(
@@ -322,6 +323,7 @@ class _ProviderPublicProfileScreenState
     }
 
     showModalBottomSheet(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       builder: (_) => SheetScroll(child: Padding(
@@ -383,6 +385,7 @@ class _ProviderPublicProfileScreenState
     final phone = (_profile?['whatsapp_number'] ?? _profile?['phone'] ?? '').toString();
     final name = (_profile?['full_name'] ?? 'the pro').toString();
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -863,6 +866,7 @@ class _ProviderPublicProfileScreenState
   void _share(String name) {
     final link = 'https://beautyapp-swart.vercel.app/@${_providerProfile!['slug']}';
     showModalBottomSheet(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       builder: (ctx) => SheetScroll(child: Padding(
@@ -911,6 +915,7 @@ class _ProviderPublicProfileScreenState
     String money(num v) => '\$${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
 
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (ctx) => DraggableScrollableSheet(

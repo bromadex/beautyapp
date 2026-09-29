@@ -345,6 +345,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true, // above the bottom tab bar
+      showDragHandle: false, // the sheet draws its own
       backgroundColor: Colors.transparent,
       builder: (_) => LocationPickerSheet(
         currentCity: _selectedCity,
@@ -367,6 +369,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     String tempWhere = _where;
 
     showModalBottomSheet(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (_) => SheetScroll(child: StatefulBuilder(
@@ -780,6 +783,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
         ? _categories.where((c) => c['id'] == _selectedCategoryIds.first).map((c) => c['name'] as String).firstOrNull
         : null;
     final sent = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
       context: context,
       isScrollControlled: true,
       builder: (ctx) {

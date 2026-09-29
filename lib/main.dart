@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'router.dart';
@@ -11,6 +12,9 @@ import 'services/appearance.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
+  // Pages opened on top of others (bookings, chat, settings) get their own
+  // address, so refreshing the browser stays on that page.
+  GoRouter.optionURLReflectsImperativeAPIs = true;
 
   await Supabase.initialize(
     url: 'https://suxohsmcgjzzllmyesgt.supabase.co',

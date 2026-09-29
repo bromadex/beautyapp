@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show FileOptions, PostgrestException, RealtimeChannel, PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../supabase_client.dart';
@@ -37,16 +38,29 @@ class _PayProScreenState extends State<PayProScreen> {
   String _proofType = 'image/jpeg';
   bool _sending = false;
   Timer? _ticker;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _load();
+    // The pro's Received / Not received shows up without refreshing.
+    _channel = supabase
+        .channel('pay_${widget.bookingId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'pro_payments',
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'booking_id', value: widget.bookingId),
+          callback: (_) => _load(),
+        )
+        .subscribe();
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _channel?.unsubscribe();
     _refCtrl.dispose();
     super.dispose();
   }

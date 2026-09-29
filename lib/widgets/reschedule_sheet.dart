@@ -15,6 +15,7 @@ int bookingMinutes(Map<String, dynamic> b) {
 /// Lets either party move a booking to another free slot. Returns true if moved.
 Future<bool> showRescheduleSheet(BuildContext context, Map<String, dynamic> booking) async {
   final moved = await showModalBottomSheet<bool>(
+      useRootNavigator: true,
     context: context,
     isScrollControlled: true,
     builder: (ctx) => _RescheduleSheet(booking: booking),

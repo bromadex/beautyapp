@@ -51,6 +51,7 @@ class FeeCheckout {
     if (!context.mounted) return FeeOutcome.cancelled;
 
     final choice = await showModalBottomSheet<String>(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       showDragHandle: true,

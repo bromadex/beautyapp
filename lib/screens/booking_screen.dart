@@ -392,6 +392,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Future<void> _showDone(String bookingId, String ref, double deposit) async {
     await showModalBottomSheet(
+      useRootNavigator: true,
       isScrollControlled: true,
       context: context,
       isDismissible: false,
