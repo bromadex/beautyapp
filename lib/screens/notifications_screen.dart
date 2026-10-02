@@ -68,6 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (type == 'products') context.push('/provider/products');
       if (type == 'location') context.push('/provider/location');
       if (type == 'app_error') context.push('/admin/errors');
+      if (type == 'verification') context.push('/verify');
       return;
     }
 

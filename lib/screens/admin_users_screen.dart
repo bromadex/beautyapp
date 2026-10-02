@@ -45,7 +45,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     try {
       final data = await supabase
           .from('profiles')
-          .select('id, full_name, phone, user_type, is_verified, is_banned, is_deactivated, created_at')
+          .select('id, full_name, phone, user_type, is_verified, is_banned, is_deactivated, created_at, banned_reason, banned_at')
           .order('created_at', ascending: false);
       if (mounted) {
         setState(() {
@@ -252,14 +252,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
           child: Column(
             children: [
               Container(
-                width: 40, height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.borderStrong,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
@@ -291,6 +283,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                 _detailRow(TablerIcons.calendar, 'Joined', createdAt.toLocal().toString().substring(0, 10)),
               _detailRow(TablerIcons.shield, 'Status',
                 isBanned ? 'Banned' : isDeactivated ? 'Frozen' : 'Active'),
+              if (isBanned && (user['banned_reason'] ?? '').toString().isNotEmpty)
+                _detailRow(TablerIcons.ban, 'Ban reason', user['banned_reason']),
               const SizedBox(height: AppSpacing.xxl),
 
               // Action buttons
@@ -386,13 +380,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
           Icon(icon, size: 18, color: AppColors.textTertiary),
           const SizedBox(width: AppSpacing.md),
           Text(label, style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
             child: Text(
               value,
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

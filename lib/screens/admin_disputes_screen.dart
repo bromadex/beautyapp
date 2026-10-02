@@ -31,7 +31,9 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
 
   String _filter = 'open';
   bool _loading = true;
-  List<Map<String, dynamic>> _disputes = [];
+  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> get _disputes => _all.where((d) => d['status'] == _filter).toList();
+  int _count(String status) => _all.where((d) => d['status'] == status).length;
 
   @override
   void initState() {
@@ -47,11 +49,16 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           .select('*, bookings(booking_time, total_price, services(service_name)), '
               'reporter:profiles!disputes_reporter_id_fkey(full_name), '
               'reported:profiles!disputes_reported_user_id_fkey(full_name, is_banned)')
-          .eq('status', _filter)
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(300);
       if (mounted) {
         setState(() {
-          _disputes = List<Map<String, dynamic>>.from(data);
+          // Sexual-conduct reports first, then newest.
+          _all = List<Map<String, dynamic>>.from(data)
+            ..sort((a, b) {
+              final sa = a['category'] == 'sexual_conduct' ? 0 : 1, sb = b['category'] == 'sexual_conduct' ? 0 : 1;
+              return sa != sb ? sa - sb : (b['created_at'] ?? '').compareTo(a['created_at'] ?? '');
+            });
           _loading = false;
         });
       }
@@ -245,12 +252,12 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                 .map((e) => Padding(
                       padding: const EdgeInsets.only(right: AppSpacing.sm),
                       child: ChoiceChip(
-                        label: Text(e.value),
+                        label: Text(
+                            (e.key == 'open' || e.key == 'under_review') && _count(e.key) > 0
+                                ? '${e.value} (${_count(e.key)})'
+                                : e.value),
                         selected: _filter == e.key,
-                        onSelected: (_) {
-                          setState(() => _filter = e.key);
-                          _load();
-                        },
+                        onSelected: (_) => setState(() => _filter = e.key),
                       ),
                     ))
                 .toList(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -17,7 +18,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
   List<Map<String, dynamic>> _bookings = [];
   String _statusFilter = 'all';
 
-  final _statusOptions = ['all', 'pending', 'confirmed', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'];
+  final _statusOptions = ['all', 'pending', 'confirmed', 'completed', 'cancelled'];
 
   @override
   void initState() {
@@ -64,34 +65,47 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
   }
 
   Future<void> _cancelBooking(Map<String, dynamic> booking) async {
+    final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
-        title: const Text('Cancel Booking?'),
-        content: const Text('This will cancel the booking. This action cannot be undone.'),
+        title: const Text('Cancel this booking?'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('The client and the pro are both told, with your reason. This can\'t be undone.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: reasonCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: 'Reason (both will see it)'),
+          ),
+        ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Cancel Booking'),
+            child: const Text('Cancel booking'),
           ),
         ],
       ),
     );
-
     if (confirmed != true) return;
 
     try {
-      await supabase.from('bookings').update({'status': 'cancelled'}).eq('id', booking['id']);
+      await supabase.rpc('admin_cancel_booking', params: {
+        'p_booking': booking['id'],
+        'p_reason': reasonCtrl.text.trim(),
+      });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking cancelled'), backgroundColor: AppColors.warning),
+        SnackBar(content: const Text('Booking cancelled. Both were told.'), backgroundColor: AppColors.warning),
       );
       _loadBookings();
-    } catch (e) {
+    } on PostgrestException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
       }
     }
   }
@@ -255,7 +269,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                       const Spacer(),
                       if (price != null)
                         Text(
-                          'R${(price as num).toStringAsFixed(0)}',
+                          '\$${(price as num).toStringAsFixed(0)}',
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.primary),
                         ),
                     ],

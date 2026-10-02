@@ -56,85 +56,42 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
     await _loadAnalytics();
   }
 
+  Map<String, dynamic> _income = {};
+  double _paidToPros = 0;
+
   Future<void> _loadAnalytics() async {
     setState(() => _loading = true);
     try {
-      final now = DateTime.now();
-      final thisMonthStart = DateTime(now.year, now.month, 1).toIso8601String().substring(0, 10);
-      final lastMonthStart = DateTime(now.year, now.month - 1, 1).toIso8601String().substring(0, 10);
-      final lastMonthEnd = DateTime(now.year, now.month, 0).toIso8601String().substring(0, 10);
+      final st = Map<String, dynamic>.from(await supabase.rpc('admin_stats') as Map);
+      final b = Map<String, dynamic>.from(st['bookings'] as Map);
+      final u = Map<String, dynamic>.from(st['users'] as Map);
+      int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+      double d(dynamic v) => (v as num?)?.toDouble() ?? 0;
 
-      // Bookings
-      final bookings = await supabase.from('bookings').select('status, total_price, created_at, services(service_name)');
-      final bookingsList = List<Map<String, dynamic>>.from(bookings);
-      _totalBookings = bookingsList.length;
+      _income = Map<String, dynamic>.from(st['income'] as Map);
+      _totalRevenue = d(_income['total']);
+      _thisMonthRevenue = d(_income['this_month']);
+      _lastMonthRevenue = d(_income['last_month']);
+      _subscriptionRevenue = d(_income['plans']);
+      _paidToPros = d(b['completed_value']);
 
-      _statusCounts = {};
-      _totalRevenue = 0;
-      _thisMonthRevenue = 0;
-      _lastMonthRevenue = 0;
-      _thisMonthBookings = 0;
-      _lastMonthBookings = 0;
-
-      Map<String, int> serviceCounts = {};
-      Map<String, double> monthlyRev = {};
-
-      for (final b in bookingsList) {
-        final status = b['status'] as String? ?? 'unknown';
-        _statusCounts[status] = (_statusCounts[status] ?? 0) + 1;
-
-        final price = (b['total_price'] as num?)?.toDouble() ?? 0;
-        final created = b['created_at']?.toString().substring(0, 10) ?? '';
-        final monthKey = created.length >= 7 ? created.substring(0, 7) : '';
-
-        if (status == 'completed') {
-          _totalRevenue += price;
-          if (created.compareTo(thisMonthStart) >= 0) {
-            _thisMonthRevenue += price;
-          } else if (created.compareTo(lastMonthStart) >= 0 && created.compareTo(lastMonthEnd) <= 0) {
-            _lastMonthRevenue += price;
-          }
-          if (monthKey.isNotEmpty) {
-            monthlyRev[monthKey] = (monthlyRev[monthKey] ?? 0) + price;
-          }
-        }
-
-        if (created.compareTo(thisMonthStart) >= 0) _thisMonthBookings++;
-        if (created.compareTo(lastMonthStart) >= 0 && created.compareTo(lastMonthEnd) <= 0) _lastMonthBookings++;
-
-        final sName = b['services']?['service_name'] ?? 'Unknown';
-        serviceCounts[sName] = (serviceCounts[sName] ?? 0) + 1;
-      }
-
-      // Platform revenue = provider subscriptions only (no commission)
-      _subscriptionRevenue = 0;
-      try {
-        final subs = await supabase.from('subscriptions').select('amount_paid');
-        for (final s in List<Map<String, dynamic>>.from(subs)) {
-          _subscriptionRevenue += (s['amount_paid'] as num?)?.toDouble() ?? 0;
-        }
-      } catch (_) {}
-
-      // Monthly revenue sorted
-      final sortedMonths = monthlyRev.entries.toList()
-        ..sort((a, b) => b.key.compareTo(a.key));
-      _monthlyRevenue = sortedMonths.take(6).map((e) => {'month': e.key, 'revenue': e.value}).toList();
-
-      // Popular services
-      final sortedServices = serviceCounts.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      _popularServices = sortedServices.take(5).map((e) => {'name': e.key, 'count': e.value}).toList();
-
-      // Users
-      final profiles = await supabase.from('profiles').select('user_type, is_verified, created_at');
-      final profilesList = List<Map<String, dynamic>>.from(profiles);
-      _totalUsers = profilesList.length;
-      _totalProviders = profilesList.where((p) => p['user_type'] == 'provider').length;
-      _verifiedProviders = profilesList.where((p) => p['user_type'] == 'provider' && p['is_verified'] == true).length;
-      _newUsersThisMonth = profilesList.where((p) {
-        final created = p['created_at']?.toString().substring(0, 10) ?? '';
-        return created.compareTo(thisMonthStart) >= 0;
-      }).length;
+      _totalBookings = n(b['total']);
+      _thisMonthBookings = n(b['this_month']);
+      _lastMonthBookings = n(b['last_month']);
+      _statusCounts = {
+        for (final k in ['pending', 'confirmed', 'completed', 'cancelled'])
+          if (n(b[k]) > 0) k: n(b[k]),
+      };
+      _monthlyRevenue = [
+        for (final m in (st['income_by_month'] as List? ?? [])) {'month': m['month'], 'revenue': d(m['amount'])}
+      ];
+      _popularServices = [
+        for (final p in (st['popular_services'] as List? ?? [])) {'name': p['name'], 'count': n(p['count'])}
+      ];
+      _totalUsers = n(u['total']);
+      _totalProviders = n(u['providers']);
+      _verifiedProviders = n(u['verified_providers']);
+      _newUsersThisMonth = n(u['new_this_month']);
 
       if (mounted) setState(() => _loading = false);
     } catch (e) {
@@ -144,6 +101,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       }
     }
   }
+
+  static String _money(num v) => '\$${v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(2)}';
 
   String _monthLabel(String monthKey) {
     final months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -178,14 +137,17 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Revenue Overview
-                    Text('Revenue', style: Theme.of(context).textTheme.titleMedium),
+                    Text('BeauTap income', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text('What pros paid BeauTap: plans, featured spots and product ads.',
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     _buildRevenueCard(),
                     const SizedBox(height: AppSpacing.xxl),
 
                     // Monthly Revenue
                     if (_monthlyRevenue.isNotEmpty) ...[
-                      Text('Monthly Revenue', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Income by month', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.md),
                       _buildMonthlyRevenue(),
                       const SizedBox(height: AppSpacing.xxl),
@@ -235,25 +197,34 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Total Revenue', style: TextStyle(color: Colors.white70, fontSize: 13)),
+          const Text('All time', style: TextStyle(color: Colors.white70, fontSize: 13)),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'R${_totalRevenue.toStringAsFixed(0)}',
+            _money(_totalRevenue),
             style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: AppSpacing.lg),
           Row(
             children: [
-              _miniStat('This Month', 'R${_thisMonthRevenue.toStringAsFixed(0)}'),
-              const SizedBox(width: AppSpacing.xxl),
-              _miniStat('Subscriptions', 'R${_subscriptionRevenue.toStringAsFixed(0)}'),
-              const SizedBox(width: AppSpacing.xxl),
-              _miniStat(
-                'Growth',
-                '${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toStringAsFixed(0)}%',
-              ),
+              _miniStat('This month', _money(_thisMonthRevenue)),
+              const SizedBox(width: AppSpacing.xl),
+              _miniStat('Last month', _money(_lastMonthRevenue)),
+              const SizedBox(width: AppSpacing.xl),
+              if (_lastMonthRevenue > 0)
+                _miniStat('Change', '${revenueGrowth >= 0 ? '+' : ''}${revenueGrowth.toStringAsFixed(0)}%'),
             ],
           ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(spacing: AppSpacing.xl, runSpacing: AppSpacing.sm, children: [
+            _miniStat('Plans', _money(_subscriptionRevenue)),
+            _miniStat('Featured', _money((_income['featured'] as num?) ?? 0)),
+            _miniStat('Product ads', _money((_income['products'] as num?) ?? 0)),
+            _miniStat('Paynow', _money((_income['paynow'] as num?) ?? 0)),
+            _miniStat('EcoCash (manual)', _money((_income['ecocash_manual'] as num?) ?? 0)),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          Text('Clients paid pros ${_money(_paidToPros)} for completed bookings (not BeauTap income).',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
         ],
       ),
     );
@@ -322,7 +293,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 SizedBox(
                   width: 70,
                   child: Text(
-                    'R${rev.toStringAsFixed(0)}',
+                    _money(rev),
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     textAlign: TextAlign.right,
                   ),
@@ -379,7 +350,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                 ],
               ),
               const SizedBox(height: 4),
-              Text('$_thisMonthBookings this month', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              Text('$_thisMonthBookings this month · $_lastMonthBookings last month',
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
             ],
           ),
         ],

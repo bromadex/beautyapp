@@ -21,7 +21,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _totalClients = 0;
   int _totalBookings = 0;
   int _completedBookings = 0;
-  int _pendingVerifications = 0;
+  Map<String, dynamic> _stats = {};
   double _totalRevenue = 0;
   double _subscriptionRevenue = 0;
   List<Map<String, dynamic>> _recentBookings = [];
@@ -58,71 +58,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _loadStats() async {
     setState(() => _loading = true);
     try {
-      final profiles = await supabase.from('profiles').select('user_type');
-      final profilesList = List<Map<String, dynamic>>.from(profiles);
-      _totalUsers = profilesList.length;
-      _totalProviders = profilesList.where((p) => p['user_type'] == 'provider').length;
-      _totalClients = profilesList.where((p) => p['user_type'] == 'client').length;
-
-      final bookings = await supabase.from('bookings').select('status, total_price');
-      final bookingsList = List<Map<String, dynamic>>.from(bookings);
-      _totalBookings = bookingsList.length;
-      _completedBookings = bookingsList.where((b) => b['status'] == 'completed').length;
-
-      _totalRevenue = 0;
-      for (final b in bookingsList) {
-        if (b['status'] == 'completed' && b['total_price'] != null) {
-          _totalRevenue += (b['total_price'] as num).toDouble();
-        }
-      }
-      // Platform revenue = provider subscriptions only (no commission)
-      _subscriptionRevenue = 0;
-      try {
-        final subs = await supabase.from('subscriptions').select('amount_paid');
-        for (final s in List<Map<String, dynamic>>.from(subs)) {
-          _subscriptionRevenue += (s['amount_paid'] as num?)?.toDouble() ?? 0;
-        }
-      } catch (_) {}
-
-      final pendingV = await supabase
-          .from('verifications')
-          .select('id')
-          .eq('status', 'pending');
-      _pendingVerifications = (pendingV as List).length;
-
-      final recent = await supabase
-          .from('bookings')
-          .select('*, services(service_name), profiles!bookings_client_id_fkey(full_name)')
-          .order('created_at', ascending: false)
-          .limit(5);
-      _recentBookings = List<Map<String, dynamic>>.from(recent);
-
-      final providers = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('user_type', 'provider');
-      final providersList = List<Map<String, dynamic>>.from(providers);
-
-      List<Map<String, dynamic>> topProvs = [];
-      for (final p in providersList) {
-        final reviews = await supabase
-            .from('reviews')
-            .select('rating')
-            .eq('provider_id', p['id']);
-        final reviewsList = List<Map<String, dynamic>>.from(reviews);
-        if (reviewsList.isEmpty) continue;
-        final avgRating = reviewsList.fold<double>(0, (sum, r) => sum + (r['rating'] as num).toDouble()) / reviewsList.length;
-        final bookingCount = bookingsList.where((b) => b['provider_id'] == p['id'] && b['status'] == 'completed').length;
-        topProvs.add({
-          'name': p['full_name'] ?? 'Unknown',
-          'rating': avgRating,
-          'reviews': reviewsList.length,
-          'bookings': bookingCount,
-        });
-      }
-      topProvs.sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
-      _topProviders = topProvs.take(5).toList();
-
+      final res = await Future.wait<dynamic>([
+        supabase.rpc('admin_stats'),
+        supabase
+            .from('bookings')
+            .select('*, services(service_name), profiles!bookings_client_id_fkey(full_name)')
+            .eq('source', 'app')
+            .order('created_at', ascending: false)
+            .limit(5),
+      ]);
+      _stats = Map<String, dynamic>.from(res[0] as Map);
+      final u = _m('users'), b = _m('bookings'), inc = _m('income');
+      _totalUsers = _n(u['total']);
+      _totalProviders = _n(u['providers']);
+      _totalClients = _n(u['clients']);
+      _totalBookings = _n(b['total']);
+      _completedBookings = _n(b['completed']);
+      _totalRevenue = (b['completed_value'] as num?)?.toDouble() ?? 0;
+      _subscriptionRevenue = (inc['total'] as num?)?.toDouble() ?? 0;
+      _recentBookings = List<Map<String, dynamic>>.from(res[1] as List);
+      _topProviders = [
+        for (final p in (_stats['top_providers'] as List? ?? []))
+          {
+            'name': p['name'] ?? 'Unknown',
+            'rating': (p['rating'] as num?)?.toDouble() ?? 0,
+            'reviews': _n(p['reviews']),
+            'bookings': _n(p['bookings']),
+          }
+      ];
       if (mounted) setState(() => _loading = false);
     } catch (e) {
       if (mounted) {
@@ -133,6 +96,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     }
   }
+
+  Widget _urgentBanner() {
+    final n = _n(_m('todo')['sexual_conduct']);
+    return InkWell(
+      onTap: () => context.push('/admin/disputes'),
+      borderRadius: AppRadius.mdAll,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.errorSoft,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: AppColors.error),
+        ),
+        child: Row(children: [
+          Icon(TablerIcons.alert_triangle, color: AppColors.error),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$n sexual-conduct report${n == 1 ? '' : 's'} waiting. Please look at ${n == 1 ? 'it' : 'them'} first.',
+              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Icon(TablerIcons.chevron_right, color: AppColors.error),
+        ]),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _m(String k) => Map<String, dynamic>.from(_stats[k] as Map? ?? {});
+  static int _n(dynamic v) => (v as num?)?.toInt() ?? 0;
+  static String _money(num v) => '\$${v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +153,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_n(_m('todo')['sexual_conduct']) > 0) ...[
+                      _urgentBanner(),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
                     // Quick Stats Grid
                     _buildStatsGrid(),
                     const SizedBox(height: AppSpacing.xxl),
@@ -199,6 +197,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildStatsGrid() {
+    final u = _m('users'), inc = _m('income');
+    final noLocation = _n(u['pros_no_location']);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -209,53 +209,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         _StatCard(
           icon: TablerIcons.users,
-          label: 'Total Users',
+          label: 'Users',
           value: '$_totalUsers',
-          subtitle: '$_totalProviders providers, $_totalClients clients',
+          subtitle: '$_totalProviders pros · $_totalClients clients',
           color: AppColors.info,
+          onTap: () => context.push('/admin/users'),
+        ),
+        _StatCard(
+          icon: TablerIcons.scissors,
+          label: 'Pros clients can find',
+          value: '${_n(u['pros_findable'])}',
+          subtitle: noLocation > 0 ? '$noLocation without a location' : 'of $_totalProviders pros',
+          color: noLocation > 0 ? AppColors.warning : AppColors.success,
           onTap: () => context.push('/admin/users'),
         ),
         _StatCard(
           icon: TablerIcons.calendar,
           label: 'Bookings',
           value: '$_totalBookings',
-          subtitle: '$_completedBookings completed',
+          subtitle: '$_completedBookings done · ${_money(_totalRevenue)} paid to pros',
           color: AppColors.secondary,
           onTap: () => context.push('/admin/bookings'),
         ),
         _StatCard(
           icon: TablerIcons.currency_dollar,
-          label: 'Bookings Volume',
-          value: '\$${_totalRevenue.toStringAsFixed(0)}',
-          subtitle: '\$${_subscriptionRevenue.toStringAsFixed(0)} subscription revenue',
+          label: 'BeauTap income',
+          value: _money(_subscriptionRevenue),
+          subtitle: '${_money((inc['this_month'] as num?) ?? 0)} this month',
           color: AppColors.success,
           onTap: () => context.push('/admin/analytics'),
-        ),
-        _StatCard(
-          icon: TablerIcons.shield_check,
-          label: 'Verifications',
-          value: '$_pendingVerifications',
-          subtitle: 'pending review',
-          color: _pendingVerifications > 0 ? AppColors.warning : AppColors.success,
-          onTap: () => context.push('/admin/verify'),
         ),
       ],
     );
   }
 
   Widget _buildActionTiles() {
+    final t = _m('todo');
     final actions = [
       _ActionItem(TablerIcons.users, 'Users', AppColors.info, () => context.push('/admin/users')),
-      _ActionItem(TablerIcons.device_mobile_dollar, 'EcoCash fees', AppColors.success, () => context.push('/admin/fees')),
+      _ActionItem(TablerIcons.device_mobile_dollar, 'EcoCash fees', AppColors.success, () => context.push('/admin/fees'), _n(t['fees'])),
       _ActionItem(TablerIcons.calendar_month, 'Bookings', AppColors.secondary, () => context.push('/admin/bookings')),
-      _ActionItem(TablerIcons.rosette_discount_check, 'Verifications', AppColors.warning, () => context.push('/admin/verify')),
+      _ActionItem(TablerIcons.rosette_discount_check, 'Verifications', AppColors.warning, () => context.push('/admin/verify'), _n(t['verifications'])),
       _ActionItem(TablerIcons.chart_bar, 'Analytics', AppColors.success, () => context.push('/admin/analytics')),
-      _ActionItem(TablerIcons.flag, 'Disputes', AppColors.error, () => context.push('/admin/disputes')),
-      _ActionItem(TablerIcons.building_store, 'Businesses', AppColors.primary, () => context.push('/admin/business')),
-      _ActionItem(TablerIcons.message_star, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation')),
+      _ActionItem(TablerIcons.flag, 'Disputes', AppColors.error, () => context.push('/admin/disputes'), _n(t['disputes'])),
+      _ActionItem(TablerIcons.building_store, 'Businesses', AppColors.primary, () => context.push('/admin/business'), _n(t['business'])),
+      _ActionItem(TablerIcons.message_star, 'Reported reviews', AppColors.warning, () => context.push('/admin/moderation'), _n(t['reported_reviews'])),
       _ActionItem(TablerIcons.map, 'Area demand', AppColors.info, () => context.push('/admin/moderation?tab=demand')),
-      _ActionItem(TablerIcons.shield_check, 'Flagged services', AppColors.error, () => context.push('/admin/moderation?tab=flagged')),
-      _ActionItem(TablerIcons.bug, 'App errors', AppColors.error, () => context.push('/admin/errors')),
+      _ActionItem(TablerIcons.shield_check, 'Flagged services', AppColors.error, () => context.push('/admin/moderation?tab=flagged'), _n(t['flagged_services'])),
+      _ActionItem(TablerIcons.bug, 'App errors', AppColors.error, () => context.push('/admin/errors'), _n(t['errors'])),
     ];
 
     return GridView.count(
@@ -282,14 +283,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: item.color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+            Badge(
+              isLabelVisible: item.count > 0,
+              label: Text('${item.count}'),
+              backgroundColor: AppColors.error,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(item.icon, color: item.color, size: 22),
               ),
-              child: Icon(item.icon, color: item.color, size: 22),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
@@ -459,7 +465,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           if (price != null) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'R${(price as num).toStringAsFixed(0)}',
+                              '\$${(price as num).toStringAsFixed(0)}',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -553,5 +559,6 @@ class _ActionItem {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _ActionItem(this.icon, this.label, this.color, this.onTap);
+  final int count;
+  const _ActionItem(this.icon, this.label, this.color, this.onTap, [this.count = 0]);
 }

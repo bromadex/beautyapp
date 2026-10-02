@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 
@@ -24,16 +25,23 @@ class _AdminVerificationScreenState
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final data = await supabase
-        .from('verifications')
-        .select('*, profiles(full_name, user_type, phone)')
-        .eq('status', 'pending')
-        .order('submitted_at');
-    if (mounted) {
-      setState(() {
-        _pending = List<Map<String, dynamic>>.from(data);
-        _loading = false;
-      });
+    try {
+      final data = await supabase
+          .from('verifications')
+          .select('*, profiles(full_name, user_type, phone)')
+          .eq('status', 'pending')
+          .order('submitted_at');
+      if (mounted) {
+        setState(() {
+          _pending = List<Map<String, dynamic>>.from(data);
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not load: $e')));
+      }
     }
   }
 
@@ -47,19 +55,22 @@ class _AdminVerificationScreenState
   Future<void> _review(
       String verificationId, String userId, bool approve,
       {String? note}) async {
-    await supabase.from('verifications').update({
-      'status': approve ? 'approved' : 'rejected',
-      'admin_note': note,
-      'reviewed_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', verificationId);
-
-    if (approve) {
-      await supabase
-          .from('profiles')
-          .update({'is_verified': true})
-          .eq('id', userId);
+    try {
+      await supabase.rpc('admin_review_verification', params: {
+        'p_id': verificationId,
+        'p_approve': approve,
+        'p_note': note,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(approve ? 'Approved. They were told.' : 'Rejected. They were told why.')));
+      }
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
     }
-
     _load();
   }
 

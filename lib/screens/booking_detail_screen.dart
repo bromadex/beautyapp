@@ -24,6 +24,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _loading = true;
   String? _error;
   bool _isProvider = false;
+  // An admin looking at someone else's booking.
+  bool _adminView = false;
   Map<String, dynamic>? _policy;
   List<Map<String, dynamic>> _payments = [];
   bool _deciding = false;
@@ -116,6 +118,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           _policy     = policy;
           _payments   = List<Map<String, dynamic>>.from(payments);
           _isProvider = data['provider_id'] == userId;
+          _adminView  = data['provider_id'] != userId && data['client_id'] != userId;
           _loading    = false;
         });
       }
@@ -450,6 +453,79 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         '${local.minute.toString().padLeft(2, '0')}';
   }
 
+  Widget _adminPanel(Map<String, dynamic> b, Map? client) {
+    final status = b['status'] as String? ?? '';
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _Section(
+        title: 'CLIENT',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _InfoRow(icon: TablerIcons.user, label: client?['full_name'] ?? b['walkin_name'] ?? '--'),
+          if ((client?['phone'] ?? b['walkin_phone']) != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _InfoRow(icon: TablerIcons.phone, label: client?['phone'] ?? b['walkin_phone']),
+          ],
+        ]),
+      ),
+      if ((b['cancel_reason'] ?? '').toString().isNotEmpty) ...[
+        const SizedBox(height: AppSpacing.md),
+        _Section(title: 'CANCELLED', child: _InfoRow(icon: TablerIcons.info_circle, label: b['cancel_reason'])),
+      ],
+      const SizedBox(height: AppSpacing.md),
+      Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.mdAll),
+        child: Text('You\'re viewing this as an admin. Only the client and the pro can reschedule, chat or pay.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      ),
+      if (status == 'pending' || status == 'confirmed') ...[
+        const SizedBox(height: AppSpacing.md),
+        _ActionCard(
+          icon: TablerIcons.circle_x,
+          label: 'Cancel as BeauTap',
+          subtitle: 'Both people are told, with your reason',
+          color: AppColors.error,
+          onTap: _adminCancel,
+        ),
+      ],
+    ]);
+  }
+
+  Future<void> _adminCancel() async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel this booking?'),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 2,
+          decoration: const InputDecoration(labelText: 'Reason (both will see it)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancel booking'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await supabase.rpc('admin_cancel_booking', params: {'p_booking': widget.bookingId, 'p_reason': ctrl.text.trim()});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cancelled. Both were told.')));
+      }
+      _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -696,6 +772,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
             const SizedBox(height: AppSpacing.xxl),
 
+            if (_adminView) ...[
+              _adminPanel(b, client),
+            ] else ...[
             // Action cards
             if (!_isProvider && _openPayment != null) ...[
               _ActionCard(
@@ -962,6 +1041,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   color: AppColors.success,
                   onPressed: _markCompleted,
                 ),
+            ],
+
             ],
 
             const SizedBox(height: AppSpacing.xxxl + AppSpacing.sm),
