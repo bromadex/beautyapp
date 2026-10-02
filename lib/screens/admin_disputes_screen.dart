@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -45,7 +46,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           .from('disputes')
           .select('*, bookings(booking_time, total_price, services(service_name)), '
               'reporter:profiles!disputes_reporter_id_fkey(full_name), '
-              'reported:profiles!disputes_reported_user_id_fkey(full_name)')
+              'reported:profiles!disputes_reported_user_id_fkey(full_name, is_banned)')
           .eq('status', _filter)
           .order('created_at', ascending: false);
       if (mounted) {
@@ -82,6 +83,58 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
       });
     }
     _load();
+  }
+
+  /// Suspends the reported account, cancels their upcoming bookings and
+  /// closes this report. Asks first because it's serious.
+  Future<void> _ban(Map<String, dynamic> d) async {
+    final name = d['reported']?['full_name'] ?? 'this account';
+    final reasonCtrl = TextEditingController(
+        text: d['category'] == 'sexual_conduct' ? 'Inappropriate or sexual conduct' : (_categories[d['category']] ?? ''));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Ban $name?'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('They\'ll be signed out and can\'t sign in again. Their upcoming bookings are cancelled '
+              'and those clients or pros are told why. A pro also disappears from Browse.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: reasonCtrl,
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: 'Reason (only admins see this)'),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ban account'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final r = await supabase.rpc('admin_set_ban', params: {
+        'p_user': d['reported_user_id'],
+        'p_ban': true,
+        'p_reason': reasonCtrl.text.trim(),
+        'p_dispute': d['id'],
+      });
+      final n = (r is Map ? r['cancelled'] : 0) ?? 0;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$name is banned.${n > 0 ? ' $n upcoming booking${n == 1 ? '' : 's'} cancelled.' : ''}')));
+      }
+      _load();
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
   }
 
   void _open(Map<String, dynamic> d) {
@@ -148,6 +201,30 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                 child: const Text('Resolve'),
               ),
             ]),
+            if (d['reported_user_id'] != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              if (d['reported']?['is_banned'] == true)
+                Row(children: [
+                  Icon(TablerIcons.ban, color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Text('${d['reported']?['full_name'] ?? 'This account'} is banned',
+                      style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+                ])
+              else
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(color: AppColors.error),
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _ban(d);
+                  },
+                  icon: const Icon(TablerIcons.ban, size: 18),
+                  label: Text('Ban ${d['reported']?['full_name'] ?? 'reported account'}'),
+                ),
+            ],
           ],
         ),
       )),
@@ -202,7 +279,10 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                                 backgroundColor: AppColors.errorSoft,
                                 child: Icon(TablerIcons.flag, color: AppColors.error),
                               ),
-                              title: Text(_categories[d['category']] ?? 'Report'),
+                              title: Text(_categories[d['category']] ?? 'Report',
+                                  style: d['category'] == 'sexual_conduct'
+                                      ? TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)
+                                      : null),
                               subtitle: Text(
                                 '${d['bookings']?['services']?['service_name'] ?? 'Booking'} · '
                                 '${d['reporter']?['full_name'] ?? 'User'}'

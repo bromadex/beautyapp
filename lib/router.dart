@@ -13,6 +13,8 @@ import 'screens/admin_users_screen.dart';
 import 'screens/admin_bookings_screen.dart';
 import 'screens/admin_analytics_screen.dart';
 import 'screens/admin_disputes_screen.dart';
+import 'screens/admin_errors_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'screens/admin_business_screen.dart';
 import 'screens/admin_moderation_screen.dart';
 import 'screens/provider_profile_editor_screen.dart';
@@ -117,6 +119,7 @@ final appRouter = GoRouter(
     // Auth (no shell)
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/login',    builder: (_, __) => const LoginScreen()),
+    GoRoute(path: '/welcome',  builder: (_, __) => const WelcomeScreen()),
     GoRoute(path: '/register', builder: (_, state) => RegisterScreen(refCode: state.uri.queryParameters['ref'])),
 
     // ─────────────────────────────────────────────────────────────
@@ -253,6 +256,12 @@ final appRouter = GoRouter(
       path: '/admin/business',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const AdminBusinessScreen(),
+    ),
+
+    GoRoute(
+      path: '/admin/errors',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const AdminErrorsScreen(),
     ),
 
     GoRoute(

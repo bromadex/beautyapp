@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/account_guard.dart';
 import '../services/social_auth.dart';
 import '../widgets/apple_sign_in_button.dart';
 import '../supabase_client.dart';
@@ -24,6 +25,17 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _googleLoading = false;
   bool _obscurePassword = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // Suspended while the app was open, or Google/Apple refused a banned account.
+    final err = '${Uri.base.queryParameters['error_description'] ?? ''}${Uri.base.fragment}'.toLowerCase();
+    if (err.contains('banned')) AccountGuard.justSuspended = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AccountGuard.showIfSuspended(context);
+    });
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -39,6 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
         String msg = e.message;
         if (msg.contains('Invalid login credentials')) {
           msg = 'Wrong email or password. Please try again.';
+        } else if (msg.toLowerCase().contains('banned')) {
+          msg = AccountGuard.message;
         } else if (msg.contains('Email not confirmed')) {
           msg = 'Please check your email to confirm your account.';
         }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
@@ -89,21 +90,48 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
 
   Future<void> _toggleBan(Map<String, dynamic> user) async {
     final isBanned = user['is_banned'] == true;
-    final confirmed = await _confirmDialog(
-      title: '${isBanned ? 'Unban' : 'Ban'} User?',
-      message: isBanned
-          ? 'This will restore access for ${user['full_name']}.'
-          : 'This will block ${user['full_name']} from using the app.',
-      confirmLabel: isBanned ? 'Unban' : 'Ban',
-      confirmColor: isBanned ? AppColors.success : AppColors.error,
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('${isBanned ? 'Unban' : 'Ban'} ${user['full_name']}?'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(isBanned
+              ? 'They can sign in and use BeauTap again.'
+              : 'They\'ll be signed out and can\'t sign in again. Their upcoming bookings are cancelled '
+                  'and the other people are told. A pro also disappears from Browse.'),
+          if (!isBanned) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Reason (only admins see this)'),
+            ),
+          ],
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: isBanned ? AppColors.success : AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isBanned ? 'Unban' : 'Ban'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
 
     try {
-      await supabase.from('profiles').update({'is_banned': !isBanned}).eq('id', user['id']);
-      _showSnack('User ${isBanned ? 'unbanned' : 'banned'} successfully',
+      await supabase.rpc('admin_set_ban', params: {
+        'p_user': user['id'],
+        'p_ban': !isBanned,
+        'p_reason': reasonCtrl.text.trim(),
+      });
+      _showSnack('${user['full_name']} ${isBanned ? 'unbanned' : 'banned'}',
           color: isBanned ? AppColors.success : AppColors.warning);
       _loadUsers();
+    } on PostgrestException catch (e) {
+      _showSnack(e.message, color: AppColors.error);
     } catch (e) {
       _showSnack('Error: $e', color: AppColors.error);
     }

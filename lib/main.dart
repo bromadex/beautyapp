@@ -8,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'router.dart';
 import 'supabase_client.dart';
 import 'theme.dart';
+import 'services/account_guard.dart';
 import 'services/appearance.dart';
+import 'services/error_reporter.dart';
 import 'services/social_auth.dart';
 
 Future<void> main() async {
@@ -25,6 +27,11 @@ Future<void> main() async {
 
   await _applyPendingOAuthUserType();
   await Appearance.instance.load();
+  AccountGuard.check();
+  ErrorReporter.install();
+  supabase.auth.onAuthStateChange.listen((data) {
+    if (data.event == AuthChangeEvent.signedIn) AccountGuard.check();
+  });
 
   // Phone app: coming back from Google or Apple in the browser signs the person in
   // without restarting, so set up their account and open their home here.
@@ -34,7 +41,7 @@ Future<void> main() async {
       SocialAuth.pending = false;
       await _applyPendingOAuthUserType();
       await SocialAuth.ensureProfile();
-      appRouter.go('/');
+      if (!await AccountGuard.check()) appRouter.go('/');
     });
   }
 
@@ -97,6 +104,32 @@ class _BeautyAppState extends State<BeautyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     Appearance.instance.addListener(_onAppearance);
+    if (kIsWeb) WidgetsBinding.instance.addPostFrameCallback((_) => _restoreBackStack());
+  }
+
+  static const _tabs = {
+    '/home', '/browse', '/client/bookings', '/favorites',
+    '/provider/home', '/provider/calendar', '/provider/clients', '/provider/profile',
+    '/login', '/register', '/welcome', '/',
+  };
+
+  /// A refreshed or pasted link opens a page on its own, with no back arrow.
+  /// Put the right home screen underneath it so back works like in the app.
+  void _restoreBackStack() {
+    try {
+      if (supabase.auth.currentSession == null || appRouter.canPop()) return;
+      final uri = appRouter.routerDelegate.currentConfiguration.uri;
+      final path = uri.path;
+      if (_tabs.contains(path) || path.startsWith('/@')) return;
+      final home = path.startsWith('/admin/') && path != '/admin/dashboard'
+          ? '/admin/dashboard'
+          : supabase.auth.currentUser?.userMetadata?['user_type'] == 'provider'
+              ? '/provider/home'
+              : '/home';
+      if (path == home) return;
+      appRouter.go(home);
+      appRouter.push(uri.toString());
+    } catch (_) {}
   }
 
   @override
@@ -107,6 +140,12 @@ class _BeautyAppState extends State<BeautyApp> with WidgetsBindingObserver {
   }
 
   void _onAppearance() => setState(() {});
+
+  // Back in the app: make sure the account wasn't suspended meanwhile.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) AccountGuard.check();
+  }
 
   // Phone switched between light and dark
   @override

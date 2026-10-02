@@ -17,6 +17,7 @@ class SocialAuth {
   static Future<void> start({OAuthProvider provider = OAuthProvider.google, String? userType}) async {
     final prefs = await SharedPreferences.getInstance();
     if (userType != null) await prefs.setString('pending_user_type', userType);
+    await prefs.setBool('signup_choice_made', userType != null);
     pending = !kIsWeb;
     await supabase.auth.signInWithOAuth(
       provider,
