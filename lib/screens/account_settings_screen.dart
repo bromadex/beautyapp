@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show UserAttributes, AuthException;
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/legal.dart';
 import '../widgets/avatar_widget.dart';
 import '../widgets/ui.dart';
 import '../services/appearance.dart';
@@ -510,6 +511,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           ? 'Make your profile visible again'
                           : 'Temporarily hide your profile. You can reactivate anytime.',
                       onTap: _toggleDeactivation,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+
+                    // About
+                    Text('About', style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5,
+                    )),
+                    const SizedBox(height: AppSpacing.md),
+                    _SettingsTile(
+                      icon: TablerIcons.shield_lock,
+                      iconColor: AppColors.info,
+                      title: 'Privacy Policy',
+                      subtitle: 'What we collect, who sees it and your choices',
+                      onTap: openPrivacyPolicy,
                     ),
                     const SizedBox(height: AppSpacing.xxl),
 

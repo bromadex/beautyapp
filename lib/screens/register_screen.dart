@@ -8,6 +8,7 @@ import '../widgets/apple_sign_in_button.dart';
 import '../widgets/role_card.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/legal.dart';
 import '../widgets/ui.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -604,7 +605,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
 
-                          const SizedBox(height: AppSpacing.xl),
+                          const SizedBox(height: AppSpacing.lg),
+                          const PrivacyNotice(),
+                          const SizedBox(height: AppSpacing.md),
                           Center(
                             child: TextButton(
                               onPressed: () => context.go('/login'),

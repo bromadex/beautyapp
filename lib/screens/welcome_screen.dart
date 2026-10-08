@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/referral_service.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/legal.dart';
 import '../widgets/role_card.dart';
 import '../widgets/ui.dart';
 
@@ -174,10 +175,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: FilledButton(
-                  onPressed: _saving ? null : _finish,
-                  child: Text(_saving ? 'Saving…' : 'Continue'),
-                ),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const PrivacyNotice(lead: 'By continuing you agree to our '),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _finish,
+                      child: Text(_saving ? 'Saving…' : 'Continue'),
+                    ),
+                  ),
+                ]),
               ),
             ),
     );
