@@ -469,7 +469,6 @@ class _ProviderPublicProfileScreenState
     final name = _profile?['full_name'] ?? 'Provider';
     final status = _providerProfile?['availability_status'] ?? 'offline';
     final bio = _providerProfile?['bio'] ?? '';
-    final address = _providerProfile?['address'] ?? '';
 
     Color statusColor;
     switch (status) {
@@ -487,7 +486,8 @@ class _ProviderPublicProfileScreenState
     final total = (_providerProfile?['total_reviews'] as num?)?.toInt() ?? 0;
     final idVerified = _profile?['is_verified'] == true;
     final bizVerified = _profile?['is_business_verified'] == true;
-    final location = address.isNotEmpty ? address : (_profile?['location'] ?? '').toString();
+    // Area and city only. The street address is private until a booking is confirmed.
+    final location = (_profile?['location'] ?? '').toString();
     final isSelf = _isLoggedIn && supabase.auth.currentUser!.id == widget.providerId;
 
     final title = (_providerProfile?['title'] ?? '').toString();
