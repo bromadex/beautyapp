@@ -34,7 +34,7 @@ class AccountGuard {
 
   static const message =
       'This account has been suspended for breaking BeauTap\'s rules. If you think this is a mistake, '
-      'WhatsApp BeauTap on 0783 778 833.';
+      'WhatsApp BeauTap on 0783 778 833 or email hairdressingzim@gmail.com.';
 
   static void showIfSuspended(BuildContext context) {
     if (!justSuspended) return;

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/social_auth.dart';
 import '../widgets/apple_sign_in_button.dart';
 import '../widgets/role_card.dart';
+import '../widgets/specialties.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
 import '../utils/legal.dart';
@@ -133,6 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'bio': '',
             'address': _locationCtrl.text.trim(),
           }, onConflict: 'provider_id');
+          await Specialties.save(userId, _selectedCategories);
         }
       }
 
@@ -353,64 +355,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             _buildSectionLabel('Your specialties'),
                             const SizedBox(height: AppSpacing.sm),
                             Text(
-                              'Select the services you offer',
+                              'Pick up to ${Specialties.max}. Clients see these on your profile.',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppColors.textTertiary,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            Wrap(
-                              spacing: AppSpacing.sm,
-                              runSpacing: AppSpacing.sm,
-                              children: _categories.map((cat) {
-                                final id = cat['id'] as String;
-                                final selected = _selectedCategories.contains(
-                                  id,
-                                );
-                                return FilterChip(
-                                  label: Text(
-                                    '${cat['name']}',
-                                  ),
-                                  selected: selected,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      if (selected) {
-                                        _selectedCategories.remove(id);
-                                      } else {
-                                        _selectedCategories.add(id);
-                                      }
-                                    });
-                                  },
-                                  selectedColor: AppColors.primary.withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  checkmarkColor: AppColors.primary,
-                                  labelStyle: TextStyle(
-                                    color: selected
-                                        ? AppColors.primary
-                                        : AppColors.textPrimary,
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                    fontSize: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: AppRadius.mdAll,
-                                    side: BorderSide(
-                                      color: selected
-                                          ? AppColors.primary.withValues(
-                                              alpha: 0.3,
-                                            )
-                                          : AppColors.borderStrong,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.sm,
-                                    vertical: AppSpacing.xs,
-                                  ),
-                                );
-                              }).toList(),
+                            SpecialtyPicker(
+                              value: _selectedCategories,
+                              onChanged: (v) => setState(() => _selectedCategories
+                                ..clear()
+                                ..addAll(v)),
                             ),
                           ],
 

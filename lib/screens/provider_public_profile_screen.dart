@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/specialties.dart';
 import '../services/guest_service.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart' show shareOnWhatsApp;
@@ -682,6 +683,8 @@ class _ProviderPublicProfileScreenState
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                   ],
+
+                  SpecialtyChips(ids: Specialties.from(_providerProfile?['specialties'])),
 
                   if (_salon != null) ...[
                     InkWell(

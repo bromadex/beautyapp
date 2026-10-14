@@ -9,6 +9,7 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../utils/legal.dart';
 import '../widgets/role_card.dart';
+import '../widgets/specialties.dart';
 import '../widgets/ui.dart';
 
 /// Shown once after a first Google or Apple sign-in, which skips the sign-up
@@ -29,6 +30,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   String _name = '';
   final _phoneCtrl = TextEditingController();
   final _refCtrl = TextEditingController();
+  Set<String> _specialties = {};
 
   @override
   void initState() {
@@ -92,6 +94,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           onConflict: 'provider_id',
           ignoreDuplicates: true,
         );
+        if (_specialties.isNotEmpty) await Specialties.save(uid, _specialties);
       }
       await supabase.auth.updateUser(UserAttributes(data: {'user_type': type}));
       if (type == 'provider' && _refCtrl.text.trim().isNotEmpty && mounted) {
@@ -148,7 +151,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 ),
               ),
               if (pro) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
+                const Text('What do you specialise in?', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text('Pick up to ${Specialties.max}. Clients see these on your profile.',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(height: 10),
+                SpecialtyPicker(value: _specialties, onChanged: (v) => setState(() => _specialties = v)),
+                const SizedBox(height: 18),
                 TextField(
                   controller: _refCtrl,
                   textCapitalization: TextCapitalization.characters,

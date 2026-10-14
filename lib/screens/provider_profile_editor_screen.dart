@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/specialties.dart';
 import '../widgets/avatar_widget.dart';
 
 class ProviderProfileEditorScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _ProviderProfileEditorScreenState
   bool _radiusSupported = true;
   bool _loading = false;
   bool _saving  = false;
+  Set<String> _specialties = {};
   String? _avatarUrl;
   String _fullName = '';
 
@@ -58,6 +60,7 @@ class _ProviderProfileEditorScreenState
       _bioCtrl.text     = data['bio']     ?? '';
       _titleCtrl.text   = data['title']   ?? '';
       _gender           = data['gender'];
+      _specialties      = Specialties.from(data['specialties']);
       _addressCtrl.text = [data['area'], (data['cities'] as Map?)?['name']].where((x) => (x ?? '').toString().isNotEmpty).join(', ');
       _latCtrl.text     = data['latitude']?.toString()  ?? '';
       _lngCtrl.text     = data['longitude']?.toString() ?? '';
@@ -87,6 +90,7 @@ class _ProviderProfileEditorScreenState
       await supabase
           .from('provider_profiles')
           .upsert(payload, onConflict: 'provider_id');
+      await Specialties.save(userId, _specialties);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -267,6 +271,15 @@ class _ProviderProfileEditorScreenState
                       v == null || v.trim().isEmpty ? 'Please add a bio' : null,
                 ),
               ),
+
+              _buildSectionDivider(),
+
+              // -- Specialties --
+              _buildSectionHeader('What you specialise in', TablerIcons.sparkles),
+              Text('Pick up to ${Specialties.max}. Clients see these on your profile.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: AppSpacing.sm),
+              SpecialtyPicker(value: _specialties, onChanged: (v) => setState(() => _specialties = v)),
 
               _buildSectionDivider(),
 
