@@ -237,7 +237,7 @@ class _SlotPickerState extends State<SlotPicker> {
     if (_loadingDays) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator.adaptive()),
       );
     }
     final anyOpen = _days.any((d) => d.slots > 0);
@@ -258,7 +258,7 @@ class _SlotPickerState extends State<SlotPicker> {
                   onPressed: _loadingMore ? null : () => _loadDays(),
                   style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll)),
                   child: _loadingMore
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
                       : const Text('More\ndates', textAlign: TextAlign.center, style: TextStyle(fontSize: 13)),
                 ),
               );
@@ -326,7 +326,7 @@ class _SlotPickerState extends State<SlotPicker> {
         if (_loadingSlots)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: CircularProgressIndicator.adaptive()),
           )
         else if (_slots.isEmpty)
           _waitlistBox(_selectedDay!)

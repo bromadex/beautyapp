@@ -191,7 +191,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
             child: _saving
                 ? const SizedBox(
                     width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator.adaptive(strokeWidth: 2))
                 : const Text('Save', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
@@ -289,7 +289,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         children: [
           SizedBox(
             width: 24,
-            child: Switch(
+            child: Switch.adaptive(
               value: day.isAvailable,
               onChanged: (v) => setState(() {
                 _days[index] = day.copyWith(isAvailable: v);

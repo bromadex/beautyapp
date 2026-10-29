@@ -175,11 +175,11 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         Expanded(
           child: _loading
               ? const LoadingPlaceholder()
-              : RefreshIndicator(
+              : RefreshIndicator.adaptive(
                   onRefresh: _load,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(0, 8, 16, 96),
+                    padding: EdgeInsets.fromLTRB(0, 8, 16, 80 + tabBarSpace(context)),
                     child: SizedBox(
                       height: (endH - startH) * _hourHeight + 12,
                       child: Stack(clipBehavior: Clip.none, children: [

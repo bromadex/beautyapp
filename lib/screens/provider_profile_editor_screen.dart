@@ -167,7 +167,7 @@ class _ProviderProfileEditorScreenState
       return Scaffold(
         appBar: AppBar(title: const Text('Edit Profile')),
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
         ),
       );
     }
@@ -332,7 +332,7 @@ class _ProviderProfileEditorScreenState
                           ),
                         ],
                       ),
-                      Slider(
+                      Slider.adaptive(
                         value: _radiusKm,
                         min: 2,
                         max: 50,
@@ -371,9 +371,9 @@ class _ProviderProfileEditorScreenState
                       ? const SizedBox(
                           height: 18,
                           width: 18,
-                          child: CircularProgressIndicator(
+                          child: CircularProgressIndicator.adaptive(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
                           ),
                         )
                       : const Icon(TablerIcons.device_floppy),

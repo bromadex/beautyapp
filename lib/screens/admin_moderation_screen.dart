@@ -116,9 +116,9 @@ class _AdminModerationScreenState extends State<AdminModerationScreen> {
         body: _loading
             ? const LoadingPlaceholder()
             : TabBarView(children: [
-                RefreshIndicator(onRefresh: _load, child: _buildReported()),
-                RefreshIndicator(onRefresh: _load, child: _buildFlagged()),
-                RefreshIndicator(onRefresh: _load, child: _buildDemand()),
+                RefreshIndicator.adaptive(onRefresh: _load, child: _buildReported()),
+                RefreshIndicator.adaptive(onRefresh: _load, child: _buildFlagged()),
+                RefreshIndicator.adaptive(onRefresh: _load, child: _buildDemand()),
               ]),
       ),
     );

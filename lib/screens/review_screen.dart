@@ -226,7 +226,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (_loading) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
         ),
       );
     }
@@ -460,7 +460,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ? SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                        child: CircularProgressIndicator.adaptive(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)),
                       )
                     : const Text('Submit Review'),
               ),

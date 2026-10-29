@@ -131,7 +131,7 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
       appBar: AppBar(title: const Text('EcoCash fee payments')),
       body: _loading
           ? const LoadingPlaceholder()
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Container(

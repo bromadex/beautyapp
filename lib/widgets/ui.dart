@@ -329,7 +329,158 @@ class ServiceGroup {
 }
 
 /// Bottom tab bar from the design: white bar, gold marker above the active tab.
-/// The floating glass tab bar. Pages stop above it, so nothing hides behind it.
+/// iOS grouped section (Settings style): an optional small grey header,
+/// rows in one rounded white card with hairline dividers, optional footer.
+class IosSection extends StatelessWidget {
+  final String? header;
+  final String? footer;
+  final List<Widget> children;
+  const IosSection({super.key, this.header, this.footer, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0) rows.add(Padding(padding: const EdgeInsets.only(left: 58), child: Divider(height: 0.5, color: AppColors.border)));
+      rows.add(children[i]);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (header != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 7),
+            child: Text(header!.toUpperCase(),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, letterSpacing: 0.1, color: AppColors.textSecondary)),
+          ),
+        Material(
+          color: AppColors.card,
+          borderRadius: AppRadius.lgAll,
+          clipBehavior: Clip.antiAlias,
+          child: Column(children: rows),
+        ),
+        if (footer != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 7, 16, 0),
+            child: Text(footer!, style: TextStyle(fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
+          ),
+      ]),
+    );
+  }
+}
+
+/// One iOS Settings row: coloured icon square, title, optional subtitle,
+/// optional value on the right, and a grey chevron.
+class IosRow extends StatelessWidget {
+  final IconData? icon;
+  final Color? iconColor;
+  final String title;
+  final String? subtitle;
+  final String? value;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool destructive;
+  const IosRow({
+    super.key,
+    this.icon,
+    this.iconColor,
+    required this.title,
+    this.subtitle,
+    this.value,
+    this.trailing,
+    this.onTap,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final titleColor = destructive ? AppColors.error : AppColors.textPrimary;
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 50),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
+          child: Row(children: [
+            if (icon != null) ...[
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(color: iconColor ?? AppColors.forest, borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, size: 18, color: Colors.white),
+              ),
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(title, style: TextStyle(fontSize: 17, letterSpacing: -0.3, color: titleColor)),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Text(subtitle!, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  ),
+              ]),
+            ),
+            if (value != null) ...[
+              const SizedBox(width: 8),
+              Text(value!, style: TextStyle(fontSize: 17, letterSpacing: -0.3, color: AppColors.textSecondary)),
+            ],
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!]
+            else if (onTap != null && !destructive) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_right_rounded, size: 24, color: AppColors.textTertiary.withValues(alpha: 0.7)),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// iOS Settings icon colours.
+class IosColors {
+  static const red = Color(0xFFFF3B30);
+  static const orange = Color(0xFFFF9500);
+  static const yellow = Color(0xFFFFCC00);
+  static const green = Color(0xFF34C759);
+  static const teal = Color(0xFF30B0C7);
+  static const blue = Color(0xFF007AFF);
+  static const indigo = Color(0xFF5856D6);
+  static const purple = Color(0xFFAF52DE);
+  static const pink = Color(0xFFFF2D55);
+  static const gray = Color(0xFF8E8E93);
+  static const forest = Color(0xFF0F3B31);
+  static const gold = Color(0xFFC8A15A);
+}
+
+/// iOS large-title navigation bar for tab pages: the bar itself stays
+/// empty (actions on the right) and the 34pt bold title sits under it, on
+/// the left, like Mail, Settings and Photos.
+AppBar largeTitleBar(BuildContext context, String title, {List<Widget>? actions, PreferredSizeWidget? bottom}) {
+  final bottomH = bottom?.preferredSize.height ?? 0;
+  return AppBar(
+    automaticallyImplyLeading: false,
+    toolbarHeight: 44,
+    actions: actions,
+    bottom: PreferredSize(
+      preferredSize: Size.fromHeight(50 + bottomH),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.displaySmall),
+        ),
+        ?bottom,
+      ]),
+    ),
+  );
+}
+
+/// Room to leave at the end of a tab page's list so the last item can
+/// scroll clear of the floating tab bar (content runs under the glass).
+double tabBarSpace(BuildContext context) => MediaQuery.paddingOf(context).bottom + 12;
+
+/// The iOS 26 tab bar: a floating Liquid Glass capsule. Content scrolls
+/// underneath it, blurred; the open tab sits in a soft glass lens, in the tint.
 class BeauNavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
@@ -340,15 +491,14 @@ class BeauNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 10),
+      minimum: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
         child: GlassBar(
-          radius: 34,
-          blur: false,
-          padding: const EdgeInsets.all(6),
+          radius: 32,
+          padding: const EdgeInsets.all(4),
           child: SizedBox(
-            height: 58,
+            height: 56,
             child: Row(children: [
               for (var i = 0; i < items.length; i++)
                 Expanded(child: _NavItem(item: items[i], selected: i == index, onTap: () => onTap(i))),
@@ -368,33 +518,33 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? (AppColors.isDark ? Colors.white : AppColors.forest) : AppColors.textSecondary;
+    final dark = AppColors.isDark;
+    final color = selected ? AppColors.primary : AppColors.textPrimary;
     return Semantics(
       selected: selected,
       button: true,
       label: item.label,
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(29),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 260),
           curve: const Cubic(0.22, 0.8, 0.3, 1),
-          margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
-            color: selected ? (AppColors.isDark ? const Color(0x26FFFFFF) : const Color(0x170F3B31)) : Colors.transparent,
-            borderRadius: BorderRadius.circular(29),
+            color: selected ? (dark ? const Color(0x24FFFFFF) : const Color(0x14000000)) : Colors.transparent,
+            borderRadius: BorderRadius.circular(28),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Badge(
               isLabelVisible: item.badge > 0,
               label: Text('${item.badge}'),
-              child: Icon(item.icon, size: 23, color: color),
+              child: Icon(item.icon, size: 24, color: color),
             ),
             const SizedBox(height: 2),
             Text(item.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, color: color)),
+                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 0, color: color)),
           ]),
         ),
       ),

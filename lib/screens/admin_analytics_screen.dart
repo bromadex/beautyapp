@@ -128,7 +128,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       ),
       body: _loading
           ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               onRefresh: _loadAnalytics,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

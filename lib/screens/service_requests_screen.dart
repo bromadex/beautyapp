@@ -92,7 +92,7 @@ class _ServiceRequestsScreenState extends State<ServiceRequestsScreen> {
                     ],
                   ),
                 )
-              : RefreshIndicator(
+              : RefreshIndicator.adaptive(
                   onRefresh: _load,
                   child: ListView.builder(
                     padding: AppSpacing.screenPadding,

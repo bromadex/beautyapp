@@ -143,7 +143,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             ),
       body: _loading
           ? const LoadingPlaceholder()
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
                 Container(
@@ -252,7 +252,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                               ]),
                             ),
                           ),
-                          Switch(
+                          Switch.adaptive(
                             value: p['is_active'] == true,
                             onChanged: (v) {
                               if (v && full) {

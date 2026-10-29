@@ -366,7 +366,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
           ? const LoadingPlaceholder()
           : _promotions.isEmpty
               ? _buildEmptyState()
-              : RefreshIndicator(
+              : RefreshIndicator.adaptive(
                   color: AppColors.primary,
                   onRefresh: _load,
                   child: ListView.separated(

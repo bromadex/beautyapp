@@ -195,7 +195,7 @@ class _PaymentWaitDialogState extends State<_PaymentWaitDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: AppSpacing.md),
-          CircularProgressIndicator(color: AppColors.primary),
+          CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
           const SizedBox(height: AppSpacing.xl),
           Text(
             widget.isMobileMoney

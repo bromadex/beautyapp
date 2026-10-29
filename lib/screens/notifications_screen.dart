@@ -201,7 +201,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ? const LoadingPlaceholder()
           : _notifications.isEmpty
               ? _buildEmptyState()
-              : RefreshIndicator(
+              : RefreshIndicator.adaptive(
                   color: AppColors.primary,
                   onRefresh: _load,
                   child: ListView.separated(

@@ -59,7 +59,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
     final totalSpend = _clients.fold<num>(0, (s, c) => s + ((c['total_spent'] as num?) ?? 0));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clients')),
+      appBar: largeTitleBar(context, 'Clients'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/provider/add-booking');
@@ -70,7 +70,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
       ),
       body: _loading
           ? const LoadingPlaceholder()
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               onRefresh: _load,
               child: _clients.isEmpty
                   ? ListView(children: const [
@@ -81,7 +81,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                         message: 'Everyone who books you, in the app or added by you, shows up here with their visits and spend.',
                       ),
                     ])
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 100), children: [
+                  : ListView(padding: EdgeInsets.fromLTRB(16, 4, 16, 80 + tabBarSpace(context)), children: [
                       Row(children: [
                         Expanded(child: _Stat(value: '${_clients.length}', label: 'Clients')),
                         const SizedBox(width: 10),

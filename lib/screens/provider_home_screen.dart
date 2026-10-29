@@ -363,7 +363,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(width: 40, height: 40,
-                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primary)),
+                child: CircularProgressIndicator.adaptive(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(AppColors.primary))),
               const SizedBox(height: 16),
               Text('Loading...', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
             ],
@@ -522,7 +522,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 12 + tabBarSpace(context)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

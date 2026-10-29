@@ -144,13 +144,13 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
 
 
     return Scaffold(
-      body: RefreshIndicator(
+      body: RefreshIndicator.adaptive(
         onRefresh: _loadData,
         child: FadeTransition(
           opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
+            padding: EdgeInsets.only(bottom: tabBarSpace(context)),
             children: [
               ForestHeader(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),

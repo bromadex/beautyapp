@@ -86,7 +86,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
           ? EmptyState(icon: TablerIcons.users, title: 'Can\'t load referrals', message: _error!, actionLabel: 'Try again', onAction: _load)
           : _data == null
               ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
-              : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
+              : RefreshIndicator.adaptive(onRefresh: _load, child: _body(_data!)),
     );
   }
 

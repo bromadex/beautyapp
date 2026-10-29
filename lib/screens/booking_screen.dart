@@ -763,7 +763,7 @@ class _BookingScreenState extends State<BookingScreen> {
           child: TextButton.icon(
             onPressed: _locating ? null : _useMyLocation,
             icon: _locating
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator.adaptive(strokeWidth: 2))
                 : const Icon(TablerIcons.current_location, size: 18),
             label: Text(_lat == null
                 ? 'Use my location to work out travel fee'
@@ -1024,7 +1024,7 @@ class _BottomBar extends StatelessWidget {
                 onPressed: onPressed,
                 child: busy
                     ? SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary))
+                        width: 20, height: 20, child: CircularProgressIndicator.adaptive(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)))
                     : Text(label, overflow: TextOverflow.ellipsis),
               ),
             ),

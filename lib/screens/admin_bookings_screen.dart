@@ -175,7 +175,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             )
           else
             Expanded(
-              child: RefreshIndicator(
+              child: RefreshIndicator.adaptive(
                 onRefresh: _loadBookings,
                 child: ListView.separated(
                   padding: AppSpacing.screenPadding,

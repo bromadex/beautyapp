@@ -178,7 +178,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen>
                 ),
                 const SizedBox(height: 4),
                 Text('"My place" means your salon or your home.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                SwitchListTile(
+                SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Patch test needed', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   subtitle: const Text('Clients are told to do a patch test 24–48 h before', style: TextStyle(fontSize: 12.5)),

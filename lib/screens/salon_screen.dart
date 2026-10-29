@@ -144,7 +144,7 @@ class _SalonScreenState extends State<SalonScreen> {
       appBar: AppBar(title: const Text('Salon')),
       body: _loading
           ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
-          : RefreshIndicator(onRefresh: _load, child: _salon == null ? _noSalon() : _mySalon(_salon!)),
+          : RefreshIndicator.adaptive(onRefresh: _load, child: _salon == null ? _noSalon() : _mySalon(_salon!)),
     );
   }
 

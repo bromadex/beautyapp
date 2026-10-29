@@ -82,10 +82,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Favourite pros')),
+      appBar: largeTitleBar(context, 'Saved'),
       body: _loading
           ? const LoadingPlaceholder()
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               color: AppColors.primary,
               onRefresh: _load,
               child: _favorites.isEmpty
@@ -133,7 +133,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ],
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 4 + tabBarSpace(context)),
                       itemCount: _favorites.length,
                       itemBuilder: (_, i) {
                         final fav = _favorites[i];

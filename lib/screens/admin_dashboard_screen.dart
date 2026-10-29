@@ -145,7 +145,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       body: _loading
           ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
-          : RefreshIndicator(
+          : RefreshIndicator.adaptive(
               onRefresh: _loadStats,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

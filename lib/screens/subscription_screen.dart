@@ -679,8 +679,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ? SizedBox(
                 height: 18,
                 width: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.onPrimary),
+                child: CircularProgressIndicator.adaptive(
+                    strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)),
               )
             : const Icon(TablerIcons.rocket),
         label: Text(label,

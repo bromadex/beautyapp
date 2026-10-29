@@ -71,15 +71,12 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
     final hasActiveSub = _subscription != null && _subscription!['status'] == 'active';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Me'),
-        automaticallyImplyLeading: false,
-      ),
+      appBar: largeTitleBar(context, 'Me'),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
           child: ListView(
-            padding: AppSpacing.screenPadding,
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4 + tabBarSpace(context)),
             children: [
               // Profile header
               Container(
@@ -133,172 +130,139 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
-              _HubTile(
-                icon: TablerIcons.wallet,
-                label: 'Earnings',
-                subtitle: 'What you\'ve made, by week and month',
-                onTap: () => context.push('/earnings'),
-              ),
-              _HubTile(
-                icon: TablerIcons.list,
-                label: 'All bookings',
-                subtitle: 'Requests, upcoming and past bookings',
-                onTap: () => context.push('/provider/bookings'),
-              ),
-              _HubTile(
-                icon: TablerIcons.user,
-                label: 'Edit Profile',
-                subtitle: 'Bio, location, service radius',
-                onTap: () => context.push('/provider/profile/edit'),
-              ),
-              _HubTile(
-                icon: TablerIcons.scissors,
-                label: 'My Services',
-                subtitle: 'Manage what you offer and pricing',
-                onTap: () => context.push('/provider/services'),
-              ),
-              _HubTile(
-                icon: TablerIcons.photo,
-                label: 'Gallery',
-                subtitle: 'Showcase your work',
-                onTap: () => context.push('/provider/gallery'),
-              ),
-              _HubTile(
-                icon: TablerIcons.clock,
-                label: 'Working Hours',
-                subtitle: 'Set your schedule and blocked dates',
-                onTap: () => context.push('/provider/availability'),
-              ),
-              _HubTile(
-                icon: TablerIcons.tag,
-                label: 'Promotions',
-                subtitle: 'Create discounts and offers',
-                onTap: () => context.push('/provider/promotions'),
-              ),
-              _HubTile(
-                icon: TablerIcons.map_pin,
-                label: 'Where you work',
-                subtitle: 'Your city and area. Change it if you move',
-                onTap: () => context.push('/provider/location'),
-              ),
-              _HubTile(
-                icon: TablerIcons.shopping_bag,
-                label: 'Products',
-                subtitle: 'Advertise what you sell. 3 free',
-                onTap: () => context.push('/provider/products'),
-              ),
-              _HubTile(
-                icon: TablerIcons.building_store,
-                label: 'Salon',
-                subtitle: 'Create or join a salon. One plan for up to 8',
-                onTap: () => context.push('/provider/salon'),
-              ),
-              _HubTile(
-                icon: TablerIcons.gift,
-                label: 'Invite pros',
-                subtitle: 'Invite 2 pros, get 2 months free',
-                onTap: () => context.push('/provider/referrals'),
-              ),
-              _HubTile(
-                icon: TablerIcons.crown,
-                label: 'Subscription',
-                subtitle: hasActiveSub ? 'Manage your plan' : 'Subscribe to appear in search',
-                onTap: () => context.push('/provider/subscription'),
-              ),
-              _HubTile(
-                icon: TablerIcons.star,
-                label: 'My Reviews',
-                subtitle: 'See what clients say about you',
-                onTap: () => context.push('/provider/$uid/reviews'),
-              ),
-              _HubTile(
-                icon: TablerIcons.eye,
-                label: 'Public Profile',
-                subtitle: 'View your profile as clients see it',
-                onTap: () => context.push('/provider/$uid'),
-              ),
-              _HubTile(
-                icon: TablerIcons.adjustments_horizontal,
-                label: 'Business Settings',
-                subtitle: 'Travel fees, cancellation, buffer time',
-                onTap: () => context.push('/provider/settings'),
-              ),
-              _HubTile(
-                icon: TablerIcons.file_invoice,
-                label: 'Service Requests',
-                subtitle: 'Browse and quote on client requests',
-                onTap: () => context.push('/provider/service-requests'),
-              ),
-              _HubTile(
-                icon: TablerIcons.settings,
-                label: 'Account Settings',
-                subtitle: 'Deactivate or delete your account',
-                onTap: () => context.push('/account/settings'),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              OutlinedButton.icon(
-                onPressed: _signOut,
-                icon: const Icon(TablerIcons.logout, size: 18),
-                label: const Text('Sign Out'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: BorderSide(color: AppColors.error.withValues(alpha: 0.4)),
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-                ),
-              ),
+              IosSection(header: 'Money and bookings', children: [
+                  IosRow(
+                    icon: TablerIcons.wallet,
+                    iconColor: IosColors.green,
+                    title: 'Earnings',
+                    subtitle: 'What you\'ve made, by week and month',
+                    onTap: () => context.push('/earnings'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.list,
+                    iconColor: IosColors.blue,
+                    title: 'All bookings',
+                    subtitle: 'Requests, upcoming and past bookings',
+                    onTap: () => context.push('/provider/bookings'),
+                  ),
+              ]),
+              IosSection(header: 'Your profile', children: [
+                  IosRow(
+                    icon: TablerIcons.user,
+                    iconColor: IosColors.gray,
+                    title: 'Edit Profile',
+                    subtitle: 'Bio, location, service radius',
+                    onTap: () => context.push('/provider/profile/edit'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.scissors,
+                    iconColor: IosColors.forest,
+                    title: 'My Services',
+                    subtitle: 'Manage what you offer and pricing',
+                    onTap: () => context.push('/provider/services'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.photo,
+                    iconColor: IosColors.pink,
+                    title: 'Gallery',
+                    subtitle: 'Showcase your work',
+                    onTap: () => context.push('/provider/gallery'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.clock,
+                    iconColor: IosColors.orange,
+                    title: 'Working Hours',
+                    subtitle: 'Set your schedule and blocked dates',
+                    onTap: () => context.push('/provider/availability'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.map_pin,
+                    iconColor: IosColors.red,
+                    title: 'Where you work',
+                    subtitle: 'Your city and area. Change it if you move',
+                    onTap: () => context.push('/provider/location'),
+                  ),
+              ]),
+              IosSection(header: 'Grow your business', children: [
+                  IosRow(
+                    icon: TablerIcons.crown,
+                    iconColor: IosColors.forest,
+                    title: 'Subscription',
+                    subtitle: hasActiveSub ? 'Manage your plan' : 'Subscribe to appear in search',
+                    onTap: () => context.push('/provider/subscription'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.tag,
+                    iconColor: IosColors.purple,
+                    title: 'Promotions',
+                    subtitle: 'Create discounts and offers',
+                    onTap: () => context.push('/provider/promotions'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.shopping_bag,
+                    iconColor: IosColors.teal,
+                    title: 'Products',
+                    subtitle: 'Advertise what you sell. 3 free',
+                    onTap: () => context.push('/provider/products'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.building_store,
+                    iconColor: IosColors.indigo,
+                    title: 'Salon',
+                    subtitle: 'Create or join a salon. One plan for up to 8',
+                    onTap: () => context.push('/provider/salon'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.gift,
+                    iconColor: IosColors.gold,
+                    title: 'Invite pros',
+                    subtitle: 'Invite 2 pros, get 2 months free',
+                    onTap: () => context.push('/provider/referrals'),
+                  ),
+              ]),
+              IosSection(header: 'Clients', children: [
+                  IosRow(
+                    icon: TablerIcons.star,
+                    iconColor: IosColors.yellow,
+                    title: 'My Reviews',
+                    subtitle: 'See what clients say about you',
+                    onTap: () => context.push('/provider/$uid/reviews'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.eye,
+                    iconColor: IosColors.blue,
+                    title: 'Public Profile',
+                    subtitle: 'View your profile as clients see it',
+                    onTap: () => context.push('/provider/$uid'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.file_invoice,
+                    iconColor: IosColors.teal,
+                    title: 'Service Requests',
+                    subtitle: 'Browse and quote on client requests',
+                    onTap: () => context.push('/provider/service-requests'),
+                  ),
+              ]),
+              IosSection(children: [
+                  IosRow(
+                    icon: TablerIcons.adjustments_horizontal,
+                    iconColor: IosColors.gray,
+                    title: 'Business Settings',
+                    subtitle: 'Travel fees, cancellation, buffer time',
+                    onTap: () => context.push('/provider/settings'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.settings,
+                    iconColor: IosColors.gray,
+                    title: 'Account Settings',
+                    subtitle: 'Deactivate or delete your account',
+                    onTap: () => context.push('/account/settings'),
+                  ),
+              ]),
+              IosSection(children: [
+                IosRow(title: 'Sign Out', destructive: true, onTap: _signOut),
+              ]),
               const SizedBox(height: AppSpacing.xxxl),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HubTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
-  const _HubTile({required this.icon, required this.label, required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.mdAll,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: AppRadius.mdAll,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42, height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                  ],
-                ),
-              ),
-              Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
             ],
           ),
         ),

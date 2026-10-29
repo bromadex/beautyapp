@@ -225,8 +225,8 @@ class _DisputeScreenState extends State<DisputeScreen> {
                         ? SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.onPrimary))
+                            child: CircularProgressIndicator.adaptive(
+                                strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)))
                         : const Icon(TablerIcons.send),
                     label: Text(
                         _submitting ? 'Submitting...' : 'Submit Report'),

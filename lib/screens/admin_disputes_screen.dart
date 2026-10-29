@@ -270,7 +270,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                   ? Center(
                       child: Text('No ${_filters[_filter]!.toLowerCase()} disputes',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)))
-                  : RefreshIndicator(
+                  : RefreshIndicator.adaptive(
                       onRefresh: _load,
                       child: ListView.separated(
                         padding: AppSpacing.screenPadding,

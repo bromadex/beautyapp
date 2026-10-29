@@ -146,8 +146,8 @@ class _AdminVerificationScreenState
             color: AppColors.card,
             borderRadius: AppRadius.lgAll,
           ),
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
+          child: CircularProgressIndicator.adaptive(
+            valueColor: AlwaysStoppedAnimation(AppColors.primary),
           ),
         ),
       ),
@@ -265,7 +265,7 @@ class _AdminVerificationScreenState
       ),
       body: _loading
           ? Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
+              child: CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
             )
           : _pending.isEmpty
               ? _buildEmptyState()

@@ -360,7 +360,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
+                  CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
                   const SizedBox(height: 16),
                   Text('Please wait...', style: TextStyle(color: AppColors.textTertiary)),
                 ],
@@ -470,7 +470,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+                    Text('APPEARANCE', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
                     ValueListenableBuilder<AppearanceMode>(
                       valueListenable: Appearance.instance,
@@ -497,9 +497,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     // Deactivate section
-                    Text('Account Status', style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5,
-                    )),
+                    Text('ACCOUNT STATUS', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     _SettingsTile(
                       icon: _isDeactivated
@@ -515,9 +513,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     // About
-                    Text('About', style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.5,
-                    )),
+                    Text('ABOUT', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     _SettingsTile(
                       icon: TablerIcons.shield_lock,
@@ -529,9 +525,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: AppSpacing.xxl),
 
                     // Danger zone
-                    Text('Danger Zone', style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error, letterSpacing: 0.5,
-                    )),
+                    Text('DANGER ZONE', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: AppSpacing.md),
                     _SettingsTile(
                       icon: TablerIcons.trash_x,
@@ -570,48 +564,16 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.mdAll,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: isDanger ? AppColors.error.withValues(alpha: 0.03) : AppColors.card,
-          borderRadius: AppRadius.mdAll,
-          border: Border.all(
-            color: isDanger
-                ? AppColors.error.withValues(alpha: 0.2)
-                : AppColors.border,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600,
-                    color: isDanger ? AppColors.error : AppColors.textPrimary,
-                  )),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                ],
-              ),
-            ),
-            Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
-          ],
-        ),
+    // One iOS Settings row in its own grouped section.
+    return IosSection(children: [
+      IosRow(
+        icon: icon,
+        iconColor: isDanger ? IosColors.red : iconColor,
+        title: title,
+        subtitle: subtitle,
+        destructive: isDanger,
+        onTap: onTap,
       ),
-    );
+    ]);
   }
 }

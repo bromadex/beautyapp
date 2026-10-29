@@ -140,7 +140,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator.adaptive())
                   : ListView(
                       controller: scrollCtrl,
                       padding: const EdgeInsets.symmetric(

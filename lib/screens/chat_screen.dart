@@ -265,7 +265,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_loading) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
+          child: CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
         ),
       );
     }
@@ -524,9 +524,9 @@ class _ChatScreenState extends State<ChatScreen> {
                               width: 44,
                               height: 44,
                               padding: const EdgeInsets.all(10),
-                              child: CircularProgressIndicator(
+                              child: CircularProgressIndicator.adaptive(
                                 strokeWidth: 2,
-                                color: AppColors.primary,
+                                valueColor: AlwaysStoppedAnimation(AppColors.primary),
                               ),
                             )
                           : Container(

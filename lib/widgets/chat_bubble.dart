@@ -71,9 +71,9 @@ class ChatBubble extends StatelessWidget {
                                       borderRadius: AppRadius.mdAll,
                                     ),
                                     child: Center(
-                                      child: CircularProgressIndicator(
+                                      child: CircularProgressIndicator.adaptive(
                                         strokeWidth: 2,
-                                        color: AppColors.primary,
+                                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
                                       ),
                                     ),
                                   ),

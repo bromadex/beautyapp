@@ -17,6 +17,8 @@ class ProviderShell extends StatelessWidget {
         if (!didPop) navigationShell.goBranch(0);
       },
       child: Scaffold(
+      // Content runs under the floating glass tab bar, like iOS 26.
+      extendBody: true,
       body: navigationShell,
       bottomNavigationBar: BeauNavBar(
         index: navigationShell.currentIndex,

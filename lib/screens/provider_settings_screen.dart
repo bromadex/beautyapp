@@ -307,7 +307,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text('Reward regulars. You choose the reward and you fund it, so it comes off your price, not BeauTap\'s.',
           style: TextStyle(fontSize: 13, color: AppColors.textTertiary)),
-      SwitchListTile(
+      SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         title: const Text('Stamp card'),
         subtitle: Text(on ? 'On' : 'Off'),
@@ -485,7 +485,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
       _payField(_onemoneyCtrl, 'OneMoney number (optional)', TablerIcons.device_mobile_dollar),
       _payField(_bankCtrl, 'Bank details (optional)', TablerIcons.building_bank,
           hint: 'Bank, account name, account number', type: TextInputType.multiline, maxLines: 3, maxLength: 300),
-      SwitchListTile(
+      SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         value: _acceptsCash,
         onChanged: (v) => setState(() => _acceptsCash = v),
@@ -517,7 +517,7 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                     height: 18,
                     width: 18,
                     child:
-                        CircularProgressIndicator(strokeWidth: 2))
+                        CircularProgressIndicator.adaptive(strokeWidth: 2))
                 : const Text('Save'),
           ),
         ],
@@ -739,8 +739,8 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   ? SizedBox(
                       height: 22,
                       width: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.onPrimary))
+                      child: CircularProgressIndicator.adaptive(
+                          strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)))
                   : const Text('Save Settings'),
             ),
             const SizedBox(height: AppSpacing.xxl),

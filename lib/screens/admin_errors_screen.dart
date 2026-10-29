@@ -172,7 +172,7 @@ class _AdminErrorsScreenState extends State<AdminErrorsScreen> {
                         ]),
                       ),
                     )
-                  : RefreshIndicator(
+                  : RefreshIndicator.adaptive(
                       onRefresh: _load,
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

@@ -286,9 +286,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? SizedBox(
                                     height: 18,
                                     width: 18,
-                                    child: CircularProgressIndicator(
+                                    child: CircularProgressIndicator.adaptive(
                                       strokeWidth: 2,
-                                      color: AppColors.textSecondary,
+                                      valueColor: AlwaysStoppedAnimation(AppColors.textSecondary),
                                     ),
                                   )
                                 : Image.network(
@@ -516,9 +516,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
-                                    child: CircularProgressIndicator(
+                                    child: CircularProgressIndicator.adaptive(
                                       strokeWidth: 2,
-                                      color: Colors.white,
+                                      valueColor: AlwaysStoppedAnimation(Colors.white),
                                     ),
                                   )
                                 : Text(

@@ -143,7 +143,7 @@ class _CertificatesSectionState extends State<CertificatesSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator()));
+    if (_loading) return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator.adaptive()));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text('Clients see these on your profile. Massage and microblading need at least one.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),

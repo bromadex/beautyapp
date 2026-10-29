@@ -214,7 +214,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
                     child: _loading
                         ? SizedBox(
                             height: 20, width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                            child: CircularProgressIndicator.adaptive(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,

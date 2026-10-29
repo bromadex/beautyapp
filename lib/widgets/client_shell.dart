@@ -17,6 +17,8 @@ class ClientShell extends StatelessWidget {
         if (!didPop) navigationShell.goBranch(0);
       },
       child: Scaffold(
+      // Content runs under the floating glass tab bar, like iOS 26.
+      extendBody: true,
       body: navigationShell,
       bottomNavigationBar: BeauNavBar(
         index: navigationShell.currentIndex,
@@ -28,7 +30,7 @@ class ClientShell extends StatelessWidget {
           (icon: TablerIcons.home, label: 'Home', badge: 0),
           (icon: TablerIcons.search, label: 'Browse', badge: 0),
           (icon: TablerIcons.calendar_event, label: 'Bookings', badge: 0),
-          (icon: TablerIcons.heart, label: 'Favourites', badge: 0),
+          (icon: TablerIcons.heart, label: 'Saved', badge: 0),
         ],
       ),
       ),

@@ -611,12 +611,6 @@ class _BrowseScreenState extends State<BrowseScreen> {
             selected: selected,
             showCheckmark: false,
             onSelected: (_) => onTap(),
-            labelStyle: TextStyle(
-              fontSize: 14,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              color: selected ? AppColors.primary : AppColors.textPrimary,
-            ),
-            side: BorderSide(color: selected ? AppColors.primary : AppColors.borderStrong),
           ),
         );
 
@@ -630,7 +624,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Row(children: [
-                    Expanded(child: Text('Find a beauty pro', style: Theme.of(context).textTheme.headlineSmall)),
+                    Expanded(child: Text('Browse', style: Theme.of(context).textTheme.displaySmall)),
                     InkWell(
                       onTap: _openLocationPicker,
                       borderRadius: AppRadius.pill,
@@ -739,12 +733,12 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 Expanded(
                   child: _loading
                       ? const LoadingPlaceholder()
-                      : RefreshIndicator(
+                      : RefreshIndicator.adaptive(
                           onRefresh: _loadProviders,
                           child: filtered.isEmpty
                               ? _buildEmptyState()
                               : ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12 + tabBarSpace(context)),
                                   itemCount: filtered.length,
                                   itemBuilder: (_, i) => _ProviderCard(
                                     provider: filtered[i],

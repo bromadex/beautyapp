@@ -282,7 +282,7 @@ class _AddBookingScreenState extends State<AddBookingScreen> {
                     decoration: const InputDecoration(prefixText: '\$ ', hintText: 'What the client pays'),
                   ),
                   if (past)
-                    SwitchListTile(
+                    SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Already paid'),
                       value: _paid,

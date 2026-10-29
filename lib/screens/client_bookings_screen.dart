@@ -135,13 +135,15 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Bookings'),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: 'Upcoming${upcoming.isNotEmpty ? ' (${upcoming.length})' : ''}'),
-              const Tab(text: 'Past'),
-            ],
+        appBar: largeTitleBar(
+          context,
+          'Bookings',
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(44),
+            child: _SegmentTabs(tabs: [
+              'Upcoming${upcoming.isNotEmpty ? ' (${upcoming.length})' : ''}',
+              'Past',
+            ]),
           ),
         ),
         body: _loading
@@ -179,7 +181,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
 
   Widget _list(List<Map<String, dynamic>> items, Widget empty, {bool showFind = false}) {
     if (items.isEmpty) {
-      return RefreshIndicator(
+      return RefreshIndicator.adaptive(
         onRefresh: _load,
         child: ListView(children: [
           const SizedBox(height: 60),
@@ -195,13 +197,13 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
         ]),
       );
     }
-    return RefreshIndicator(
+    return RefreshIndicator.adaptive(
       onRefresh: _load,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 12 + tabBarSpace(context)),
             itemCount: items.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) => _ReceiptCard(
@@ -335,6 +337,25 @@ class _ReceiptCard extends StatelessWidget {
             ),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+/// iOS segmented control look for the Upcoming / Past switch.
+class _SegmentTabs extends StatelessWidget {
+  final List<String> tabs;
+  const _SegmentTabs({required this.tabs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(999)),
+        child: TabBar(tabs: [for (final t in tabs) Tab(height: 32, text: t)]),
       ),
     );
   }

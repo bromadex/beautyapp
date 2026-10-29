@@ -290,7 +290,7 @@ class _PayProScreenState extends State<PayProScreen> {
             ),
         ],
       ),
-      body: RefreshIndicator(
+      body: RefreshIndicator.adaptive(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -337,7 +337,7 @@ class _PayProScreenState extends State<PayProScreen> {
                   onPressed: _sending ? null : _submit,
                   child: _sending
                       ? SizedBox(
-                          height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary))
+                          height: 22, width: 22, child: CircularProgressIndicator.adaptive(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onPrimary)))
                       : const Text('I\'ve paid'),
                 ),
               ),

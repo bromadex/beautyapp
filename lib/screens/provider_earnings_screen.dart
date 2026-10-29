@@ -115,7 +115,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
             )
           : _data == null
               ? const LoadingPlaceholder(kind: PlaceholderKind.detail)
-              : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
+              : RefreshIndicator.adaptive(onRefresh: _load, child: _body(_data!)),
     );
   }
 

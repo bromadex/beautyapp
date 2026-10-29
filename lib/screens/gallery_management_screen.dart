@@ -304,7 +304,7 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: AppColors.primary),
+                      CircularProgressIndicator.adaptive(valueColor: AlwaysStoppedAnimation(AppColors.primary)),
                       const SizedBox(height: AppSpacing.xl),
                       Text(
                         'Uploading photo...',
