@@ -420,7 +420,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
               padding: const EdgeInsets.fromLTRB(16, 12, 8, 16),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
+                  constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
                   child: Column(children: [
                     Row(children: [
                       GestureDetector(
@@ -520,7 +520,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
               opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
+                  constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(16, 16, 16, 12 + tabBarSpace(context)),
                     child: Column(
@@ -566,13 +566,15 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
 
                           if (_requests.isNotEmpty) ...[
                             _SectionTitle('Needs your answer', count: _requests.length),
-                            for (final b in _requests)
-                              _RequestCard(
-                                booking: b,
-                                onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
-                                onAccept: () => _respond(b, true),
-                                onDecline: () => _respond(b, false),
-                              ),
+                            AdaptiveGrid(minTileWidth: 380, children: [
+                              for (final b in _requests)
+                                _RequestCard(
+                                  booking: b,
+                                  onTap: () => context.push('/booking/${b['id']}').then((_) => _loadData()),
+                                  onAccept: () => _respond(b, true),
+                                  onDecline: () => _respond(b, false),
+                                ),
+                            ]),
                             const SizedBox(height: 16),
                           ],
 

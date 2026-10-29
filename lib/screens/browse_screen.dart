@@ -618,7 +618,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
             child: Column(
               children: [
                 Padding(
@@ -737,15 +737,20 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           onRefresh: _loadProviders,
                           child: filtered.isEmpty
                               ? _buildEmptyState()
-                              : ListView.builder(
+                              : ListView(
                                   padding: EdgeInsets.fromLTRB(20, 4, 20, 12 + tabBarSpace(context)),
-                                  itemCount: filtered.length,
-                                  itemBuilder: (_, i) => _ProviderCard(
-                                    provider: filtered[i],
-                                    distance: _distanceToProvider(filtered[i]),
-                                    isFeatured: _isFeatured(filtered[i]),
-                                    categories: _categories,
-                                  ),
+                                  children: [
+                                    // A grid of pros on wide screens, a list on phones.
+                                    AdaptiveGrid(minTileWidth: 340, children: [
+                                      for (final p in filtered)
+                                        _ProviderCard(
+                                          provider: p,
+                                          distance: _distanceToProvider(p),
+                                          isFeatured: _isFeatured(p),
+                                          categories: _categories,
+                                        ),
+                                    ]),
+                                  ],
                                 ),
                         ),
                 ),

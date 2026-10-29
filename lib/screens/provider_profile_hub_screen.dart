@@ -72,12 +72,11 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
 
     return Scaffold(
       appBar: largeTitleBar(context, 'Me'),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4 + tabBarSpace(context)),
-            children: [
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 4 + tabBarSpace(context)),
+        children: [
+          PageWidth(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               // Profile header
               Container(
                 padding: const EdgeInsets.all(AppSpacing.xl),
@@ -130,6 +129,8 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
 
+              // Two columns of sections on wide screens, one on phones.
+              AdaptiveColumns(children: [
               IosSection(header: 'Money and bookings', children: [
                   IosRow(
                     icon: TablerIcons.wallet,
@@ -262,10 +263,11 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
               IosSection(children: [
                 IosRow(title: 'Sign Out', destructive: true, onTap: _signOut),
               ]),
+              ]),
               const SizedBox(height: AppSpacing.xxxl),
-            ],
+            ]),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -523,7 +523,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Expanded(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
@@ -1013,7 +1013,7 @@ class _BottomBar extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
+          constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
           child: Row(children: [
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(subtitle, style: Theme.of(context).textTheme.bodySmall),

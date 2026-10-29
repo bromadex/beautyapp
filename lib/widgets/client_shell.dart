@@ -16,11 +16,9 @@ class ClientShell extends StatelessWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) navigationShell.goBranch(0);
       },
-      child: Scaffold(
-      // Content runs under the floating glass tab bar, like iOS 26.
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: BeauNavBar(
+      child: AdaptiveTabScaffold(
+        subtitle: 'Book beauty pros',
+        body: navigationShell,
         index: navigationShell.currentIndex,
         onTap: (index) => navigationShell.goBranch(
           index,
@@ -32,7 +30,6 @@ class ClientShell extends StatelessWidget {
           (icon: TablerIcons.calendar_event, label: 'Bookings', badge: 0),
           (icon: TablerIcons.heart, label: 'Saved', badge: 0),
         ],
-      ),
       ),
     );
   }

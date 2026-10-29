@@ -113,14 +113,14 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         : 'Day off';
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: tabFab(context, FloatingActionButton(
         tooltip: 'Add booking',
         onPressed: () async {
           await context.push('/provider/add-booking?date=${_day.toIso8601String().substring(0, 10)}');
           _load();
         },
         child: const Icon(TablerIcons.plus, size: 28),
-      ),
+      )),
       body: Column(children: [
         ForestHeader(
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 14),

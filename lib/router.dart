@@ -58,12 +58,32 @@ import 'screens/clients_screen.dart';
 import 'screens/add_booking_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
+import 'widgets/ui.dart' show ReadablePage;
 import 'supabase_client.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// The page a signed-out person tried to open, shown once they sign in.
 String? _pendingNext;
+
+/// Pages outside the tab shells get one readable width on wide screens
+/// ([ReadablePage]). Admin dashboards keep the full width.
+List<RouteBase> _readable(List<RouteBase> routes) => [
+      for (final r in routes)
+        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin'))
+          GoRoute(
+            path: r.path,
+            name: r.name,
+            parentNavigatorKey: r.parentNavigatorKey,
+            redirect: r.redirect,
+            onExit: r.onExit,
+            caseSensitive: r.caseSensitive,
+            routes: r.routes,
+            builder: (context, state) => ReadablePage(child: r.builder!(context, state)),
+          )
+        else
+          r,
+    ];
 
 bool _isProvider() {
   final meta = supabase.auth.currentUser?.userMetadata;
@@ -121,7 +141,7 @@ final appRouter = GoRouter(
 
     return null;
   },
-  routes: [
+  routes: _readable([
     // ─────────────────────────────────────────────────────────────
     // Root redirect (fixes GoException: no routes for /)
     // ─────────────────────────────────────────────────────────────
@@ -493,5 +513,5 @@ final appRouter = GoRouter(
         providerId: state.pathParameters['id']!,
       ),
     ),
-  ],
+  ]),
 );

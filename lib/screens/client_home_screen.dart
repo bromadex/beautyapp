@@ -156,7 +156,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 640),
+                    constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Expanded(
@@ -236,7 +236,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
               ),
               Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
+                  constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -258,7 +258,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                       ],
                       const SectionHeader(title: 'Services'),
                       LayoutBuilder(builder: (context, c) {
-                        final cols = c.maxWidth > 520 ? 6 : 4;
+                        // About 96px per icon: 4 on phones, up to one row of all of them on wide screens.
+                        final cols = (c.maxWidth / 96).floor().clamp(4, ServiceGroup.all.length);
                         return Wrap(
                           runSpacing: 14,
                           children: [
