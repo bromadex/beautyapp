@@ -190,7 +190,7 @@ class SmartMatchService {
   }) async {
     final providers = await supabase
         .from('provider_profiles')
-        .select('*, profiles(id, full_name, location, avatar_url)')
+        .select('*, profiles(id, full_name, location, avatar_url, is_verified)')
         .or('is_hidden.eq.false,is_hidden.is.null')
         // only pros who have said where they work
         .not('city_id', 'is', null)

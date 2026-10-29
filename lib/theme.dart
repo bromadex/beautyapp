@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 
 import 'glass.dart';
 
-/// BeauTap design system: iOS 26.
-/// Apple's system colours and text sizes, Inter (closest free match to San
-/// Francisco), BeauTap forest green as the tint and gold as the accent.
+/// BeauTap design system: iOS 26 behaviour, BeauTap 2.0 look.
+/// Warm cream, gold and ink (black) in light mode; black with gold in dark
+/// mode. Inter (closest free match to San Francisco). Forest green is kept
+/// as a small accent for success and "Verified".
 /// Liquid glass only where iOS uses it: bars, the tab bar, floating buttons.
 class AppColors {
   /// Set by the app from the user's Appearance choice (System / Light / Dark).
@@ -15,12 +16,12 @@ class AppColors {
   static Color _c(int light, int dark) => Color(isDark ? dark : light);
 
   // Brand (the tint, like an iOS app's accent colour)
-  static Color get primary => _c(0xFF0F3B31, 0xFF6FD1A9);     // Forest tint; mint on dark
-  static Color get onPrimary => _c(0xFFFFFFFF, 0xFF00261C);   // Text on filled buttons
+  static Color get primary => _c(0xFF141210, 0xFFD9B26A);     // Ink tint; gold on dark
+  static Color get onPrimary => _c(0xFFF7F3EC, 0xFF17130E);   // Text on filled buttons
   static Color get forest => _c(0xFF0F3B31, 0xFF14392F);      // Brand panels with white text
   static Color get primaryDark => _c(0xFF0B2C25, 0xFF0B241E);
   static const Color pine = Color(0xFF2A5A4E);
-  static Color get primarySoft => _c(0x1F0F3B31, 0x336FD1A9); // Tinted fill
+  static Color get primarySoft => _c(0x29C8A15A, 0x33D9B26A); // Gold-tinted fill
   static const Color gold = Color(0xFFC8A15A);
   static Color get goldText => _c(0xFF7A5C22, 0xFFE0C07F);
   static const Color goldLight = Color(0xFFE7D3A6);
@@ -37,34 +38,34 @@ class AppColors {
   static Color get error => _c(0xFFD70015, 0xFFFF453A);
   static Color get errorText => _c(0xFFC4000F, 0xFFFF6961);
   static Color get errorSoft => _c(0x1AFF3B30, 0x2EFF453A);
-  static Color get info => _c(0xFF0F3B31, 0xFF6FD1A9);
+  static Color get info => _c(0xFF0F3B31, 0xFF6FD1A9);   // Forest accent
 
-  // Surfaces: systemGroupedBackground / secondarySystemGroupedBackground
-  static Color get surfaceLight => _c(0xFFF2F2F7, 0xFF000000); // Page background
-  static Color get surfaceMuted => _c(0x1F767680, 0x3D767680); // Fill (tertiarySystemFill)
-  static Color get card => _c(0xFFFFFFFF, 0xFF1C1C1E);         // Grouped cells and cards
-  static Color get cardElevated => _c(0xFFFFFFFF, 0xFF2C2C2E); // Sheets, menus
-  static const Color surfaceDark = Color(0xFF1C1C1E);
+  // Surfaces: warm cream page, white cards; near-black in dark mode
+  static Color get surfaceLight => _c(0xFFF7F3EC, 0xFF0B0A09); // Page background
+  static Color get surfaceMuted => _c(0xFFEFE9DF, 0xFF24211D); // Fills: fields, chips
+  static Color get card => _c(0xFFFFFFFF, 0xFF191714);         // Cards and grouped cells
+  static Color get cardElevated => _c(0xFFFFFFFF, 0xFF24211D); // Sheets, menus
+  static const Color surfaceDark = Color(0xFF191714);
   static Color get cardLight => card;
   static const Color cardDark = Color(0xFF2C2C2E);
 
-  static Color get border => _c(0x1F3C3C43, 0x33545458);       // Hairline separator
-  static Color get borderStrong => _c(0x4A3C3C43, 0xA6545458); // Opaque separator
+  static Color get border => _c(0xFFE7E0D4, 0xFF2B2823);       // Hairline separator
+  static Color get borderStrong => _c(0xFFD3C9B8, 0xFF3D3830); // Stronger separator
 
   // Labels
-  static Color get textPrimary => _c(0xFF000000, 0xFFFFFFFF);
-  static Color get textSecondary => _c(0xFF6C6C70, 0xFFAEAEB2); // secondaryLabel, readable
-  static Color get textTertiary => _c(0xFF8E8E93, 0xFF8D8D93);
+  static Color get textPrimary => _c(0xFF17130E, 0xFFF5EFE6);
+  static Color get textSecondary => _c(0xFF6E6458, 0xFFA39A8D); // Warm grey, readable
+  static Color get textTertiary => _c(0xFF968B7D, 0xFF7E766B);
 
   static const Color available = Color(0xFF34C759);
   static Color get busy => warning;
   static const Color offline = Color(0xFF8E8E93);
 
   static LinearGradient get primaryGradient => const LinearGradient(
-      begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF22604F), Color(0xFF0F3B31)]);
+      begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A241C), Color(0xFF141210)]);
   static LinearGradient get heroGradient => const LinearGradient(
       begin: Alignment.topLeft, end: Alignment.bottomRight,
-      colors: [Color(0xFF22604F), Color(0xFF0F3B31), Color(0xFF08241D)], stops: [0, 0.55, 1]);
+      colors: [Color(0xFF2E271D), Color(0xFF17140F), Color(0xFF0B0A09)], stops: [0, 0.55, 1]);
 }
 
 class AppRadius {
@@ -117,7 +118,7 @@ class AppTheme {
   static ThemeData get current {
     final dark = AppColors.isDark;
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF0F3B31),
+      seedColor: const Color(0xFFC8A15A),
       brightness: dark ? Brightness.dark : Brightness.light,
     ).copyWith(
       primary: AppColors.primary,
@@ -303,16 +304,16 @@ class AppTheme {
 
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceMuted,
-        selectedColor: AppColors.primary,
+        selectedColor: AppColors.gold,
         disabledColor: AppColors.surfaceMuted,
-        checkmarkColor: AppColors.onPrimary,
+        checkmarkColor: const Color(0xFF17130E),
         shape: const StadiumBorder(side: BorderSide.none),
         side: BorderSide.none,
         showCheckmark: false,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        // Selected chips are filled with the tint, so their label flips to onPrimary.
+        // Selected chips are filled gold, so their label turns ink.
         labelStyle: WidgetStateTextStyle.resolveWith((s) => s.contains(WidgetState.selected)
-            ? t(15, FontWeight.w600, c: AppColors.onPrimary)
+            ? t(15, FontWeight.w600, c: const Color(0xFF17130E))
             : t(15, FontWeight.w500, c: AppColors.textPrimary)),
         secondaryLabelStyle: t(15, FontWeight.w600, c: AppColors.onPrimary),
       ),
@@ -357,7 +358,7 @@ class AppTheme {
 
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: dark ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E),
+        backgroundColor: dark ? const Color(0xFF2B2823) : const Color(0xFF17130E),
         contentTextStyle: t(15, FontWeight.w500, c: Colors.white),
         shape: const StadiumBorder(),
         insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -426,7 +427,7 @@ class AppTheme {
       ),
       badgeTheme: const BadgeThemeData(backgroundColor: Color(0xFFFF3B30)),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(color: dark ? const Color(0xFF3A3A3C) : const Color(0xFF1C1C1E), borderRadius: AppRadius.smAll),
+        decoration: BoxDecoration(color: dark ? const Color(0xFF3D3830) : const Color(0xFF17130E), borderRadius: AppRadius.smAll),
         textStyle: t(13, FontWeight.w500, c: Colors.white),
       ),
     );

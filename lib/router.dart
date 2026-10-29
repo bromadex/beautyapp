@@ -67,10 +67,11 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 String? _pendingNext;
 
 /// Pages outside the tab shells get one readable width on wide screens
-/// ([ReadablePage]). Admin dashboards keep the full width.
+/// ([ReadablePage]). Admin dashboards keep the full width, and sign-in has
+/// its own laptop layout.
 List<RouteBase> _readable(List<RouteBase> routes) => [
       for (final r in routes)
-        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin'))
+        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin') && r.path != '/login')
           GoRoute(
             path: r.path,
             name: r.name,
@@ -155,7 +156,8 @@ final appRouter = GoRouter(
     // ─────────────────────────────────────────────────────────────
     GoRoute(path: '/login',    builder: (_, __) => const LoginScreen()),
     GoRoute(path: '/welcome',  builder: (_, __) => const WelcomeScreen()),
-    GoRoute(path: '/register', builder: (_, state) => RegisterScreen(refCode: state.uri.queryParameters['ref'])),
+    GoRoute(path: '/register', builder: (_, state) => RegisterScreen(
+          refCode: state.uri.queryParameters['ref'], asPro: state.uri.queryParameters['as'] == 'pro')),
 
     // ─────────────────────────────────────────────────────────────
     // CLIENT SHELL — bottom nav: Home | Browse | Bookings | Favourites

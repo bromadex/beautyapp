@@ -47,7 +47,8 @@ class _GalleryManagementScreenState extends State<GalleryManagementScreen> {
   Future<void> _uploadImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
+        // Capped so cards and the gallery load quickly on mobile data.
+        source: ImageSource.gallery, imageQuality: 82, maxWidth: 1600, maxHeight: 1600);
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
 

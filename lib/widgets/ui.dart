@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../glass.dart';
 import '../theme.dart';
+import '../utils/feel.dart';
 
 /// Rounded forest square with a "B" and a honey dot — the app mark.
 class BrandMark extends StatelessWidget {
@@ -195,6 +196,158 @@ class RatingPill extends StatelessWidget {
 }
 
 /// Circle with a photo, or the person's initial on a blush background.
+/// A pro's photo for cards: their work photo, else their profile photo, else
+/// a soft pastel tile with their initials, so a pro without photos never
+/// looks empty. The pastel is picked from the name, so it stays the same.
+class ProPhoto extends StatelessWidget {
+  final String name;
+  final String? url;
+  final double radius;
+  final bool showNoPhotoNote;
+  const ProPhoto({super.key, required this.name, this.url, this.radius = 18, this.showNoPhotoNote = false});
+
+  static const _light = [
+    [Color(0xFFF6E3C8), Color(0xFFEBC9A0)], // sand
+    [Color(0xFFF7DCD3), Color(0xFFEDBCAB)], // peach
+    [Color(0xFFE3E8D5), Color(0xFFC9D3B0)], // sage
+    [Color(0xFFDDE6EE), Color(0xFFBFD0DE)], // sky
+  ];
+  static const _dark = [
+    [Color(0xFF3A2E1E), Color(0xFF221B12)],
+    [Color(0xFF3B261F), Color(0xFF231612)],
+    [Color(0xFF2C3122), Color(0xFF1A1E14)],
+    [Color(0xFF23303A), Color(0xFF141C22)],
+  ];
+
+  static String initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return (parts.first[0] + (parts.length > 1 ? parts.last[0] : '')).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pick = name.codeUnits.fold<int>(0, (a, b) => a + b) % _light.length;
+    final colors = (AppColors.isDark ? _dark : _light)[pick];
+    final ink = AppColors.isDark ? const Color(0xFFE2BE7A) : const Color(0xFF6B4E22);
+    final fallback = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
+      ),
+      child: LayoutBuilder(builder: (context, c) {
+        return Stack(fit: StackFit.expand, children: [
+          Center(
+            child: Text(initials(name),
+                style: TextStyle(
+                    fontFamily: 'InterDisplay',
+                    fontSize: (c.maxWidth * 0.32).clamp(16, 56),
+                    fontWeight: FontWeight.w700,
+                    color: ink)),
+          ),
+          if (showNoPhotoNote && c.maxHeight > 80)
+            Positioned(
+              left: 4,
+              right: 4,
+              bottom: 6,
+              child: Text('No photo yet',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: ink.withValues(alpha: 0.8))),
+            ),
+        ]);
+      }),
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: (url != null && url!.isNotEmpty)
+          ? Image.network(url!,
+              fit: BoxFit.cover,
+              alignment: const Alignment(0, -0.4),
+              cacheWidth: 600,
+              errorBuilder: (_, __, ___) => fallback,
+              frameBuilder: (_, child, frame, sync) => sync
+                  ? child
+                  : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 260), child: child))
+          : fallback,
+    );
+  }
+}
+
+/// Small dark-glass label printed on a photo: "★ 4.9", "2.1 km", "New".
+class PhotoBadge extends StatelessWidget {
+  final String text;
+  final bool gold;
+  const PhotoBadge({super.key, required this.text, this.gold = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: gold ? AppColors.gold : const Color(0xA6141210),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(text,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: gold ? const Color(0xFF17130E) : Colors.white)),
+    );
+  }
+}
+
+/// Heart on a photo. Pops when tapped; filled red when saved.
+class HeartButton extends StatefulWidget {
+  final bool saved;
+  final VoidCallback onTap;
+  final double size;
+  const HeartButton({super.key, required this.saved, required this.onTap, this.size = 32});
+
+  @override
+  State<HeartButton> createState() => _HeartButtonState();
+}
+
+class _HeartButtonState extends State<HeartButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _pop =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+
+  @override
+  void didUpdateWidget(HeartButton old) {
+    super.didUpdateWidget(old);
+    if (widget.saved && !old.saved && !Motion.reduced(context)) _pop.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      toggled: widget.saved,
+      label: widget.saved ? 'Remove from saved' : 'Save',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: ScaleTransition(
+          scale: TweenSequence<double>([
+            TweenSequenceItem(tween: Tween(begin: 1, end: 1.3), weight: 40),
+            TweenSequenceItem(tween: Tween(begin: 1.3, end: 1), weight: 60),
+          ]).animate(CurvedAnimation(parent: _pop, curve: Curves.easeOut)),
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: const BoxDecoration(color: Color(0xEBFFFFFF), shape: BoxShape.circle),
+            child: Icon(widget.saved ? TablerIcons.heart_filled : TablerIcons.heart,
+                size: widget.size * 0.55, color: widget.saved ? const Color(0xFFE5484D) : const Color(0xFF17130E)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class PersonAvatar extends StatelessWidget {
   final String name;
   final String? url;
@@ -297,7 +450,9 @@ class ServiceGroup {
   final String name;
   final IconData icon;
   final List<String> keywords;
-  const ServiceGroup(this.name, this.icon, this.keywords);
+  /// Bundled stock photo for chips and tiles (assets/photos, see CREDITS.md).
+  final String photo;
+  const ServiceGroup(this.name, this.icon, this.keywords, this.photo);
 
   bool matches(String? categoryName) {
     final n = (categoryName ?? '').toLowerCase();
@@ -305,17 +460,17 @@ class ServiceGroup {
   }
 
   static const all = [
-    ServiceGroup('Hair', TablerIcons.ripple, ['braid', 'wig', 'natural', 'kid', 'loc', 'relax', 'weave', 'colour', 'color', 'hair', 'cuts & styling']),
-    ServiceGroup('Barbering', TablerIcons.scissors, ['barber', 'fade', 'beard', 'shave', 'groom']),
-    ServiceGroup('Nails', TablerIcons.hand_finger, ['nail', 'manicure', 'pedicure', 'gel', 'acrylic']),
-    ServiceGroup('Lashes & Brows', TablerIcons.eye, ['lash', 'brow', 'microblad']),
-    ServiceGroup('Makeup', TablerIcons.brush, ['makeup', 'make-up']),
-    ServiceGroup('Skin', TablerIcons.droplet, ['skin', 'facial', 'peel']),
-    ServiceGroup('Hair Removal', TablerIcons.feather, ['wax', 'thread', 'sugar', 'removal']),
-    ServiceGroup('Body & Spa', TablerIcons.leaf, ['massage', 'spa', 'scrub', 'wrap', 'reflex']),
-    ServiceGroup('Glow', TablerIcons.sun_high, ['spray tan', 'whiten', 'glow']),
-    ServiceGroup('Body Art', TablerIcons.palette, ['tattoo', 'pierc', 'henna']),
-    ServiceGroup('Bridal & Events', TablerIcons.diamond, ['bridal', 'event', 'wedding', 'photoshoot']),
+    ServiceGroup('Hair', TablerIcons.ripple, ['braid', 'wig', 'natural', 'kid', 'loc', 'relax', 'weave', 'colour', 'color', 'hair', 'cuts & styling'], 'assets/photos/cat_hair.jpg'),
+    ServiceGroup('Barbering', TablerIcons.scissors, ['barber', 'fade', 'beard', 'shave', 'groom'], 'assets/photos/cat_barbering.jpg'),
+    ServiceGroup('Nails', TablerIcons.hand_finger, ['nail', 'manicure', 'pedicure', 'gel', 'acrylic'], 'assets/photos/cat_nails.jpg'),
+    ServiceGroup('Lashes & Brows', TablerIcons.eye, ['lash', 'brow', 'microblad'], 'assets/photos/cat_lashes.jpg'),
+    ServiceGroup('Makeup', TablerIcons.brush, ['makeup', 'make-up'], 'assets/photos/cat_makeup.jpg'),
+    ServiceGroup('Skin', TablerIcons.droplet, ['skin', 'facial', 'peel'], 'assets/photos/cat_skin.jpg'),
+    ServiceGroup('Hair Removal', TablerIcons.feather, ['wax', 'thread', 'sugar', 'removal'], 'assets/photos/cat_hair_removal.jpg'),
+    ServiceGroup('Body & Spa', TablerIcons.leaf, ['massage', 'spa', 'scrub', 'wrap', 'reflex'], 'assets/photos/cat_spa.jpg'),
+    ServiceGroup('Glow', TablerIcons.sun_high, ['spray tan', 'whiten', 'glow'], 'assets/photos/cat_glow.jpg'),
+    ServiceGroup('Body Art', TablerIcons.palette, ['tattoo', 'pierc', 'henna'], 'assets/photos/cat_body_art.jpg'),
+    ServiceGroup('Bridal & Events', TablerIcons.diamond, ['bridal', 'event', 'wedding', 'photoshoot'], 'assets/photos/cat_bridal.jpg'),
   ];
 
   static ServiceGroup? of(String? categoryName) {
@@ -491,8 +646,9 @@ Widget tabFab(BuildContext context, Widget fab) => isWideLayout(context)
 /// scroll clear of the floating tab bar (content runs under the glass).
 double tabBarSpace(BuildContext context) => MediaQuery.paddingOf(context).bottom + 12;
 
-/// The iOS 26 tab bar: a floating Liquid Glass capsule. Content scrolls
-/// underneath it, blurred; the open tab sits in a soft glass lens, in the tint.
+/// BeauTap 2.0 tab bar: a floating black capsule. The open tab grows into a
+/// gold pill with its label; the others are icons. A light haptic tick on
+/// every switch.
 class BeauNavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
@@ -501,21 +657,32 @@ class BeauNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppColors.isDark;
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-        child: GlassBar(
-          radius: 32,
-          padding: const EdgeInsets.all(4),
-          child: SizedBox(
-            height: 56,
-            child: Row(children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(child: _NavItem(item: items[i], selected: i == index, onTap: () => onTap(i))),
-            ]),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: dark ? Colors.black : const Color(0xFF141210),
+            borderRadius: BorderRadius.circular(40),
+            border: dark ? Border.all(color: const Color(0xFF2A2722)) : null,
+            boxShadow: const [BoxShadow(color: Color(0x47000000), blurRadius: 30, offset: Offset(0, 12))],
           ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            for (var i = 0; i < items.length; i++)
+              _NavItem(
+                item: items[i],
+                selected: i == index,
+                onTap: () {
+                  if (i != index) Haptics.light();
+                  onTap(i);
+                },
+              ),
+          ]),
         ),
       ),
     );
@@ -530,34 +697,43 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = AppColors.isDark;
-    final color = selected ? AppColors.primary : AppColors.textPrimary;
+    const ink = Color(0xFF17130E);
+    final icon = Badge(
+      isLabelVisible: item.badge > 0,
+      label: Text('${item.badge}'),
+      child: Icon(item.icon, size: 23, color: selected ? ink : const Color(0xFFCFC6B8)),
+    );
     return Semantics(
       selected: selected,
       button: true,
       label: item.label,
+      excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 260),
-          curve: const Cubic(0.22, 0.8, 0.3, 1),
+          duration: Motion.of(context),
+          curve: Motion.curve,
+          height: 48,
+          constraints: const BoxConstraints(minWidth: 52),
+          padding: EdgeInsets.symmetric(horizontal: selected ? 16 : 12),
           decoration: BoxDecoration(
-            color: selected ? (dark ? const Color(0x24FFFFFF) : const Color(0x14000000)) : Colors.transparent,
+            color: selected ? AppColors.gold : Colors.transparent,
             borderRadius: BorderRadius.circular(28),
           ),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Badge(
-              isLabelVisible: item.badge > 0,
-              label: Text('${item.badge}'),
-              child: Icon(item.icon, size: 24, color: color),
-            ),
-            const SizedBox(height: 2),
-            Text(item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 0, color: color)),
-          ]),
+          child: AnimatedSize(
+            duration: Motion.of(context),
+            curve: Motion.curve,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              icon,
+              if (selected) ...[
+                const SizedBox(width: 8),
+                Text(item.label,
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ink)),
+              ],
+            ]),
+          ),
         ),
       ),
     );
@@ -661,8 +837,7 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = AppColors.isDark;
-    final color = selected ? AppColors.primary : AppColors.textPrimary;
+    final color = selected ? const Color(0xFF17130E) : AppColors.textPrimary;
     return Semantics(
       selected: selected,
       button: true,
@@ -671,7 +846,7 @@ class _SidebarItem extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 2),
         child: Material(
-          color: selected ? (dark ? const Color(0x24FFFFFF) : const Color(0x14000000)) : Colors.transparent,
+          color: selected ? AppColors.gold : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             onTap: onTap,

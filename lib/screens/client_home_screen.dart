@@ -6,6 +6,8 @@ import '../services/notification_service.dart';
 import '../services/push_service.dart';
 import '../services/smart_match_service.dart';
 import '../theme.dart';
+import '../utils/feel.dart';
+import '../utils/pro_photos.dart';
 import '../widgets/ui.dart';
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/product_feed.dart';
@@ -24,6 +26,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   int _unreadNotifications = 0;
   List<Map<String, dynamic>> _topStylists = [];
   Map<String, dynamic>? _nextBooking;
+  Map<String, String> _covers = {};
+  Set<String> _homeVisitPros = {};
+  Set<String> _favourites = {};
   late AnimationController _animCtrl;
 
   /// City chosen in the picker (shared with Browse).
@@ -99,9 +104,22 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
 
     List<Map<String, dynamic>> stylists = [];
     Map<String, dynamic>? nextBooking;
+    var covers = <String, String>{};
+    var homeVisit = <String>{};
+    var favourites = <String>{};
+    try {
+      final extras = await Future.wait<dynamic>([
+        loadCoverPhotos(),
+        supabase.from('services').select('provider_id').eq('is_active', true).inFilter('location_mode', ['client', 'either']),
+        supabase.from('favorites').select('provider_id').eq('client_id', userId),
+      ]);
+      covers = extras[0] as Map<String, String>;
+      homeVisit = {for (final r in extras[1] as List) r['provider_id'] as String};
+      favourites = {for (final r in extras[2] as List) r['provider_id'] as String};
+    } catch (_) {}
     try {
       final results = await Future.wait([
-        SmartMatchService.getTopRated(location: profile['location'], limit: 8),
+        SmartMatchService.getTopRated(location: profile['location'], limit: 12),
         supabase
             .from('bookings')
             .select('id, booking_time, status, services(service_name), profiles!bookings_provider_id_fkey(full_name)')
@@ -126,11 +144,64 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
         _unreadNotifications = unreadNotifs;
         _topStylists = stylists;
         _nextBooking = nextBooking;
+        _covers = covers;
+        _homeVisitPros = homeVisit;
+        _favourites = favourites;
         _loading = false;
       });
       _animCtrl.forward();
     }
   }
+
+  Future<void> _toggleFavourite(String providerId) async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    final saved = _favourites.contains(providerId);
+    Haptics.firm();
+    setState(() => saved ? _favourites.remove(providerId) : _favourites.add(providerId));
+    try {
+      if (saved) {
+        await supabase.from('favorites').delete().eq('client_id', uid).eq('provider_id', providerId);
+      } else {
+        await supabase.from('favorites').insert({'client_id': uid, 'provider_id': providerId});
+      }
+    } catch (_) {
+      // Put it back if the change did not save.
+      if (mounted) setState(() => saved ? _favourites.add(providerId) : _favourites.remove(providerId));
+    }
+  }
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    return h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+  }
+
+  Widget _proRow(String title, List<Map<String, dynamic>> pros) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(title: title, actionLabel: 'See all', onAction: () => context.go('/browse')),
+          SizedBox(
+            height: 246,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: pros.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (_, i) {
+                final p = pros[i];
+                final id = p['provider_id'] as String;
+                return _StylistCard(
+                  provider: p,
+                  photo: coverFor(_covers, id, p['profiles']?['avatar_url'] as String?),
+                  saved: _favourites.contains(id),
+                  onSave: () => _toggleFavourite(id),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 22),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +212,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     final name = (_profile?['full_name'] ?? '').toString();
     final firstName = name.split(' ').first;
     final isGuest = supabase.auth.currentUser?.isAnonymous ?? false;
-
+    final showName = !(firstName.isEmpty || isGuest || firstName == 'User');
+    final comesToYou = _topStylists.where((p) => _homeVisitPros.contains(p['provider_id'])).toList();
 
     return Scaffold(
       body: RefreshIndicator.adaptive(
@@ -150,162 +222,144 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
           opacity: CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(bottom: tabBarSpace(context)),
+            padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 10, 20, tabBarSpace(context)),
             children: [
-              ForestHeader(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            InkWell(
-                              onTap: _pickCity,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  const Icon(TablerIcons.map_pin, color: AppColors.goldLight, size: 18),
-                                  const SizedBox(width: 4),
-                                  Text(_city == 'All Zimbabwe' ? 'All Zimbabwe' : _city,
-                                      style: const TextStyle(
-                                          color: AppColors.goldLight, fontSize: 15, fontWeight: FontWeight.w700)),
-                                  const SizedBox(width: 2),
-                                  const Icon(TablerIcons.chevron_down, color: AppColors.goldLight, size: 16),
-                                ]),
-                              ),
+              PageWidth(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  // Greeting: your photo, the time of day, your city.
+                  Row(children: [
+                    GestureDetector(
+                      onTap: () => context.push('/account/settings'),
+                      child: Semantics(
+                        button: true,
+                        label: 'Account',
+                        child: PersonAvatar(name: showName ? name : 'Guest', url: _profile?['avatar_url'] as String?, size: 46),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        InkWell(
+                          onTap: _pickCity,
+                          borderRadius: AppRadius.smAll,
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('$_greeting · ', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            Icon(TablerIcons.map_pin, size: 14, color: AppColors.goldText),
+                            Flexible(
+                              child: Text(_city,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.goldText)),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              firstName.isEmpty || isGuest || firstName == 'User' ? 'Welcome' : 'Hi $firstName',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            Icon(TablerIcons.chevron_down, size: 14, color: AppColors.goldText),
                           ]),
                         ),
-                        if (_isAdmin) ...[
-                          _RoundIcon(
-                            icon: TablerIcons.shield_lock,
-                            tooltip: 'Admin',
-                            onTap: () => context.push('/admin/dashboard'),
+                        Text(showName ? firstName : 'Welcome',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700, letterSpacing: -0.3, color: AppColors.textPrimary)),
+                      ]),
+                    ),
+                    if (_isAdmin) ...[
+                      _RoundIcon(icon: TablerIcons.shield_lock, tooltip: 'Admin', onTap: () => context.push('/admin/dashboard')),
+                      const SizedBox(width: 8),
+                    ],
+                    _RoundIcon(
+                      icon: TablerIcons.bell,
+                      tooltip: 'Notifications',
+                      badge: _unreadNotifications,
+                      onTap: () async {
+                        await context.push('/notifications');
+                        _loadData();
+                      },
+                    ),
+                  ]),
+                  const SizedBox(height: 18),
+                  // Search, with its own filter button.
+                  Material(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(28),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(28),
+                      onTap: () => context.go('/browse'),
+                      child: SizedBox(
+                        height: 54,
+                        child: Row(children: [
+                          const SizedBox(width: 18),
+                          Icon(TablerIcons.search, color: AppColors.textSecondary, size: 21),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('Braids, fade, gel nails…',
+                                style: TextStyle(fontSize: 15.5, color: AppColors.textSecondary)),
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        _RoundIcon(
-                          icon: TablerIcons.bell,
-                          tooltip: 'Notifications',
-                          badge: _unreadNotifications,
-                          onTap: () async {
-                            await context.push('/notifications');
-                            _loadData();
+                          Container(
+                            width: 42,
+                            height: 42,
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                            child: const Icon(TablerIcons.adjustments_horizontal, size: 20, color: Color(0xFF17130E)),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _RequestCard(onTap: () => context.push('/service-request/create')),
+                  if (isGuest) ...[
+                    const SizedBox(height: 16),
+                    SoftBanner(
+                      icon: TablerIcons.bookmark_plus,
+                      color: AppColors.goldText,
+                      title: 'You\'re browsing as a guest',
+                      message: 'Create a free account to keep your bookings on any phone.',
+                      actionLabel: 'Create',
+                      onTap: () => context.push('/account/settings'),
+                    ),
+                  ],
+                  if (_nextBooking != null) ...[
+                    const SizedBox(height: 22),
+                    const SectionHeader(title: 'Your next appointment'),
+                    _NextBookingCard(booking: _nextBooking!),
+                  ],
+                  const SizedBox(height: 22),
+                  SectionHeader(title: 'Categories', actionLabel: 'See all', onAction: () => context.go('/browse')),
+                  SizedBox(
+                    height: 46,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      clipBehavior: Clip.none,
+                      children: [
+                        _PhotoChip(
+                          label: 'All',
+                          selected: true,
+                          onTap: () {
+                            Haptics.light();
+                            BrowseIntent.group.value = null;
+                            context.go('/browse');
                           },
                         ),
-                        const SizedBox(width: 8),
-                        _RoundIcon(
-                          icon: TablerIcons.user,
-                          tooltip: 'Account',
-                          onTap: () => context.push('/account/settings'),
-                        ),
-                      ]),
-                      const SizedBox(height: 16),
-                      Material(
-                        color: AppColors.card,
-                        borderRadius: AppRadius.mdAll,
-                        child: InkWell(
-                          borderRadius: AppRadius.mdAll,
-                          onTap: () => context.go('/browse'),
-                          child: SizedBox(
-                            height: 52,
-                            child: Row(children: [
-                              SizedBox(width: 14),
-                              Icon(TablerIcons.search, color: AppColors.textPrimary, size: 22),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text('Braids, fade, gel nails…',
-                                    style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-                              ),
-                            ]),
+                        for (final g in ServiceGroup.all)
+                          _PhotoChip(
+                            label: g.name,
+                            photo: g.photo,
+                            onTap: () {
+                              Haptics.light();
+                              BrowseIntent.group.value = g.name;
+                              context.go('/browse');
+                            },
                           ),
-                        ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: kPageMaxWidth),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      if (isGuest) ...[
-                        SoftBanner(
-                          icon: TablerIcons.bookmark_plus,
-                          color: AppColors.primary,
-                          title: 'You\'re browsing as a guest',
-                          message: 'Create a free account to keep your bookings on any phone.',
-                          actionLabel: 'Create',
-                          onTap: () => context.push('/account/settings'),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                      if (_nextBooking != null) ...[
-                        const SectionHeader(title: 'Your next appointment'),
-                        _NextBookingCard(booking: _nextBooking!),
-                        const SizedBox(height: 20),
-                      ],
-                      const SectionHeader(title: 'Services'),
-                      LayoutBuilder(builder: (context, c) {
-                        // About 96px per icon: 4 on phones, up to one row of all of them on wide screens.
-                        final cols = (c.maxWidth / 96).floor().clamp(4, ServiceGroup.all.length);
-                        return Wrap(
-                          runSpacing: 14,
-                          children: [
-                            for (final g in ServiceGroup.all)
-                              SizedBox(
-                                width: c.maxWidth / cols,
-                                child: _CategoryChip(
-                                  icon: g.icon,
-                                  label: g.name,
-                                  onTap: () {
-                                    BrowseIntent.group.value = g.name;
-                                    context.go('/browse');
-                                  },
-                                ),
-                              ),
-                          ],
-                        );
-                      }),
-                      const SizedBox(height: 24),
-                      ProductFeedSection(city: _city),
-                      if (_topStylists.isNotEmpty) ...[
-                                                SectionHeader(
-                          title: 'Featured near you',
-                          actionLabel: 'See all',
-                          onAction: () => context.go('/browse'),
-                        ),
-                        SizedBox(
-                          height: 236,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _topStylists.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
-                            itemBuilder: (_, i) => _StylistCard(provider: _topStylists[i]),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      _RequestCard(onTap: () => context.push('/service-request/create')),
-                      if (_nextBooking == null) ...[
-                        const SizedBox(height: 24),
-                        const SectionHeader(title: 'How BeauTap works'),
-                        const _HowItWorks(),
-                      ],
-                    ]),
-                  ),
-                ),
+                  const SizedBox(height: 22),
+                  if (_topStylists.isNotEmpty) _proRow('Near you', _topStylists),
+                  if (comesToYou.isNotEmpty) _proRow('Comes to you', comesToYou),
+                  ProductFeedSection(city: _city),
+                  if (_nextBooking == null) ...[
+                    const SizedBox(height: 8),
+                    const SectionHeader(title: 'How BeauTap works'),
+                    const _HowItWorks(),
+                  ],
+                  const SizedBox(height: 12),
+                ]),
               ),
             ],
           ),
@@ -315,7 +369,45 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   }
 }
 
-/// Square tile on the forest header (notifications, account).
+/// Category chip with a small round photo; "All" is filled gold.
+class _PhotoChip extends StatelessWidget {
+  final String label;
+  final String? photo;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PhotoChip({required this.label, required this.onTap, this.photo, this.selected = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? AppColors.gold : AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(photo == null ? 22 : 5, 5, photo == null ? 22 : 16, 5),
+            child: Row(children: [
+              if (photo != null) ...[
+                ClipOval(child: Image.asset(photo!, width: 34, height: 34, fit: BoxFit.cover, cacheWidth: 102)),
+                const SizedBox(width: 8),
+              ],
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected ? const Color(0xFF17130E) : AppColors.textPrimary)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Round white button in the header (notifications, admin), with a red dot.
 class _RoundIcon extends StatelessWidget {
   final IconData icon;
   final String tooltip;
@@ -328,27 +420,27 @@ class _RoundIcon extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.pine,
-        borderRadius: AppRadius.mdAll,
+        color: AppColors.card,
+        shape: const CircleBorder(),
         child: InkWell(
-          borderRadius: AppRadius.mdAll,
+          customBorder: const CircleBorder(),
           onTap: onTap,
           child: SizedBox(
-            width: 48,
-            height: 48,
+            width: 46,
+            height: 46,
             child: Stack(alignment: Alignment.center, children: [
-              Icon(icon, size: 22, color: Colors.white),
+              Icon(icon, size: 22, color: AppColors.textPrimary),
               if (badge > 0)
                 Positioned(
-                  right: 11,
+                  right: 12,
                   top: 11,
                   child: Container(
                     width: 9,
                     height: 9,
                     decoration: BoxDecoration(
-                      color: AppColors.gold,
+                      color: const Color(0xFFE5484D),
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.pine, width: 1.5),
+                      border: Border.all(color: AppColors.card, width: 1.5),
                     ),
                   ),
                 ),
@@ -360,79 +452,61 @@ class _RoundIcon extends StatelessWidget {
   }
 }
 
-class _CategoryChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _CategoryChip({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppRadius.mdAll,
-      child: Column(children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(14)),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 24, color: AppColors.primary),
-        ),
-        const SizedBox(height: 6),
-        Text(label,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12.5, height: 1.2, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-      ]),
-    );
-  }
-}
-
+/// The black banner near the top of Home, photo in an arch on the right.
 class _RequestCard extends StatelessWidget {
   final VoidCallback onTap;
   const _RequestCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppColors.heroGradient,
-        borderRadius: AppRadius.xlAll,
-      ),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Can\'t find what you need?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
-            const SizedBox(height: 6),
-            Text('Post a request and beauty pros send you their best price.',
-                style: TextStyle(fontSize: 13.5, height: 1.4, color: Colors.white.withValues(alpha: 0.85))),
-            const SizedBox(height: 14),
-            FilledButton(
-              onPressed: onTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.primary,
-                minimumSize: const Size(0, 42),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+    return Material(
+      color: AppColors.isDark ? const Color(0xFF1E1912) : const Color(0xFF141210),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 170,
+          child: Stack(children: [
+            Positioned(
+              right: -4,
+              bottom: 0,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(80)),
+                child: Image.asset('assets/photos/offer_default.jpg', width: 150, height: 176, fit: BoxFit.cover, cacheWidth: 450),
               ),
-              child: const Text('Post a request'),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 160, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('CAN\'T FIND YOUR STYLE?',
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, letterSpacing: 0.9, color: AppColors.gold)),
+                const SizedBox(height: 6),
+                const Text('Post a request, pros send their price',
+                    maxLines: 3,
+                    style: TextStyle(
+                        fontFamily: 'InterDisplay',
+                        fontSize: 21,
+                        height: 1.12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                        color: Color(0xFFF7F3EC))),
+                const Spacer(),
+                Container(
+                  height: 34,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(color: const Color(0xFFF7F3EC), borderRadius: BorderRadius.circular(20)),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('Post a request', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF17130E))),
+                    SizedBox(width: 6),
+                    Icon(TablerIcons.arrow_right, size: 16, color: Color(0xFF17130E)),
+                  ]),
+                ),
+              ]),
             ),
           ]),
         ),
-        const SizedBox(width: 12),
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(TablerIcons.speakerphone, color: Colors.white, size: 32),
-        ),
-      ]),
+      ),
     );
   }
 }
@@ -491,72 +565,72 @@ class _NextBookingCard extends StatelessWidget {
   }
 }
 
+/// A pro on Home: their work photo, rating on the photo, a heart to save.
 class _StylistCard extends StatelessWidget {
   final Map<String, dynamic> provider;
-  const _StylistCard({required this.provider});
+  final String? photo;
+  final bool saved;
+  final VoidCallback onSave;
+  const _StylistCard({required this.provider, required this.photo, required this.saved, required this.onSave});
 
   @override
   Widget build(BuildContext context) {
-    final name = provider['profiles']?['full_name'] ?? 'Beauty pro';
-    final location = (provider['profiles']?['location'] ?? '').toString();
+    final name = (provider['profiles']?['full_name'] ?? 'Beauty pro').toString();
+    final area = (provider['area'] ?? provider['profiles']?['location'] ?? '').toString();
     final rating = (provider['average_rating'] as num?)?.toDouble() ?? 0;
     final reviews = (provider['total_reviews'] as num?)?.toInt() ?? 0;
     final featured = DateTime.tryParse((provider['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
-    final avatar = provider['profiles']?['avatar_url'] as String?;
     return SizedBox(
-      width: 200,
+      width: 196,
       child: Material(
         color: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll, side: BorderSide(color: AppColors.border)),
+        borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/provider/${provider['provider_id']}'),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(
-              height: 128,
-              width: double.infinity,
-              child: Stack(fit: StackFit.expand, children: [
-                if (avatar != null && avatar.isNotEmpty)
-                  Image.network(avatar, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const _PhotoPlaceholder())
-                else
-                  const _PhotoPlaceholder(),
-                if (featured)
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(
+                height: 158,
+                width: double.infinity,
+                child: Stack(fit: StackFit.expand, children: [
+                  ProPhoto(name: name, url: photo, radius: 18),
+                  Positioned(top: 8, right: 8, child: HeartButton(saved: saved, onTap: onSave)),
                   Positioned(
-                    right: 8,
+                    left: 8,
                     bottom: 8,
-                    child: Pill(label: 'Featured', color: AppColors.gold, solid: true),
+                    child: PhotoBadge(text: reviews > 0 ? '★ ${rating.toStringAsFixed(1)}' : 'New'),
                   ),
-              ]),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  if (featured) const Positioned(right: 8, bottom: 8, child: PhotoBadge(text: 'Featured', gold: true)),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+                child: Text(name,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(location.isEmpty ? 'Zimbabwe' : location,
-                    style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
-                RatingPill(rating: rating, reviews: reviews),
-              ]),
-            ),
-          ]),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 2, 6, 0),
+                child: Row(children: [
+                  if (provider['profiles']?['is_verified'] == true || provider['is_verified'] == true) ...[
+                    Icon(TablerIcons.rosette_discount_check_filled, size: 14, color: AppColors.info),
+                    const SizedBox(width: 3),
+                  ],
+                  Expanded(
+                    child: Text(area.isEmpty ? 'Zimbabwe' : area,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
         ),
       ),
-    );
-  }
-}
-
-class _PhotoPlaceholder extends StatelessWidget {
-  const _PhotoPlaceholder();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.primarySoft,
-      alignment: Alignment.center,
-      child: Icon(TablerIcons.photo, color: AppColors.textTertiary, size: 28),
     );
   }
 }

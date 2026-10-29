@@ -54,10 +54,10 @@ class Glass {
   static List<BoxShadow> get shadow => const [];
 
   /// Liquid Glass for bars: a light, see-through pane over blurred content.
-  static Color get bar => _d ? const Color(0x9E2C2C2E) : _w(0.62);
+  static Color get bar => _d ? const Color(0xA824211D) : const Color(0x9EFBF8F2);
 
   /// Sheets and dialogs (systemBackground / elevated).
-  static Color get modal => _d ? const Color(0xFF1C1C1E) : Colors.white;
+  static Color get modal => _d ? const Color(0xFF191714) : Colors.white;
 
   /// The main (prominent) button: solid tint, like iOS.
   static Gradient get cta => LinearGradient(colors: [AppColors.primary, AppColors.primary]);

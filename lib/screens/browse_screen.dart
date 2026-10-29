@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/booking_helpers.dart';
+import '../utils/feel.dart';
+import '../utils/pro_photos.dart';
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/ui.dart';
 
@@ -20,6 +23,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
   List<Map<String, dynamic>> _providers = [];
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
+  Map<String, String> _covers = {};
+  Set<String> _favourites = {};
 
   // Location
   String _selectedCity = 'All Zimbabwe';
@@ -155,7 +160,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
     try {
       final data = await supabase
           .from('provider_profiles')
-          .select('*, cities(name), profiles(full_name, location, avatar_url, is_verified, is_business_verified, '
+          .select('*, cities(name), profiles(full_name, location, avatar_url, is_verified, is_business_verified, whatsapp_number, '
               'services(id, service_name, price, category_id, is_active, location_mode), '
               'subscriptions(status, end_date))')
           .or('is_hidden.eq.false,is_hidden.is.null');
@@ -171,9 +176,16 @@ class _BrowseScreenState extends State<BrowseScreen> {
         p['subscriptions'] = sub == null ? [] : (sub is List ? sub : [sub]);
       }
 
+      final uid = supabase.auth.currentUser?.id;
+      final extras = await Future.wait<dynamic>([
+        loadCoverPhotos(),
+        if (uid != null) supabase.from('favorites').select('provider_id').eq('client_id', uid),
+      ]);
       if (mounted) {
         setState(() {
           _providers = providers;
+          _covers = extras[0] as Map<String, String>;
+          if (extras.length > 1) _favourites = {for (final r in extras[1] as List) r['provider_id'] as String};
           _loading = false;
         });
       }
@@ -184,6 +196,23 @@ class _BrowseScreenState extends State<BrowseScreen> {
           SnackBar(content: Text('Error loading providers: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _toggleFavourite(String providerId) async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    final saved = _favourites.contains(providerId);
+    Haptics.firm();
+    setState(() => saved ? _favourites.remove(providerId) : _favourites.add(providerId));
+    try {
+      if (saved) {
+        await supabase.from('favorites').delete().eq('client_id', uid).eq('provider_id', providerId);
+      } else {
+        await supabase.from('favorites').insert({'client_id': uid, 'provider_id': providerId});
+      }
+    } catch (_) {
+      if (mounted) setState(() => saved ? _favourites.add(providerId) : _favourites.remove(providerId));
     }
   }
 
@@ -604,13 +633,20 @@ class _BrowseScreenState extends State<BrowseScreen> {
   Widget build(BuildContext context) {
     final filtered = _filteredProviders;
 
-    Widget chip(String label, bool selected, VoidCallback onTap) => Padding(
+    Widget chip(String label, bool selected, VoidCallback onTap, {String? photo}) => Padding(
           padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
             label: Text(label),
             selected: selected,
             showCheckmark: false,
-            onSelected: (_) => onTap(),
+            avatar: photo == null
+                ? null
+                : ClipOval(child: Image.asset(photo, width: 26, height: 26, fit: BoxFit.cover, cacheWidth: 78)),
+            labelPadding: EdgeInsets.only(left: photo == null ? 8 : 6, right: 8),
+            onSelected: (_) {
+              Haptics.light();
+              onTap();
+            },
           ),
         );
 
@@ -704,7 +740,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                         chip(g.name, _group == g.name, () => setState(() {
                               _group = _group == g.name ? null : g.name;
                               _selectedCategoryIds.clear();
-                            })),
+                            }), photo: g.photo),
                     ],
                   ),
                 ),
@@ -748,6 +784,10 @@ class _BrowseScreenState extends State<BrowseScreen> {
                                           distance: _distanceToProvider(p),
                                           isFeatured: _isFeatured(p),
                                           categories: _categories,
+                                          photo: coverFor(_covers, p['provider_id'] as String,
+                                              (p['profiles'] as Map?)?['avatar_url'] as String?),
+                                          saved: _favourites.contains(p['provider_id']),
+                                          onSave: () => _toggleFavourite(p['provider_id'] as String),
                                         ),
                                     ]),
                                   ],
@@ -907,37 +947,39 @@ class _ProviderCard extends StatelessWidget {
   final double? distance;
   final bool isFeatured;
   final List<Map<String, dynamic>> categories;
+  final String? photo;
+  final bool saved;
+  final VoidCallback onSave;
 
   const _ProviderCard({
     required this.provider,
     this.distance,
     required this.isFeatured,
     required this.categories,
+    required this.photo,
+    required this.saved,
+    required this.onSave,
   });
 
   @override
   Widget build(BuildContext context) {
     final p = provider;
     final prof = p['profiles'] as Map? ?? {};
-    final name = prof['full_name'] ?? 'Beauty pro';
-    final location = (prof['location'] ?? '').toString();
-    final status = p['availability_status'] ?? 'offline';
+    final name = (prof['full_name'] ?? 'Beauty pro').toString();
+    final area = (p['area'] ?? prof['location'] ?? '').toString();
+    final available = p['availability_status'] == 'available';
     final rating = (p['average_rating'] as num?)?.toDouble() ?? 0.0;
     final totalReviews = (p['total_reviews'] as num?)?.toInt() ?? 0;
     final verified = prof['is_verified'] == true || prof['is_business_verified'] == true;
     final services = (p['services'] as List? ?? []).where((s) => s['is_active'] == true).toList();
-
-    final statusColor = switch (status) {
-      'available' => AppColors.available,
-      'busy' => AppColors.busy,
-      _ => AppColors.offline,
-    };
+    // WhatsApp only for pros who chose it as how clients should reach them.
+    final whatsapp = (prof['whatsapp_number'] ?? '').toString().trim();
+    final showWhatsApp = whatsapp.isNotEmpty && ['whatsapp', 'both'].contains(p['preferred_contact']);
 
     String priceText = '';
     if (services.isNotEmpty) {
       final prices = services.map((s) => (s['price'] as num?)?.toDouble() ?? 0).toList();
-      final minPrice = prices.reduce((a, b) => a < b ? a : b);
-      priceText = '\$${minPrice.toStringAsFixed(0)}';
+      priceText = '\$${prices.reduce((a, b) => a < b ? a : b).toStringAsFixed(0)}';
     }
 
     final catNames = <String>{};
@@ -948,100 +990,122 @@ class _ProviderCard extends StatelessWidget {
 
     // Measured from the chosen city's centre, not the client's phone, so
     // very small distances (a pro pinned at the centre) aren't shown.
-    String? distanceText;
-    if (distance != null && distance! >= 1) {
-      distanceText = '${distance!.toStringAsFixed(distance! < 10 ? 1 : 0)} km from the centre';
-    }
+    final distanceText = (distance != null && distance! >= 1)
+        ? '${distance!.toStringAsFixed(distance! < 10 ? 1 : 0)} km'
+        : null;
+    final secondary = TextStyle(fontSize: 12.5, color: AppColors.textSecondary);
+    final open = () => context.push('/provider/${p['provider_id']}');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.lgAll,
-          side: BorderSide(color: isFeatured ? AppColors.secondary.withValues(alpha: 0.5) : AppColors.border),
-        ),
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        shape: isFeatured
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24), side: BorderSide(color: AppColors.gold.withValues(alpha: 0.7)))
+            : null,
         child: InkWell(
-          onTap: () => context.push('/provider/${p['provider_id']}'),
+          onTap: open,
           child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Stack(children: [
-                  PersonAvatar(name: name, url: prof['avatar_url'], size: 58),
-                  Positioned(
-                    right: 1,
-                    bottom: 1,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ]),
-                const SizedBox(width: 14),
+            padding: const EdgeInsets.all(10),
+            // Fixed height: the photo sets it, the text column fits beside it.
+            child: SizedBox(
+              height: 118,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                SizedBox(
+                  width: 100,
+                  child: Stack(fit: StackFit.expand, children: [
+                    ProPhoto(name: name, url: photo, radius: 18, showNoPhotoNote: true),
+                    Positioned(top: 6, right: 6, child: HeartButton(saved: saved, onTap: onSave, size: 28)),
+                  ]),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
+                      if (available) ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(color: AppColors.available, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                       Flexible(
                         child: Text(name,
-                            overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                       ),
                       if (verified) ...[
                         const SizedBox(width: 4),
-                        Icon(TablerIcons.rosette_discount_check, size: 17, color: AppColors.info),
+                        Icon(TablerIcons.rosette_discount_check_filled, size: 16, color: AppColors.info),
                       ],
                     ]),
                     const SizedBox(height: 3),
                     Text(
                       [
-                        if (location.isNotEmpty) location,
-                        if (distanceText != null) distanceText,
+                        if (catNames.isNotEmpty) catNames.take(2).join(' & '),
+                        if (area.isNotEmpty) area,
                       ].join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: secondary,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Row(children: [
-                      RatingPill(rating: rating, reviews: totalReviews),
-                      if (isFeatured) ...[
+                      if (totalReviews > 0) ...[
+                        Text('★ ${rating.toStringAsFixed(1)}',
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        Text(' ($totalReviews)', style: secondary),
+                      ] else
+                        Text('New on BeauTap', style: secondary.copyWith(fontWeight: FontWeight.w600)),
+                      if (distanceText != null) ...[const SizedBox(width: 10), Text(distanceText, style: secondary)],
+                      if (isFeatured) ...[const SizedBox(width: 8), const PhotoBadge(text: 'Featured', gold: true)],
+                    ]),
+                    const Spacer(),
+                    Row(children: [
+                      if (priceText.isNotEmpty)
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                            Text('from', style: secondary.copyWith(fontSize: 11.5)),
+                            Text(priceText,
+                                style: TextStyle(
+                                    fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.2, color: AppColors.textPrimary)),
+                          ]),
+                        )
+                      else
+                        const Spacer(),
+                      if (showWhatsApp) ...[
+                        Material(
+                          color: AppColors.surfaceMuted,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: 'WhatsApp $name',
+                            onPressed: () => shareOnWhatsApp('Hi $name, I found you on BeauTap.', phone: whatsapp),
+                            icon: const Icon(TablerIcons.brand_whatsapp, color: Color(0xFF25A55F), size: 20),
+                            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Pill(label: 'Featured', color: AppColors.secondary, icon: TablerIcons.star_filled),
                       ],
+                      FilledButton(
+                        onPressed: open,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                        child: const Text('Book'),
+                      ),
                     ]),
                   ]),
                 ),
-                if (priceText.isNotEmpty)
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text('from', style: Theme.of(context).textTheme.bodySmall),
-                    Text(priceText,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                  ]),
               ]),
-              if (catNames.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: catNames
-                      .take(3)
-                      .map((n) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceMuted,
-                              borderRadius: AppRadius.pill,
-                            ),
-                            child: Text(n,
-                                style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                          ))
-                      .toList(),
-                ),
-              ],
-            ]),
+            ),
           ),
         ),
       ),

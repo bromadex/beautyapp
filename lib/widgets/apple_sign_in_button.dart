@@ -12,7 +12,10 @@ class AppleSignInButton extends StatefulWidget {
   /// Set on the sign-up page so a new account gets the chosen type.
   final String? userType;
 
-  const AppleSignInButton({super.key, required this.label, this.userType});
+  /// See-through white style, for use over a photo.
+  final bool onPhoto;
+
+  const AppleSignInButton({super.key, required this.label, this.userType, this.onPhoto = false});
 
   @override
   State<AppleSignInButton> createState() => _AppleSignInButtonState();
@@ -51,17 +54,24 @@ class _AppleSignInButtonState extends State<AppleSignInButton> {
   Widget build(BuildContext context) {
     if (!_enabled) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 12),
+      padding: EdgeInsets.only(top: widget.onPhoto ? 10 : 12),
       child: FilledButton.icon(
         onPressed: _loading ? null : _start,
         icon: const Icon(TablerIcons.brand_apple_filled, size: 22),
         label: Text(_loading ? 'Opening Apple…' : widget.label),
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.isDark ? Colors.white : Colors.black,
-          foregroundColor: AppColors.isDark ? Colors.black : Colors.white,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-        ),
+        style: widget.onPhoto
+            ? FilledButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.14),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(54),
+                shape: StadiumBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.45))),
+              )
+            : FilledButton.styleFrom(
+                backgroundColor: AppColors.isDark ? Colors.white : Colors.black,
+                foregroundColor: AppColors.isDark ? Colors.black : Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+              ),
       ),
     );
   }

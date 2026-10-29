@@ -96,6 +96,7 @@ flutter:
 
   assets:
     - assets/branding/
+    - assets/photos/
 
   fonts:
     # Inter: the closest free match to Apple's San Francisco (iOS look).

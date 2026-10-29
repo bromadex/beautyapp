@@ -15,7 +15,9 @@ import '../widgets/ui.dart';
 class RegisterScreen extends StatefulWidget {
   /// Referral code from an invite link (/register?ref=CODE).
   final String? refCode;
-  const RegisterScreen({super.key, this.refCode});
+  /// Start with "Pro" chosen (from "Join as a pro" on the sign-in screen).
+  final bool asPro;
+  const RegisterScreen({super.key, this.refCode, this.asPro = false});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -43,6 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.asPro) _userType = 'provider';
     if ((widget.refCode ?? '').isNotEmpty) {
       _refCtrl.text = widget.refCode!.toUpperCase();
       _userType = 'provider';
