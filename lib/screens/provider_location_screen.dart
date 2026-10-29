@@ -50,19 +50,22 @@ class _ProviderLocationScreenState extends State<ProviderLocationScreen> {
         supabase.from('cities').select('id, name').eq('is_active', true).order('name'),
         supabase
             .from('provider_profiles')
-            .select('city_id, area, address, latitude, longitude')
+            .select('city_id, area, latitude, longitude')
             .eq('provider_id', uid)
             .maybeSingle(),
         supabase.rpc('my_upcoming_studio_bookings'),
+        // Street address lives in a table only the pro can read.
+        supabase.from('provider_private').select('address').eq('provider_id', uid).maybeSingle(),
       ]);
       final pp = res[1] as Map<String, dynamic>?;
+      final private = res[3] as Map<String, dynamic>?;
       if (!mounted) return;
       setState(() {
         _cities = List<Map<String, dynamic>>.from(res[0] as List);
         _cityId = pp?['city_id'];
         _savedCityId = _cityId;
         _areaCtrl.text = pp?['area'] ?? '';
-        _addressCtrl.text = pp?['address'] ?? '';
+        _addressCtrl.text = private?['address'] ?? '';
         _lat = (pp?['latitude'] as num?)?.toDouble();
         _lng = (pp?['longitude'] as num?)?.toDouble();
         _upcomingAtPlace = (res[2] as num?)?.toInt() ?? 0;
@@ -124,14 +127,18 @@ class _ProviderLocationScreenState extends State<ProviderLocationScreen> {
     }
     setState(() => _saving = true);
     try {
+      final uid = supabase.auth.currentUser!.id;
       await supabase.from('provider_profiles').update({
         'city_id': _cityId,
         'area': _areaCtrl.text.trim(),
-        'address': _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
         // A moved city without a new phone pin resets to the city centre (done in the database).
         if (_pinFromPhone) 'latitude': _lat,
         if (_pinFromPhone) 'longitude': _lng,
-      }).eq('provider_id', supabase.auth.currentUser!.id);
+      }).eq('provider_id', uid);
+      await supabase.from('provider_private').upsert({
+        'provider_id': uid,
+        'address': _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
+      }, onConflict: 'provider_id');
       if (!mounted) return;
       _toast('Saved. Clients can now find you in ${_cities.firstWhere((c) => c['id'] == _cityId)['name']}.');
       if (context.canPop()) {

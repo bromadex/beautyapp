@@ -132,7 +132,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           await supabase.from('provider_profiles').upsert({
             'provider_id': userId,
             'bio': '',
-            'address': _locationCtrl.text.trim(),
           }, onConflict: 'provider_id');
           await Specialties.save(userId, _selectedCategories);
         }
