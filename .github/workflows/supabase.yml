@@ -1,0 +1,123 @@
+# Checks Supabase changes on pull requests and deploys them from main:
+# database migrations first (supabase db push), then every edge function.
+# Setup and secrets: supabase/README.md
+name: Supabase
+
+on:
+  pull_request:
+    paths: ['supabase/**', '.github/workflows/supabase*.yml']
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/supabase*.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Deploys queue one at a time; a new push to a PR cancels its older check.
+  group: supabase-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  SUPABASE_PROJECT_REF: suxohsmcgjzzllmyesgt
+  SUPABASE_CLI_VERSION: 2.121.0
+
+jobs:
+  check:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Migration file names
+        run: |
+          cd supabase/migrations
+          bad=$(ls | grep -vE '^[0-9]{14}_[a-z0-9_]+\.sql$' || true)
+          dup=$(ls | cut -c1-14 | sort | uniq -d)
+          if [ -n "$bad" ]; then
+            echo "::error::Migrations must be named <14-digit timestamp>_<name>.sql (the CLI skips anything else): $bad"
+            exit 1
+          fi
+          if [ -n "$dup" ]; then
+            echo "::error::Two migrations share a version: $dup"
+            exit 1
+          fi
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.x
+
+      - name: Lint edge functions
+        working-directory: supabase/functions
+        run: deno lint
+
+      - name: Type-check edge functions
+        working-directory: supabase/functions
+        run: deno check */index.ts
+
+  plan:
+    name: Preview migrations
+    needs: check
+    # Secrets aren't available to pull requests from forks.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Check secrets
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL isn't set, so there's no migration preview. See supabase/README.md."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+      - name: Migration history
+        if: env.SKIP != '1'
+        run: supabase/scripts/migrations.sh guard
+      - name: Migrations this PR would apply
+        if: env.SKIP != '1'
+        run: supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
+
+  deploy:
+    name: Deploy
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Add required reviewers to this environment in GitHub settings to make
+    # every production deploy wait for approval.
+    environment: supabase-production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Check secrets
+        run: |
+          missing=""
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -n "$SUPABASE_DB_URL" ] || missing="$missing SUPABASE_DB_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. See supabase/README.md."
+            exit 1
+          fi
+
+      - name: Migration history
+        run: supabase/scripts/migrations.sh guard
+
+      - name: Pending migrations
+        run: supabase db push --dry-run --db-url "$SUPABASE_DB_URL"
+
+      - name: Apply migrations
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Deploy edge functions
+        # JWT settings per function come from supabase/config.toml.
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api

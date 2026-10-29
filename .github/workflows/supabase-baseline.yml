@@ -1,0 +1,47 @@
+# One-time setup of the migration history so the Supabase workflow can use
+# `supabase db push`. Run it by hand from the Actions tab: first with
+# "apply" off to see the plan, then with it on. See supabase/README.md.
+name: Supabase baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      pending:
+        description: Versions NOT yet run on the database (space-separated). The next deploy runs these.
+        default: '20261018000000'
+        required: false
+      apply:
+        description: Change the history table (off = only show the plan)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    environment: supabase-production
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+
+      - name: Baseline
+        env:
+          PENDING: ${{ inputs.pending }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          args=(--pending "$PENDING")
+          [ "$APPLY" = "true" ] && args+=(--apply)
+          supabase/scripts/migrations.sh baseline "${args[@]}"
+
+      - name: History now
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"

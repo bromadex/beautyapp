@@ -1,0 +1,21 @@
+# Supabase CLI config. Only what the GitHub workflows need: the project and
+# per-function JWT settings. Everything else uses the CLI defaults.
+project_id = "suxohsmcgjzzllmyesgt"
+
+# Called by the app with the signed-in user's JWT.
+[functions.initiate-payment]
+verify_jwt = true
+
+[functions.check-payment-status]
+verify_jwt = true
+
+# Called by Paynow, database webhooks and pg_cron, which can't send a Supabase
+# JWT. Each one checks its own secret (Paynow hash or WEBHOOK_SECRET) instead.
+[functions.paynow-webhook]
+verify_jwt = false
+
+[functions.push-dispatch]
+verify_jwt = false
+
+[functions.send-reminders]
+verify_jwt = false

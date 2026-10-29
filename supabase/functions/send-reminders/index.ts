@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   for (const b of bookings ?? []) {
-    const service = b.services?.service_name ?? "your appointment";
+    // Many-to-one embed: an object at runtime, typed as an array without generated types
+    const svc = Array.isArray(b.services) ? b.services[0] : b.services;
+    const service = svc?.service_name ?? "your appointment";
     const when = new Date(b.booking_time).toLocaleTimeString("en-ZW", {
       hour: "2-digit",
       minute: "2-digit",
