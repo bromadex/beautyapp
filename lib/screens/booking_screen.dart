@@ -16,11 +16,16 @@ class BookingScreen extends StatefulWidget {
   final String providerId;
   final String serviceId;
   final String? packageId;
+  /// Option and extras already picked on the pro's profile.
+  final String? initialTierId;
+  final List<String> initialAddonIds;
   const BookingScreen({
     super.key,
     required this.providerId,
     required this.serviceId,
     this.packageId,
+    this.initialTierId,
+    this.initialAddonIds = const [],
   });
   @override
   State<BookingScreen> createState() => _BookingScreenState();
@@ -44,6 +49,7 @@ class _BookingScreenState extends State<BookingScreen> {
   String? _serviceId;
   List<Map<String, dynamic>> _tiers = [];
   String? _tierId;
+  bool _appliedInitial = false;
   List<Map<String, dynamic>> _addons = [];
   final Set<String> _addonIds = {};
 
@@ -161,6 +167,11 @@ class _BookingScreenState extends State<BookingScreen> {
     _addons = List<Map<String, dynamic>>.from(results[1] as List);
     _tierId = _tiers.isNotEmpty ? _tiers.first['id'] : null;
     _addonIds.clear();
+    if (!_appliedInitial && _serviceId == widget.serviceId) {
+      _appliedInitial = true;
+      if (_tiers.any((t) => t['id'] == widget.initialTierId)) _tierId = widget.initialTierId;
+      _addonIds.addAll(widget.initialAddonIds.where((id) => _addons.any((a) => a['id'] == id)));
+    }
     _time = null;
   }
 

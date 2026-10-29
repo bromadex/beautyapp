@@ -359,6 +359,8 @@ final appRouter = GoRouter(
         providerId: state.pathParameters['providerId']!,
         serviceId:  state.pathParameters['serviceId']!,
         packageId:  state.uri.queryParameters['package'],
+        initialTierId: state.uri.queryParameters['tier'],
+        initialAddonIds: (state.uri.queryParameters['addons'] ?? '').split(',').where((x) => x.isNotEmpty).toList(),
       ),
     ),
     GoRoute(

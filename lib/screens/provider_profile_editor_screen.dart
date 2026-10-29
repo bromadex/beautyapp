@@ -18,6 +18,8 @@ class _ProviderProfileEditorScreenState
   final _formKey     = GlobalKey<FormState>();
   final _bioCtrl     = TextEditingController();
   final _titleCtrl   = TextEditingController();
+  final _yearsCtrl   = TextEditingController();
+  bool _hadYears = false;
   String? _gender; // woman | man | null (not said)
   final _addressCtrl = TextEditingController();
   final _latCtrl     = TextEditingController();
@@ -59,6 +61,8 @@ class _ProviderProfileEditorScreenState
           .single();
       _bioCtrl.text     = data['bio']     ?? '';
       _titleCtrl.text   = data['title']   ?? '';
+      _yearsCtrl.text   = data['years_experience']?.toString() ?? '';
+      _hadYears         = data['years_experience'] != null;
       _gender           = data['gender'];
       _specialties      = Specialties.from(data['specialties']);
       _addressCtrl.text = [data['area'], (data['cities'] as Map?)?['name']].where((x) => (x ?? '').toString().isNotEmpty).join(', ');
@@ -83,6 +87,9 @@ class _ProviderProfileEditorScreenState
       'bio':         _bioCtrl.text.trim(),
       'title':       _titleCtrl.text.trim().isEmpty ? null : _titleCtrl.text.trim(),
       'gender':      _gender,
+      // Shown on your public profile as "6 yrs experience".
+      if (_yearsCtrl.text.trim().isNotEmpty || _hadYears)
+        'years_experience': int.tryParse(_yearsCtrl.text.trim())?.clamp(0, 60),
       if (_radiusSupported) 'service_radius_km': _radiusKm,
     };
 
@@ -121,7 +128,7 @@ class _ProviderProfileEditorScreenState
 
   @override
   void dispose() {
-    _bioCtrl.dispose(); _titleCtrl.dispose(); _addressCtrl.dispose();
+    _bioCtrl.dispose(); _titleCtrl.dispose(); _yearsCtrl.dispose(); _addressCtrl.dispose();
     _latCtrl.dispose(); _lngCtrl.dispose();
     super.dispose();
   }
@@ -219,7 +226,22 @@ class _ProviderProfileEditorScreenState
                   hintText: 'e.g. Nail tech, Braider, Barber, Lash artist',
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _yearsCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Years of experience (optional)',
+                  hintText: 'e.g. 6',
+                  helperText: 'Shown on your profile. Clients trust experience.',
+                ),
+                validator: (v) {
+                  final t = (v ?? '').trim();
+                  if (t.isEmpty) return null;
+                  final n = int.tryParse(t);
+                  return n == null || n < 0 || n > 60 ? 'Enter a number from 0 to 60' : null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
               Text('You are', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 6),
               SizedBox(
