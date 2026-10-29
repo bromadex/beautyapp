@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../glass.dart';
 import '../theme.dart';
 
 /// Rounded forest square with a "B" and a honey dot — the app mark.
@@ -328,6 +329,7 @@ class ServiceGroup {
 }
 
 /// Bottom tab bar from the design: white bar, gold marker above the active tab.
+/// The floating glass tab bar. Pages stop above it, so nothing hides behind it.
 class BeauNavBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
@@ -336,51 +338,63 @@ class BeauNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        border: Border(top: BorderSide(color: AppColors.border)),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+        child: GlassBar(
+          radius: 34,
+          blur: false,
+          padding: const EdgeInsets.all(6),
+          child: SizedBox(
+            height: 58,
+            child: Row(children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(child: _NavItem(item: items[i], selected: i == index, onTap: () => onTap(i))),
+            ]),
+          ),
+        ),
       ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(children: [
-            for (var i = 0; i < items.length; i++)
-              Expanded(
-                child: InkWell(
-                  onTap: () => onTap(i),
-                  child: Stack(alignment: Alignment.center, children: [
-                    if (i == index)
-                      Positioned(
-                        top: 0,
-                        child: Container(
-                          width: 32,
-                          height: 3,
-                          decoration: const BoxDecoration(
-                            color: AppColors.gold,
-                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(3)),
-                          ),
-                        ),
-                      ),
-                    Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Badge(
-                        isLabelVisible: items[i].badge > 0,
-                        label: Text('${items[i].badge}'),
-                        child: Icon(items[i].icon,
-                            size: 24, color: i == index ? AppColors.primary : AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(items[i].label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: i == index ? FontWeight.w800 : FontWeight.w600,
-                            color: i == index ? AppColors.primary : AppColors.textSecondary,
-                          )),
-                    ]),
-                  ]),
-                ),
-              ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final ({IconData icon, String label, int badge}) item;
+  final bool selected;
+  final VoidCallback onTap;
+  const _NavItem({required this.item, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? (AppColors.isDark ? Colors.white : AppColors.forest) : AppColors.textSecondary;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: item.label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(29),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: const Cubic(0.22, 0.8, 0.3, 1),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: selected ? (AppColors.isDark ? const Color(0x26FFFFFF) : const Color(0x170F3B31)) : Colors.transparent,
+            borderRadius: BorderRadius.circular(29),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Badge(
+              isLabelVisible: item.badge > 0,
+              label: Text('${item.badge}'),
+              child: Icon(item.icon, size: 23, color: color),
+            ),
+            const SizedBox(height: 2),
+            Text(item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, color: color)),
           ]),
         ),
       ),
@@ -413,9 +427,27 @@ class ForestHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.forest,
-      child: SafeArea(bottom: false, child: Padding(padding: padding, child: child)),
+    // Deep green glass with a gold glow, rounded at the bottom.
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+      child: DecoratedBox(
+        decoration: BoxDecoration(gradient: AppColors.heroGradient),
+        child: Stack(children: [
+          Positioned(
+            right: -80,
+            top: -90,
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [Color(0x73C8A15A), Color(0x00C8A15A)]),
+              ),
+            ),
+          ),
+          SafeArea(bottom: false, child: Padding(padding: padding, child: child)),
+        ]),
+      ),
     );
   }
 }

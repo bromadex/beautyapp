@@ -15,6 +15,7 @@ import 'screens/admin_analytics_screen.dart';
 import 'screens/admin_disputes_screen.dart';
 import 'screens/admin_errors_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'screens/not_found_screen.dart';
 import 'screens/admin_business_screen.dart';
 import 'screens/admin_moderation_screen.dart';
 import 'screens/provider_profile_editor_screen.dart';
@@ -61,6 +62,9 @@ import 'supabase_client.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// The page a signed-out person tried to open, shown once they sign in.
+String? _pendingNext;
+
 bool _isProvider() {
   final meta = supabase.auth.currentUser?.userMetadata;
   return meta?['user_type'] == 'provider';
@@ -69,6 +73,7 @@ bool _isProvider() {
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/home',
+  errorBuilder: (_, state) => NotFoundScreen(path: state.uri.path),
   redirect: (context, state) {
     final session = supabase.auth.currentSession;
     final isAuth = session != null;
@@ -93,7 +98,17 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/products') &&
         !loc.startsWith('/provider/location') &&
         !loc.startsWith('/provider/service-requests');
-    if (!isAuth) return (isAuthRoute || isPublicRoute) ? null : '/login';
+    if (!isAuth) {
+      if (isAuthRoute || isPublicRoute) return null;
+      // Remember where they were going, and take them there after signing in.
+      if (loc != '/' && loc != '/home' && loc != '/provider/home') _pendingNext = state.uri.toString();
+      return '/login';
+    }
+    final next = _pendingNext;
+    if (next != null && (isAuthRoute || loc == '/' || loc == '/home' || loc == '/provider/home')) {
+      _pendingNext = null;
+      return next;
+    }
 
     // Authenticated: route away from auth screens and root to the right shell
     if (isAuthRoute || loc == '/') {

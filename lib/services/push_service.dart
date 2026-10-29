@@ -11,6 +11,7 @@ import '../config/firebase_config.dart';
 import '../router.dart';
 import '../supabase_client.dart';
 import '../widgets/permission_explainer.dart';
+import '../utils/nav.dart';
 
 /// Stage 22: FCM push notifications (basic).
 ///
@@ -90,7 +91,7 @@ class PushService {
   static void _handleTap(RemoteMessage message) {
     final route = message.data['route'];
     if (route is String && route.startsWith('/')) {
-      appRouter.go(route);
+      openRoute(appRouter, route);
     }
   }
 

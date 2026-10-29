@@ -214,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       IconButton(
                         onPressed: () => context.go('/login'),
-                        icon: const Icon(TablerIcons.arrow_left),
+                        icon: const Icon(TablerIcons.chevron_left, size: 26),
                         tooltip: 'Back to sign in',
                       ),
                       const Spacer(),

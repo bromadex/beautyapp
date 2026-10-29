@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/fee_checkout.dart';
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/pay_methods.dart';
 import '../widgets/ui.dart';
@@ -125,7 +126,7 @@ class _FeePayScreenState extends State<FeePayScreen> {
                   : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
                       Container(
                         padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+                        decoration: Glass.hero(),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           Text(fee.label,
                               style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),

@@ -275,7 +275,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                                 child: LinearProgressIndicator(
                                   value: fraction,
                                   minHeight: 6,
-                                  backgroundColor: AppColors.surfaceLight,
+                                  backgroundColor: AppColors.surfaceMuted,
                                   valueColor: AlwaysStoppedAnimation(AppColors.warning),
                                 ),
                               ),

@@ -56,7 +56,7 @@ class PaymentMethodCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.primary.withValues(alpha: 0.1)
-                    : AppColors.surfaceLight,
+                    : AppColors.surfaceMuted,
                 borderRadius: AppRadius.mdAll,
               ),
               child: Icon(icon,

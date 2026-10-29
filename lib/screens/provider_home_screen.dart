@@ -8,6 +8,7 @@ import '../services/earnings_service.dart';
 import '../services/referral_service.dart';
 import '../services/notification_service.dart';
 import '../services/push_service.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
@@ -696,10 +697,7 @@ class _NextBookingCard extends StatelessWidget {
     final clientInitials = clientName.split(' ').map((w) => w.isNotEmpty ? w[0] : '').take(2).join().toUpperCase();
 
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.forest,
-        borderRadius: AppRadius.xlAll,
-      ),
+      decoration: Glass.hero(),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -736,8 +734,9 @@ class _NextBookingCard extends StatelessWidget {
                 Container(
                   width: 40, height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.forest,
+                    color: Colors.white.withValues(alpha: 0.16),
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
                   child: Text(clientInitials, style: const TextStyle(

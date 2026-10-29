@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 
 class LocationPickerSheet extends StatefulWidget {
@@ -96,8 +97,8 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
       expand: false,
       builder: (_, scrollCtrl) => Container(
         decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          color: Glass.modal,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           children: [

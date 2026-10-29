@@ -6,6 +6,7 @@ import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
+import '../utils/nav.dart';
 
 class ServiceRequestQuoteScreen extends StatefulWidget {
   final String requestId;
@@ -83,7 +84,7 @@ class _ServiceRequestQuoteScreenState
     if (ok != true) return;
     try {
       final bookingId = await supabase.rpc('accept_quote', params: {'p_quote_id': q['id']});
-      if (mounted) context.go('/booking/$bookingId');
+      if (mounted) openWithParents(context, '/booking/$bookingId');
     } on PostgrestException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

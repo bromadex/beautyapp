@@ -3,6 +3,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 
@@ -82,7 +83,7 @@ class _SalonPublicScreenState extends State<SalonPublicScreen> {
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         Container(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+          decoration: Glass.hero(),
           child: Row(children: [
             Container(
               width: 56,

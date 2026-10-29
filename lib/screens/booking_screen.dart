@@ -9,6 +9,7 @@ import '../utils/pay_methods.dart';
 import '../theme.dart';
 import '../widgets/slot_picker.dart';
 import '../widgets/ui.dart';
+import '../utils/nav.dart';
 
 /// Step-by-step booking: Service → When → Details → Review.
 class BookingScreen extends StatefulWidget {
@@ -433,8 +434,7 @@ class _BookingScreenState extends State<BookingScreen> {
               child: FilledButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/booking/$bookingId');
-                  context.push('/pay/$bookingId');
+                  openWithParents(context, '/pay/$bookingId');
                 },
                 child: Text('Pay ${_money(deposit)} deposit'),
               ),
@@ -447,14 +447,14 @@ class _BookingScreenState extends State<BookingScreen> {
                 ? OutlinedButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      context.go('/booking/$bookingId');
+                      openWithParents(context, '/booking/$bookingId');
                     },
                     child: const Text('Later'),
                   )
                 : FilledButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      context.go('/booking/$bookingId');
+                      openWithParents(context, '/booking/$bookingId');
                     },
                     child: const Text('View booking'),
                   ),
@@ -495,14 +495,13 @@ class _BookingScreenState extends State<BookingScreen> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-            icon: const Icon(TablerIcons.arrow_left),
+            tooltip: 'Back',
+            icon: const Icon(TablerIcons.chevron_left, size: 26),
             onPressed: () {
               if (_step > 0) {
                 setState(() => _step--);
-              } else if (context.canPop()) {
-                context.pop();
               } else {
-                context.go('/provider/${widget.providerId}');
+                goBack(context);
               }
             },
           ),

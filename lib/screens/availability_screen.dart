@@ -281,7 +281,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         vertical: AppSpacing.md,
       ),
       decoration: BoxDecoration(
-        color: day.isAvailable ? AppColors.cardLight : AppColors.surfaceLight,
+        color: day.isAvailable ? AppColors.cardLight : AppColors.surfaceMuted,
         borderRadius: AppRadius.mdAll,
         border: Border.all(color: AppColors.border),
       ),

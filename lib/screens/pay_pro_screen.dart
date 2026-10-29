@@ -10,9 +10,11 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 import 'package:url_launcher/url_launcher.dart';
 
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/pay_methods.dart';
 import '../widgets/ui.dart';
+import '../utils/nav.dart';
 
 /// Client sends money straight to the pro, then taps "I've paid" with a
 /// transaction ID or screenshot. The pro confirms whether it arrived.
@@ -277,7 +279,7 @@ class _PayProScreenState extends State<PayProScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(TablerIcons.x),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/booking/${widget.bookingId}'),
+          onPressed: () => goBack(context),
         ),
         title: Text(title),
         actions: [
@@ -354,7 +356,7 @@ class _PayProScreenState extends State<PayProScreen> {
     };
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+      decoration: Glass.hero(),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
@@ -629,7 +631,7 @@ class _PayProScreenState extends State<PayProScreen> {
               : 'There is nothing to pay on this booking right now.',
       actions: [
         FilledButton(
-          onPressed: () => context.canPop() ? context.pop() : context.go('/booking/${widget.bookingId}'),
+          onPressed: () => goBack(context),
           child: const Text('Back to booking'),
         ),
       ],

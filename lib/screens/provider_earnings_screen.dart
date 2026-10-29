@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../services/earnings_service.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/booking_helpers.dart';
 import '../utils/pay_methods.dart';
@@ -156,7 +157,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
         // Total for the period
         Container(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+          decoration: Glass.hero(),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Received $_periodLabel',
                 style: const TextStyle(color: AppColors.goldLight, fontSize: 13, fontWeight: FontWeight.w600)),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'glass.dart';
+
 /// BeauTap design system — Direction B "Rich, modern".
 /// Forest green with soft gold on a light canvas, Manrope throughout,
 /// JetBrains Mono for reference codes. Text colours pass 4.5:1.
@@ -16,7 +18,7 @@ class AppColors {
   static Color get forest => _c(0xFF0F3B31, 0xFF14392F);      // Hero panels with white text, both modes
   static Color get primaryDark => _c(0xFF0B2C25, 0xFF0B241E); // Forest pressed / inset on forest
   static const Color pine = Color(0xFF2A5A4E);                // Tiles and avatars on dark headers
-  static Color get primarySoft => _c(0xFFE4EDE8, 0xFF1B2F28); // Mint
+  static Color get primarySoft => _c(0xFFE1ECE6, 0x267CC7AB); // Mint
   static const Color gold = Color(0xFFC8A15A);                // Payment on dark, Featured, FAB, active tab bar
   static Color get goldText => _c(0xFF7A5C22, 0xFFE0C07F);    // Gold-toned text
   static const Color goldLight = Color(0xFFE7D3A6);           // Text and badges on Forest
@@ -37,14 +39,14 @@ class AppColors {
 
   // Surfaces
   static Color get surfaceLight => _c(0xFFF5F6F3, 0xFF0F1613); // Canvas
-  static Color get surfaceMuted => _c(0xFFECEEEB, 0xFF1E2925);
-  static Color get card => _c(0xFFFFFFFF, 0xFF18221E);         // Cards, sheets, fields
+  static Color get surfaceMuted => _c(0x140F3B31, 0x17FFFFFF); // Glass well
+  static Color get card => _c(0xCCFFFFFF, 0x17FFFFFF);         // Glass tile: cards, chips, fields
   static const Color surfaceDark = Color(0xFF14201C);
   static Color get cardLight => card;
   static const Color cardDark = Color(0xFF1D2A25);
 
-  static Color get border => _c(0xFFE1E5E1, 0xFF2A3631);       // Line
-  static Color get borderStrong => _c(0xFFB9C2BD, 0xFF405049); // Field line
+  static Color get border => _c(0x1F0F3B31, 0x2BFFFFFF);       // Glass hairline
+  static Color get borderStrong => _c(0x400F3B31, 0x47FFFFFF); // Field line
 
   static Color get textPrimary => _c(0xFF14201C, 0xFFE7EEEA);  // Ink
   static Color get textSecondary => _c(0xFF55625D, 0xFFA8B4AE);// Slate
@@ -54,17 +56,20 @@ class AppColors {
   static Color get busy => warning;
   static const Color offline = Color(0xFF9AA59F);
 
-  static LinearGradient get primaryGradient => LinearGradient(colors: [forest, forest]);
-  static LinearGradient get heroGradient => LinearGradient(colors: [forest, forest]);
+  static LinearGradient get primaryGradient => const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF22604F), Color(0xFF0F3B31)]);
+  static LinearGradient get heroGradient => const LinearGradient(
+      begin: Alignment.topLeft, end: Alignment.bottomRight,
+      colors: [Color(0xFF22604F), Color(0xFF0F3B31), Color(0xFF08241D)], stops: [0, 0.55, 1]);
 }
 
 class AppRadius {
-  static const double xs = 6;   // Pills, badges
-  static const double sm = 10;  // Fields, chips, 48px buttons
-  static const double md = 12;  // Cards, 52px buttons
-  static const double lg = 12;
-  static const double xl = 20;  // Sheet top
-  static const double xxl = 28;
+  static const double xs = 8;   // Pills, badges
+  static const double sm = 12;  // Fields, chips, small buttons
+  static const double md = 16;  // Buttons, small cards
+  static const double lg = 22;  // Cards
+  static const double xl = 28;  // Big panels, sheet top
+  static const double xxl = 32;
 
   static BorderRadius get xsAll => BorderRadius.circular(xs);
   static BorderRadius get smAll => BorderRadius.circular(sm);
@@ -89,7 +94,7 @@ class AppSpacing {
 }
 
 class AppShadows {
-  static const List<BoxShadow> soft = [];
+  static List<BoxShadow> get soft => Glass.shadow;
   static const List<BoxShadow> lifted = [
     BoxShadow(color: Color(0x1414201C), blurRadius: 16, offset: Offset(0, 6)),
   ];
@@ -119,10 +124,12 @@ class AppTheme {
       surface: AppColors.surfaceLight,
       onSurface: AppColors.textPrimary,
       onSurfaceVariant: AppColors.textSecondary,
-      surfaceContainerLowest: AppColors.card,
-      surfaceContainerLow: AppColors.card,
-      surfaceContainer: AppColors.surfaceMuted,
-      surfaceContainerHigh: AppColors.surfaceMuted,
+      // Solid: Flutter paints menus, date pickers and dropdowns with these.
+      surfaceContainerLowest: dark ? const Color(0xFF13261F) : Colors.white,
+      surfaceContainerLow: dark ? const Color(0xFF162B23) : const Color(0xFFFAFBF9),
+      surfaceContainer: dark ? const Color(0xFF193028) : const Color(0xFFF4F7F3),
+      surfaceContainerHigh: dark ? const Color(0xFF1D352C) : const Color(0xFFEEF3EF),
+      surfaceContainerHighest: dark ? const Color(0xFF223B32) : const Color(0xFFE7EEE9),
       outline: AppColors.borderStrong,
       outlineVariant: AppColors.border,
     );
@@ -154,15 +161,27 @@ class AppTheme {
       colorScheme: colorScheme,
       fontFamily: fontFamily,
       textTheme: text,
-      scaffoldBackgroundColor: AppColors.surfaceLight,
+      scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Glass.modal,
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: GlassPageTransitions(),
+        TargetPlatform.iOS: GlassPageTransitions(),
+        TargetPlatform.macOS: GlassPageTransitions(),
+        TargetPlatform.windows: GlassPageTransitions(),
+        TargetPlatform.linux: GlassPageTransitions(),
+        TargetPlatform.fuchsia: GlassPageTransitions(),
+      }),
       splashFactory: InkRipple.splashFactory,
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) => const Icon(Icons.chevron_left_rounded, size: 30),
+      ),
       visualDensity: VisualDensity.standard,
 
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        backgroundColor: AppColors.surfaceLight,
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 16,
         titleTextStyle: TextStyle(
@@ -180,7 +199,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.lgAll,
-          side: BorderSide(color: AppColors.border),
+          side: BorderSide(color: AppColors.isDark ? AppColors.border : Colors.white),
         ),
         color: AppColors.card,
         surfaceTintColor: Colors.transparent,
@@ -197,7 +216,7 @@ class AppTheme {
 
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.card,
+        fillColor: dark ? const Color(0x47000000) : const Color(0xB3FFFFFF),
         isDense: false,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
         border: field(AppColors.borderStrong),
@@ -220,8 +239,10 @@ class AppTheme {
           disabledForegroundColor: AppColors.textTertiary,
           minimumSize: const Size(64, 52),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 16, fontWeight: FontWeight.w700),
+          shape: const StadiumBorder(),
+          elevation: 6,
+          shadowColor: AppColors.primary.withValues(alpha: 0.45),
+          textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 16, fontWeight: FontWeight.w800),
         ),
       ),
 
@@ -243,8 +264,8 @@ class AppTheme {
           backgroundColor: AppColors.card,
           minimumSize: const Size(64, 48),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-          side: BorderSide(color: AppColors.primary, width: 1.5),
+          shape: const StadiumBorder(),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.3),
           textStyle: const TextStyle(fontFamily: fontFamily, fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
@@ -266,11 +287,8 @@ class AppTheme {
         selectedColor: AppColors.primarySoft,
         disabledColor: AppColors.surfaceMuted,
         checkmarkColor: AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.smAll,
-          side: BorderSide(color: AppColors.borderStrong),
-        ),
-        side: BorderSide(color: AppColors.borderStrong),
+        shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+        side: BorderSide(color: AppColors.isDark ? AppColors.border : Colors.white),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         labelStyle: TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
         secondaryLabelStyle: TextStyle(fontFamily: fontFamily, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
@@ -296,18 +314,33 @@ class AppTheme {
             )),
       ),
 
-      dividerTheme: DividerThemeData(color: AppColors.border, thickness: 1, space: 0),
+      dividerTheme: DividerThemeData(color: dark ? const Color(0x14FFFFFF) : const Color(0x140F3B31), thickness: 1, space: 0),
 
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: AppColors.card,
+        backgroundColor: Glass.modal,
+        modalBackgroundColor: Glass.modal,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
         showDragHandle: true,
         dragHandleColor: AppColors.borderStrong,
       ),
 
+      popupMenuTheme: PopupMenuThemeData(
+        color: Glass.modal,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll, side: BorderSide(color: AppColors.border)),
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: Glass.modal,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: Glass.modal,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
+      ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.card,
+        backgroundColor: Glass.modal,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
         titleTextStyle: TextStyle(fontFamily: fontFamily, fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.3),
@@ -324,10 +357,10 @@ class AppTheme {
 
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.gold,
-        foregroundColor: AppColors.textPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 2,
-        highlightElevation: 4,
+        foregroundColor: const Color(0xFF2A1E06),
+        shape: const StadiumBorder(),
+        elevation: 8,
+        highlightElevation: 10,
         extendedTextStyle: const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700, fontSize: 15),
       ),
 
@@ -343,12 +376,14 @@ class AppTheme {
 
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
-          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: AppRadius.mdAll)),
-          side: WidgetStatePropertyAll(BorderSide(color: AppColors.borderStrong)),
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
+          side: WidgetStatePropertyAll(BorderSide(color: AppColors.border)),
           backgroundColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected) ? AppColors.primarySoft : AppColors.card),
+              s.contains(WidgetState.selected) ? (dark ? const Color(0x38FFFFFF) : AppColors.forest) : AppColors.card),
           foregroundColor: WidgetStateProperty.resolveWith((s) =>
-              s.contains(WidgetState.selected) ? AppColors.primary : AppColors.textSecondary),
+              s.contains(WidgetState.selected) ? Colors.white : AppColors.textSecondary),
+          iconColor: WidgetStateProperty.resolveWith((s) =>
+              s.contains(WidgetState.selected) ? Colors.white : AppColors.textSecondary),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(fontFamily: fontFamily, fontSize: 14, fontWeight: FontWeight.w600),
           ),

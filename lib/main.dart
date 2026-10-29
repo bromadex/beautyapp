@@ -12,6 +12,7 @@ import 'services/account_guard.dart';
 import 'services/appearance.dart';
 import 'services/error_reporter.dart';
 import 'services/social_auth.dart';
+import 'utils/nav.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,37 +105,38 @@ class _BeautyAppState extends State<BeautyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     Appearance.instance.addListener(_onAppearance);
-    if (kIsWeb) WidgetsBinding.instance.addPostFrameCallback((_) => _restoreBackStack());
+    appRouter.routerDelegate.addListener(_onRoute);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreBackStack());
   }
 
-  static const _tabs = {
-    '/home', '/browse', '/client/bookings', '/favorites',
-    '/provider/home', '/provider/calendar', '/provider/clients', '/provider/profile',
-    '/login', '/register', '/welcome', '/',
-  };
+  /// A refreshed page, a pasted link or a notification can open a page on
+  /// its own, with nothing under it. Put its parent pages underneath (from
+  /// the home tab down), so back goes where you'd expect.
+  bool _restoring = false;
 
-  /// A refreshed or pasted link opens a page on its own, with no back arrow.
-  /// Put the right home screen underneath it so back works like in the app.
+  void _onRoute() {
+    if (_restoring) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreBackStack());
+  }
+
   void _restoreBackStack() {
+    if (_restoring) return;
     try {
       if (supabase.auth.currentSession == null || appRouter.canPop()) return;
       final uri = appRouter.routerDelegate.currentConfiguration.uri;
-      final path = uri.path;
-      if (_tabs.contains(path) || path.startsWith('/@')) return;
-      final home = path.startsWith('/admin/') && path != '/admin/dashboard'
-          ? '/admin/dashboard'
-          : supabase.auth.currentUser?.userMetadata?['user_type'] == 'provider'
-              ? '/provider/home'
-              : '/home';
-      if (path == home) return;
-      appRouter.go(home);
-      appRouter.push(uri.toString());
-    } catch (_) {}
+      if (isRoot(uri.path) || uri.path == '/welcome') return;
+      _restoring = true;
+      openRoute(appRouter, uri.toString());
+    } catch (_) {
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoring = false);
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    appRouter.routerDelegate.removeListener(_onRoute);
     Appearance.instance.removeListener(_onAppearance);
     super.dispose();
   }

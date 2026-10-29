@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/booking_helpers.dart';
 import '../widgets/ui.dart';
@@ -151,7 +152,7 @@ class _SalonScreenState extends State<SalonScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+        decoration: Glass.hero(),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(TablerIcons.building_store, color: AppColors.gold, size: 32),
           const SizedBox(height: 10),
@@ -192,7 +193,7 @@ class _SalonScreenState extends State<SalonScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       Container(
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+        decoration: Glass.hero(),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(

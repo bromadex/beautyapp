@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/nav.dart';
 
 class VerificationUploadScreen extends StatefulWidget {
   const VerificationUploadScreen({super.key});
@@ -93,10 +94,7 @@ class _VerificationUploadScreenState extends State<VerificationUploadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verify Identity'),
-        leading: IconButton(
-          icon: const Icon(TablerIcons.arrow_left),
-          onPressed: () => context.pop(),
-        ),
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),

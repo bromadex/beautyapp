@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, Postgr
 
 import '../services/fee_checkout.dart';
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/pay_methods.dart';
 import '../widgets/ui.dart';
@@ -147,7 +148,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+                  decoration: Glass.hero(),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Text('$_active of $_allowance',

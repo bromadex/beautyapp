@@ -4,6 +4,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../supabase_client.dart';
+import '../glass.dart';
 import '../theme.dart';
 import '../utils/booking_helpers.dart';
 import '../widgets/ui.dart';
@@ -101,7 +102,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       Container(
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: AppColors.forest, borderRadius: AppRadius.xlAll),
+        decoration: Glass.hero(),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Invite 2 pros, get 2 months free',
               style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),

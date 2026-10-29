@@ -9,6 +9,7 @@ import '../widgets/specialties.dart';
 import '../services/guest_service.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart' show shareOnWhatsApp;
+import '../utils/nav.dart';
 
 class ProviderPublicProfileScreen extends StatefulWidget {
   final String providerId;
@@ -507,14 +508,7 @@ class _ProviderPublicProfileScreenState
                   constraints: const BoxConstraints(maxWidth: 640),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      if (Navigator.of(context).canPop())
-                        IconButton(
-                          icon: const Icon(TablerIcons.arrow_left, color: Colors.white),
-                          tooltip: 'Back',
-                          onPressed: () => Navigator.of(context).pop(),
-                        )
-                      else
-                        const SizedBox(width: 48),
+                      const AppBackButton(color: Colors.white),
                       const Spacer(),
                       if (_providerProfile?['slug'] != null)
                         IconButton(
@@ -839,7 +833,7 @@ class _ProviderPublicProfileScreenState
                               img['image_url'],
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
-                                color: AppColors.surfaceLight,
+                                color: AppColors.surfaceMuted,
                                 child: Icon(TablerIcons.photo_off, color: AppColors.textTertiary),
                               ),
                             ),
