@@ -10,7 +10,7 @@ import '../supabase_client.dart';
 /// show up before users complain. Bad-connection errors are left out: they're
 /// normal on mobile data and would drown out real bugs.
 class ErrorReporter {
-  static const appVersion = '1.1.0';
+  static const appVersion = '1.2.0';
 
   static final _sentThisSession = <String>{};
   static String? _device;
