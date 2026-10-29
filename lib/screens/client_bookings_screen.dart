@@ -18,6 +18,7 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
   List<Map<String, dynamic>> _bookings = [];
   bool _loading = true;
   String? _error;
+  String _q = '';
   RealtimeChannel? _channel;
 
   @override
@@ -127,10 +128,21 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
     }
   }
 
+  bool _matches(Map<String, dynamic> b) {
+    if (_q.isEmpty) return true;
+    final i = _BookingInfo(b);
+    return '${i.service} ${i.pro} ${i.ref ?? ''}'.toLowerCase().contains(_q);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final upcoming = _bookings.where(_isUpcoming).toList();
-    final past = _bookings.where((b) => !_isUpcoming(b)).toList().reversed.toList();
+    final upcoming = _bookings.where(_isUpcoming).where(_matches).toList();
+    final past = _bookings.where((b) => !_isUpcoming(b)).where(_matches).toList().reversed.toList();
+    const noMatch = EmptyState(
+      icon: TablerIcons.search,
+      title: 'No bookings match',
+      message: 'Try a different service, pro or reference.',
+    );
 
     return DefaultTabController(
       length: 2,
@@ -138,12 +150,9 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
         appBar: largeTitleBar(
           context,
           'Bookings',
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(44),
-            child: _SegmentTabs(tabs: [
-              'Upcoming${upcoming.isNotEmpty ? ' (${upcoming.length})' : ''}',
-              'Past',
-            ]),
+          bottom: _BookingsToolbar(
+            tabs: ['Upcoming${upcoming.isNotEmpty ? ' (${upcoming.length})' : ''}', 'Past'],
+            onSearch: (v) => setState(() => _q = v.trim().toLowerCase()),
           ),
         ),
         body: _loading
@@ -159,20 +168,24 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                 : TabBarView(children: [
                     _list(
                       upcoming,
-                      const EmptyState(
-                        icon: TablerIcons.calendar_check,
-                        title: 'No upcoming bookings',
-                        message: 'When you book a beauty pro, your appointment shows up here.',
-                      ),
-                      showFind: true,
+                      _q.isNotEmpty
+                          ? noMatch
+                          : const EmptyState(
+                              icon: TablerIcons.calendar_check,
+                              title: 'No upcoming bookings',
+                              message: 'When you book a beauty pro, your appointment shows up here.',
+                            ),
+                      showFind: _q.isEmpty,
                     ),
                     _list(
                       past,
-                      const EmptyState(
-                        icon: TablerIcons.history,
-                        title: 'Nothing here yet',
-                        message: 'Your finished and cancelled bookings will appear here.',
-                      ),
+                      _q.isNotEmpty
+                          ? noMatch
+                          : const EmptyState(
+                              icon: TablerIcons.history,
+                              title: 'Nothing here yet',
+                              message: 'Your finished and cancelled bookings will appear here.',
+                            ),
                     ),
                   ]),
       ),
@@ -199,142 +212,164 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
     }
     return RefreshIndicator.adaptive(
       onRefresh: _load,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: ListView.separated(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 12 + tabBarSpace(context)),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _ReceiptCard(
-              booking: items[i],
-              upcoming: _isUpcoming(items[i]),
-              onCancel: () => _cancel(items[i]),
-              onReschedule: () => _reschedule(items[i]),
+      child: LayoutBuilder(builder: (context, c) {
+        // A table on wide screens, cards on phones.
+        final table = c.maxWidth >= 820;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + tabBarSpace(context)),
+          children: [
+            PageWidth(
+              child: table
+                  ? _BookingsTable(
+                      bookings: items,
+                      isUpcoming: _isUpcoming,
+                      onCancel: _cancel,
+                      onReschedule: _reschedule,
+                    )
+                  : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      for (final b in items)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _BookingCard(
+                            booking: b,
+                            upcoming: _isUpcoming(b),
+                            onCancel: () => _cancel(b),
+                            onReschedule: () => _reschedule(b),
+                          ),
+                        ),
+                    ]),
             ),
-          ),
-        ),
-      ),
+          ],
+        );
+      }),
     );
   }
 }
 
-class _ReceiptCard extends StatelessWidget {
-  final Map<String, dynamic> booking;
-  final bool upcoming;
-  final VoidCallback onCancel;
-  final VoidCallback onReschedule;
-  const _ReceiptCard(
-      {required this.booking, required this.upcoming, required this.onCancel, required this.onReschedule});
+/// What a booking card or table row shows, worked out once.
+class _BookingInfo {
+  final Map<String, dynamic> b;
+  _BookingInfo(this.b);
 
   static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  String get status => b['status'] as String? ?? 'pending';
+  DateTime? get when => DateTime.tryParse(b['booking_time'] ?? '')?.toLocal();
+  String get pro => b['profiles']?['full_name'] ?? 'Beauty pro';
+  String? get proAvatar => b['profiles']?['avatar_url'] as String?;
+  String get service {
+    final s = b['services']?['service_name'] ?? 'Appointment';
+    final tier = b['service_tiers']?['name'];
+    return tier != null ? '$s · $tier' : s;
+  }
+
+  double get _total => (b['total_price'] as num?)?.toDouble() ?? 0;
+  String get price => '\$${_total.toStringAsFixed(_total % 1 == 0 ? 0 : 2)}';
+  String? get ref => b['ref'] == null ? null : '#${b['ref']}';
+  bool get reviewed => (b['reviews'] as List? ?? []).isNotEmpty;
+  bool depositDue(bool upcoming) =>
+      ((b['deposit_amount'] as num?) ?? 0) > 0 && b['deposit_paid'] != true && upcoming;
+
+  (Color, String) get state => switch (status) {
+        'confirmed' => (AppColors.success, 'Confirmed'),
+        'pending' => (AppColors.warning, b['rescheduled_at'] != null ? 'New time, awaiting pro' : 'Awaiting pro'),
+        'completed' => (AppColors.info, 'Completed'),
+        _ => (AppColors.error, b['no_show_by'] != null ? 'No-show' : 'Cancelled'),
+      };
+
+  String get time {
+    final dt = when;
+    if (dt == null) return '';
+    return '${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'pm' : 'am'}';
+  }
+
+  String get day => when == null ? '' : _days[when!.weekday - 1];
+  String get month => when == null ? '' : _months[when!.month - 1];
+  String get date => when == null ? '' : '$day, ${when!.day} $month ${when!.year}';
+}
+
+typedef _Action = ({IconData icon, String label, VoidCallback onTap, bool destructive});
+
+List<_Action> _actionsFor(BuildContext context, _BookingInfo i, bool upcoming,
+        VoidCallback onCancel, VoidCallback onReschedule) =>
+    [
+      if (upcoming) ...[
+        (icon: TablerIcons.calendar_cog, label: 'Reschedule', onTap: onReschedule, destructive: false),
+        (icon: TablerIcons.x, label: 'Cancel', onTap: onCancel, destructive: true),
+      ] else ...[
+        if (i.status == 'completed' && !i.reviewed)
+          (icon: TablerIcons.star, label: 'Review', onTap: () => context.push('/review/${i.b['id']}'), destructive: false),
+        (
+          icon: TablerIcons.repeat,
+          label: 'Book again',
+          onTap: () => context.push('/book/${i.b['provider_id']}/${i.b['service_id']}'),
+          destructive: false,
+        ),
+      ],
+    ];
+
+/// Phones: one card per booking.
+class _BookingCard extends StatelessWidget {
+  final Map<String, dynamic> booking;
+  final bool upcoming;
+  final VoidCallback onCancel;
+  final VoidCallback onReschedule;
+  const _BookingCard(
+      {required this.booking, required this.upcoming, required this.onCancel, required this.onReschedule});
+
   @override
   Widget build(BuildContext context) {
-    final b = booking;
-    final status = b['status'] as String? ?? 'pending';
-    final dt = DateTime.tryParse(b['booking_time'] ?? '')?.toLocal();
-    final stylist = b['profiles']?['full_name'] ?? 'Beauty pro';
-    final service = b['services']?['service_name'] ?? 'Appointment';
-    final tier = b['service_tiers']?['name'];
-    final total = (b['total_price'] as num?)?.toDouble() ?? 0;
-    final reviewed = (b['reviews'] as List? ?? []).isNotEmpty;
-    final depositDue = ((b['deposit_amount'] as num?) ?? 0) > 0 && b['deposit_paid'] != true && upcoming;
-    final noShow = b['no_show_by'] != null;
-
-    final (Color color, String label) = switch (status) {
-      'confirmed' => (AppColors.success, 'Confirmed'),
-      'pending' => (AppColors.warning, b['rescheduled_at'] != null ? 'New time — awaiting pro' : 'Awaiting pro'),
-      'completed' => (AppColors.info, 'Completed'),
-      _ => (AppColors.error, noShow ? 'No-show' : 'Cancelled'),
-    };
-
-    final hh = dt == null ? '' : '${dt.hour % 12 == 0 ? 12 : dt.hour % 12}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'pm' : 'am'}';
+    final i = _BookingInfo(booking);
+    final (color, label) = i.state;
+    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule);
 
     return Card(
       child: InkWell(
-        onTap: () => context.push('/booking/${b['id']}'),
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(width: 5, color: color),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+        onTap: () => context.push('/booking/${booking['id']}'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _DateTile(month: i.month, day: i.when?.day),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Pill(label: label, color: color),
-                    const Spacer(),
-                    if (b['ref'] != null)
-                      Text('#${b['ref']}',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.5)),
-                  ]),
-                  const SizedBox(height: 12),
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(
-                      width: 52,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.smAll),
-                      child: Column(children: [
-                        Text(dt == null ? '' : _months[dt.month - 1],
-                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                        Text(dt == null ? '–' : '${dt.day}',
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
-                      ]),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('$service${tier != null ? ' · $tier' : ''}',
-                            style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        Text('${dt == null ? '' : '${_days[dt.weekday - 1]} · $hh · '}$stylist',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ]),
-                    ),
-                    Text('\$${total.toStringAsFixed(total % 1 == 0 ? 0 : 2)}',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                  ]),
-                  if (depositDue) ...[
-                    const SizedBox(height: 10),
-                    Text('Deposit of \$${(b['deposit_amount'] as num).toStringAsFixed(2)} not paid yet',
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warning)),
-                  ],
-                  const SizedBox(height: 6),
-                  const Divider(),
-                  Row(children: [
-                    if (upcoming) ...[
-                      TextButton.icon(
-                        onPressed: onReschedule,
-                        icon: const Icon(TablerIcons.calendar_cog, size: 18),
-                        label: const Text('Reschedule'),
-                      ),
-                      TextButton(
-                        onPressed: onCancel,
-                        style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                        child: const Text('Cancel'),
-                      ),
-                    ] else ...[
-                      if (status == 'completed' && !reviewed)
-                        TextButton.icon(
-                          onPressed: () => context.push('/review/${b['id']}'),
-                          icon: const Icon(TablerIcons.star, size: 18),
-                          label: const Text('Review'),
-                        ),
-                      TextButton.icon(
-                        onPressed: () => context.push('/book/${b['provider_id']}/${b['service_id']}'),
-                        icon: const Icon(TablerIcons.repeat, size: 18),
-                        label: const Text('Book again'),
-                      ),
-                    ],
-                    const Spacer(),
-                    Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
-                  ]),
+                  Text(i.service,
+                      style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  _Meta(icon: TablerIcons.clock, text: '${i.day} · ${i.time}'),
+                  const SizedBox(height: 2),
+                  _Meta(icon: TablerIcons.user, text: i.pro),
                 ]),
               ),
-            ),
+              const SizedBox(width: 8),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(i.price, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 6),
+                Pill(label: label, color: color),
+              ]),
+            ]),
+            if (i.depositDue(upcoming)) ...[
+              const SizedBox(height: 10),
+              Text('Deposit of \$${(booking['deposit_amount'] as num).toStringAsFixed(2)} not paid yet',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warning)),
+            ],
+            const SizedBox(height: 10),
+            Divider(height: 1, color: AppColors.border),
+            Row(children: [
+              for (final a in actions)
+                TextButton.icon(
+                  onPressed: a.onTap,
+                  style: a.destructive ? TextButton.styleFrom(foregroundColor: AppColors.error) : null,
+                  icon: Icon(a.icon, size: 18),
+                  label: Text(a.label),
+                ),
+              const Spacer(),
+              if (i.ref != null)
+                Text(i.ref!,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.4)),
+            ]),
           ]),
         ),
       ),
@@ -342,20 +377,222 @@ class _ReceiptCard extends StatelessWidget {
   }
 }
 
-/// iOS segmented control look for the Upcoming / Past switch.
-class _SegmentTabs extends StatelessWidget {
-  final List<String> tabs;
-  const _SegmentTabs({required this.tabs});
+class _DateTile extends StatelessWidget {
+  final String month;
+  final int? day;
+  const _DateTile({required this.month, required this.day});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(999)),
-        child: TabBar(tabs: [for (final t in tabs) Tab(height: 32, text: t)]),
+    return Container(
+      width: 52,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.smAll),
+      child: Column(children: [
+        Text(month, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+        Text(day == null ? '–' : '$day',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
+      ]),
+    );
+  }
+}
+
+class _Meta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _Meta({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Icon(icon, size: 14, color: AppColors.textTertiary),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+        ),
+      ]);
+}
+
+/// Wide screens: all bookings in one table, like a dashboard.
+class _BookingsTable extends StatelessWidget {
+  final List<Map<String, dynamic>> bookings;
+  final bool Function(Map<String, dynamic>) isUpcoming;
+  final void Function(Map<String, dynamic>) onCancel;
+  final void Function(Map<String, dynamic>) onReschedule;
+  const _BookingsTable(
+      {required this.bookings, required this.isUpcoming, required this.onCancel, required this.onReschedule});
+
+  static const _flex = [5, 3, 2, 3, 2];
+
+  @override
+  Widget build(BuildContext context) {
+    final head = TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.textSecondary);
+    return Material(
+      color: AppColors.card,
+      borderRadius: AppRadius.lgAll,
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
+          child: Row(children: [
+            for (final (k, t) in ['BOOKING', 'DATE', 'REFERENCE', 'STATUS', 'PRICE'].indexed)
+              Expanded(
+                flex: _flex[k],
+                child: Text(t, style: head, textAlign: k == 4 ? TextAlign.right : TextAlign.left),
+              ),
+            const SizedBox(width: 48),
+          ]),
+        ),
+        for (final b in bookings) ...[
+          Divider(height: 1, color: AppColors.border),
+          _BookingRow(
+            booking: b,
+            upcoming: isUpcoming(b),
+            onCancel: () => onCancel(b),
+            onReschedule: () => onReschedule(b),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _BookingRow extends StatelessWidget {
+  final Map<String, dynamic> booking;
+  final bool upcoming;
+  final VoidCallback onCancel;
+  final VoidCallback onReschedule;
+  const _BookingRow(
+      {required this.booking, required this.upcoming, required this.onCancel, required this.onReschedule});
+
+  @override
+  Widget build(BuildContext context) {
+    final i = _BookingInfo(booking);
+    final (color, label) = i.state;
+    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule);
+    final f = _BookingsTable._flex;
+    final secondary = TextStyle(fontSize: 13, color: AppColors.textSecondary);
+
+    return InkWell(
+      onTap: () => context.push('/booking/${booking['id']}'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+        child: Row(children: [
+          Expanded(
+            flex: f[0],
+            child: Row(children: [
+              PersonAvatar(name: i.pro, url: i.proAvatar, size: 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(i.service,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Text(i.pro, maxLines: 1, overflow: TextOverflow.ellipsis, style: secondary),
+                ]),
+              ),
+            ]),
+          ),
+          Expanded(
+            flex: f[1],
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(i.date, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              Text(i.time, style: secondary),
+            ]),
+          ),
+          Expanded(
+            flex: f[2],
+            child: Text(i.ref ?? '–',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary, letterSpacing: 0.3)),
+          ),
+          Expanded(
+            flex: f[3],
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Pill(label: label, color: color),
+              if (i.depositDue(upcoming))
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Deposit not paid',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.warning)),
+                ),
+            ]),
+          ),
+          Expanded(
+            flex: f[4],
+            child: Text(i.price,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          ),
+          SizedBox(
+            width: 48,
+            child: PopupMenuButton<int>(
+              tooltip: 'Actions',
+              icon: Icon(TablerIcons.dots, color: AppColors.textSecondary),
+              // onSelected runs after the menu closes, so a pushed page isn't popped with it.
+              onSelected: (k) => actions[k].onTap(),
+              itemBuilder: (_) => [
+                for (final (k, a) in actions.indexed)
+                  PopupMenuItem<int>(
+                    value: k,
+                    child: Row(children: [
+                      Icon(a.icon, size: 18, color: a.destructive ? AppColors.error : AppColors.textPrimary),
+                      const SizedBox(width: 10),
+                      Text(a.label, style: TextStyle(color: a.destructive ? AppColors.error : AppColors.textPrimary)),
+                    ]),
+                  ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Upcoming / Past switch under the title. Wide screens also get a search box.
+class _BookingsToolbar extends StatelessWidget implements PreferredSizeWidget {
+  final List<String> tabs;
+  final ValueChanged<String> onSearch;
+  const _BookingsToolbar({required this.tabs, required this.onSearch});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(44);
+
+  @override
+  Widget build(BuildContext context) {
+    final segment = Container(
+      height: 36,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(999)),
+      child: TabBar(tabs: [for (final t in tabs) Tab(height: 32, text: t)]),
+    );
+    if (!isWideLayout(context)) {
+      return Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: segment);
+    }
+    return PageWidth(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Row(children: [
+          SizedBox(width: 340, child: segment),
+          const Spacer(),
+          SizedBox(
+            width: 300,
+            height: 36,
+            child: TextField(
+              onChanged: onSearch,
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Search bookings',
+                prefixIcon: Icon(TablerIcons.search, size: 18),
+                contentPadding: EdgeInsets.symmetric(vertical: 8),
+              ),
+            ),
+          ),
+        ]),
       ),
     );
   }

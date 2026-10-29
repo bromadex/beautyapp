@@ -60,14 +60,14 @@ class _ClientsScreenState extends State<ClientsScreen> {
 
     return Scaffold(
       appBar: largeTitleBar(context, 'Clients'),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: tabFab(context, FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/provider/add-booking');
           _load();
         },
         icon: const Icon(TablerIcons.plus),
         label: const Text('Add booking'),
-      ),
+      )),
       body: _loading
           ? const LoadingPlaceholder()
           : RefreshIndicator.adaptive(
@@ -82,6 +82,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                       ),
                     ])
                   : ListView(padding: EdgeInsets.fromLTRB(16, 4, 16, 80 + tabBarSpace(context)), children: [
+                     PageWidth(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       Row(children: [
                         Expanded(child: _Stat(value: '${_clients.length}', label: 'Clients')),
                         const SizedBox(width: 10),
@@ -120,12 +121,16 @@ class _ClientsScreenState extends State<ClientsScreen> {
                         ),
                       ],
                       const SizedBox(height: 8),
-                      for (final c in list) _ClientRow(client: c, onChanged: _load),
+                      // Two or three columns of clients on wide screens.
+                      AdaptiveGrid(minTileWidth: 380, children: [
+                        for (final c in list) _ClientRow(client: c, onChanged: _load),
+                      ]),
                       if (list.isEmpty)
                         const Padding(
                           padding: EdgeInsets.all(24),
                           child: Center(child: Text('No clients match.')),
                         ),
+                     ])),
                     ]),
             ),
     );

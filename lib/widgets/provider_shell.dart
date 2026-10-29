@@ -16,11 +16,9 @@ class ProviderShell extends StatelessWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) navigationShell.goBranch(0);
       },
-      child: Scaffold(
-      // Content runs under the floating glass tab bar, like iOS 26.
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: BeauNavBar(
+      child: AdaptiveTabScaffold(
+        subtitle: 'For pros',
+        body: navigationShell,
         index: navigationShell.currentIndex,
         onTap: (index) => navigationShell.goBranch(
           index,
@@ -32,7 +30,6 @@ class ProviderShell extends StatelessWidget {
           (icon: TablerIcons.users, label: 'Clients', badge: 0),
           (icon: TablerIcons.user_circle, label: 'Me', badge: 0),
         ],
-      ),
       ),
     );
   }

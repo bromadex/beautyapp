@@ -185,8 +185,10 @@ class _BookingScreenState extends State<BookingScreen> {
   int? get _minAge => (_cat?['min_age'] as num?)?.toInt();
   bool get _needsAck => _isMassage || _minAge != null;
   String get _studioArea {
-    final a = (_providerProfile?['address'] ?? _provider?['location'] ?? '').toString();
-    return a.isEmpty ? 'their area' : a.split(',').last.trim();
+    final area = (_providerProfile?['area'] ?? '').toString().trim();
+    if (area.isNotEmpty) return area;
+    final a = (_provider?['location'] ?? '').toString();
+    return a.isEmpty ? 'their area' : a.split(',').first.trim();
   }
 
   double get _travelFee {
@@ -521,7 +523,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Expanded(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
@@ -1011,7 +1013,7 @@ class _BottomBar extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
+          constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
           child: Row(children: [
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(subtitle, style: Theme.of(context).textTheme.bodySmall),

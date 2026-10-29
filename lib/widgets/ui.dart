@@ -465,15 +465,27 @@ AppBar largeTitleBar(BuildContext context, String title, {List<Widget>? actions,
     bottom: PreferredSize(
       preferredSize: Size.fromHeight(50 + bottomH),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.displaySmall),
+        // Same width and centring as PageWidth, so the title lines up with the content.
+        PageWidth(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.displaySmall),
+            ),
+          ),
         ),
         ?bottom,
       ]),
     ),
   );
 }
+
+/// A tab page's floating button, lifted above the floating glass tab bar on
+/// phones (the page runs under the bar, so it would otherwise hide there).
+Widget tabFab(BuildContext context, Widget fab) => isWideLayout(context)
+    ? fab
+    : Padding(padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom), child: fab);
 
 /// Room to leave at the end of a tab page's list so the last item can
 /// scroll clear of the floating tab bar (content runs under the glass).
@@ -550,6 +562,234 @@ class _NavItem extends StatelessWidget {
       ),
     );
   }
+}
+
+/// From this width up (laptops, iPad landscape) the app uses the iPadOS
+/// layout: a sidebar instead of the bottom tab bar, and pages fill the screen.
+const double kWideBreakpoint = 1000;
+bool isWideLayout(BuildContext context) => MediaQuery.sizeOf(context).width >= kWideBreakpoint;
+
+typedef TabItem = ({IconData icon, String label, int badge});
+
+/// The tab scaffold for both shells: the floating glass tab bar on phones,
+/// an iPadOS 26 glass sidebar on wide screens.
+class AdaptiveTabScaffold extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onTap;
+  final List<TabItem> items;
+  final Widget body;
+  final String subtitle;
+  const AdaptiveTabScaffold({
+    super.key,
+    required this.index,
+    required this.onTap,
+    required this.items,
+    required this.body,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isWideLayout(context)) {
+      return Scaffold(
+        // Content runs under the floating glass tab bar, like iOS 26.
+        extendBody: true,
+        body: body,
+        bottomNavigationBar: BeauNavBar(index: index, onTap: onTap, items: items),
+      );
+    }
+    return Scaffold(
+      body: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        BeauSidebar(index: index, onTap: onTap, items: items, subtitle: subtitle),
+        Expanded(child: body),
+      ]),
+    );
+  }
+}
+
+/// iPadOS 26 sidebar: a floating Liquid Glass panel down the left edge.
+class BeauSidebar extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onTap;
+  final List<TabItem> items;
+  final String subtitle;
+  const BeauSidebar({super.key, required this.index, required this.onTap, required this.items, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      right: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
+        child: SizedBox(
+          width: 248,
+          child: GlassBar(
+            radius: 28,
+            padding: const EdgeInsets.fromLTRB(10, 18, 10, 12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 20),
+                child: Row(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.asset('assets/branding/app_mark.png', width: 34, height: 34, cacheWidth: 102),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('BeauTap', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(subtitle, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                ]),
+              ),
+              for (var i = 0; i < items.length; i++)
+                _SidebarItem(item: items[i], selected: i == index, onTap: () => onTap(i)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarItem extends StatelessWidget {
+  final TabItem item;
+  final bool selected;
+  final VoidCallback onTap;
+  const _SidebarItem({required this.item, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = AppColors.isDark;
+    final color = selected ? AppColors.primary : AppColors.textPrimary;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: item.label,
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Material(
+          color: selected ? (dark ? const Color(0x24FFFFFF) : const Color(0x14000000)) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              height: 44,
+              child: Row(children: [
+                const SizedBox(width: 12),
+                Icon(item.icon, size: 22, color: color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(item.label,
+                      style: TextStyle(fontSize: 16, fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: color)),
+                ),
+                if (item.badge > 0) ...[
+                  Badge(label: Text('${item.badge}')),
+                  const SizedBox(width: 12),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Widest a page's content gets on big monitors, so rows stay readable.
+const double kPageMaxWidth = 1240;
+
+/// Lays [children] (usually [IosSection]s) out in as many columns as fit,
+/// keeping their order: left to right, then down. One column on phones.
+class AdaptiveColumns extends StatelessWidget {
+  final List<Widget> children;
+  final double minColumnWidth;
+  final int maxColumns;
+  final double gap;
+  const AdaptiveColumns({super.key, required this.children, this.minColumnWidth = 380, this.maxColumns = 2, this.gap = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final cols = ((c.maxWidth + gap) / (minColumnWidth + gap)).floor().clamp(1, maxColumns);
+      if (cols == 1) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+      }
+      final columns = List.generate(cols, (_) => <Widget>[]);
+      for (var i = 0; i < children.length; i++) {
+        columns[i % cols].add(children[i]);
+      }
+      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (var i = 0; i < cols; i++) ...[
+          if (i > 0) SizedBox(width: gap),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: columns[i])),
+        ],
+      ]);
+    });
+  }
+}
+
+/// Cards in a grid that fills the width: one per row on phones, two or
+/// three side by side on wide screens. Cards keep their own height.
+class AdaptiveGrid extends StatelessWidget {
+  final List<Widget> children;
+  final double minTileWidth;
+  final double gap;
+  const AdaptiveGrid({super.key, required this.children, this.minTileWidth = 360, this.gap = 12});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final cols = ((c.maxWidth + gap) / (minTileWidth + gap)).floor().clamp(1, 4);
+      if (cols == 1) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+      }
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (var r = 0; r < children.length; r += cols)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (var i = r; i < r + cols; i++) ...[
+              if (i > r) SizedBox(width: gap),
+              Expanded(child: i < children.length ? children[i] : const SizedBox()),
+            ],
+          ]),
+      ]);
+    });
+  }
+}
+
+/// Widest a detail or form page gets on wide screens.
+const double kReadableMaxWidth = 880;
+
+/// Detail and form pages (everything outside the tab shells) on wide
+/// screens: one centred, readable column, like an iPad detail page. The
+/// router applies this to every such page; phones are unaffected.
+class ReadablePage extends StatelessWidget {
+  final Widget child;
+  const ReadablePage({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isWideLayout(context)) return child;
+    return Center(
+      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: kReadableMaxWidth), child: child),
+    );
+  }
+}
+
+/// Centres a tab page's content and stops it growing past [kPageMaxWidth].
+class PageWidth extends StatelessWidget {
+  final Widget child;
+  final double maxWidth;
+  const PageWidth({super.key, required this.child, this.maxWidth = kPageMaxWidth});
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child),
+      );
 }
 
 /// Status label in the booking colours from the design.

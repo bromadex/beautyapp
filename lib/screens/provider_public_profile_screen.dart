@@ -505,7 +505,7 @@ class _ProviderPublicProfileScreenState
               padding: const EdgeInsets.fromLTRB(4, 4, 8, 20),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 640),
+                  constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       const AppBackButton(color: Colors.white),
@@ -599,7 +599,7 @@ class _ProviderPublicProfileScreenState
           SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Column(children: [
@@ -649,7 +649,7 @@ class _ProviderPublicProfileScreenState
           SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                 child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
               child: Column(

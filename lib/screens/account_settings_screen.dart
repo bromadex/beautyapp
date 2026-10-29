@@ -368,7 +368,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             )
           : Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
                 child: ListView(
                   padding: AppSpacing.screenPadding,
                   children: [

@@ -355,7 +355,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       appBar: AppBar(title: const Text('Your plan')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: kReadableMaxWidth),
           child: SingleChildScrollView(
             padding: AppSpacing.screenPadding,
             child: Column(

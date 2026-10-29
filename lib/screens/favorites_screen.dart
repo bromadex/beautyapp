@@ -132,10 +132,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                       ],
                     )
-                  : ListView.builder(
+                  : ListView(
                       padding: EdgeInsets.fromLTRB(16, 16, 16, 4 + tabBarSpace(context)),
-                      itemCount: _favorites.length,
-                      itemBuilder: (_, i) {
+                      children: [
+                        PageWidth(
+                          child: AdaptiveGrid(children: List.generate(_favorites.length, (i) {
                         final fav = _favorites[i];
                         final providerId = fav['provider_id'] as String;
                         final profile = fav['profiles'] as Map<String, dynamic>?;
@@ -290,7 +291,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             ),
                           ),
                         );
-                      },
+                          })),
+                        ),
+                      ],
                     ),
             ),
     );
