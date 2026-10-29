@@ -15,7 +15,7 @@ class BrandMark extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.forest,
+        color: const Color(0xFF141210),
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
       child: Stack(children: [
@@ -23,7 +23,7 @@ class BrandMark extends StatelessWidget {
           child: Text(
             'B',
             style: TextStyle(
-              color: Colors.white,
+              color: AppColors.gold,
               fontSize: size * 0.5,
               fontWeight: FontWeight.w800,
               height: 1,
@@ -37,7 +37,7 @@ class BrandMark extends StatelessWidget {
           child: Container(
             width: size * 0.13,
             height: size * 0.13,
-            decoration: BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
+            decoration: const BoxDecoration(color: Color(0xFFF7F3EC), shape: BoxShape.circle),
           ),
         ),
       ]),

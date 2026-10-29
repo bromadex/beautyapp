@@ -430,14 +430,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
             child: Row(children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(10)),
-                child: const Text('b',
-                    style: TextStyle(fontFamily: 'InterDisplay', fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF17130E))),
-              ),
+              const BrandMark(size: 34),
               const SizedBox(width: 10),
               const Text('BeauTap', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
             ]),
