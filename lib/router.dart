@@ -68,10 +68,10 @@ String? _pendingNext;
 
 /// Pages outside the tab shells get one readable width on wide screens
 /// ([ReadablePage]). Admin dashboards keep the full width, and sign-in has
-/// its own laptop layout.
+/// its own laptop layout, as does booking.
 List<RouteBase> _readable(List<RouteBase> routes) => [
       for (final r in routes)
-        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin') && r.path != '/login')
+        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin') && r.path != '/login' && !r.path.startsWith('/book/'))
           GoRoute(
             path: r.path,
             name: r.name,

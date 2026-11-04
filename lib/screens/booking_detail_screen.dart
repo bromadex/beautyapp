@@ -7,6 +7,7 @@ import '../supabase_client.dart';
 import '../services/notification_service.dart';
 import '../theme.dart';
 import '../utils/pay_methods.dart';
+import '../widgets/booking_bits.dart';
 import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
@@ -795,6 +796,34 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 subtitle: _depositLeft(b) ?? 'Send it straight to ${provider?['full_name'] ?? 'your pro'} to secure your slot',
                 color: AppColors.primary,
                 onTap: () => context.push('/pay/${widget.bookingId}'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            if (!_isProvider && (status == 'pending' || status == 'confirmed')) ...[
+              _ActionCard(
+                icon: TablerIcons.bell,
+                label: 'Reminder',
+                subtitle: () {
+                  final m = (b['client_reminder_minutes'] as num?)?.toInt() ?? 60;
+                  return m == 0 ? 'Off. Tap to turn on' : 'We\'ll remind you ${reminderLabel(m)}';
+                }(),
+                color: AppColors.goldText,
+                onTap: () async {
+                  final current = (b['client_reminder_minutes'] as num?)?.toInt() ?? 60;
+                  final picked = await showReminderSheet(context, b, current);
+                  if (picked == null || picked == current) return;
+                  try {
+                    await supabase.rpc('set_booking_reminder', params: {'p_booking': widget.bookingId, 'p_minutes': picked});
+                    _load();
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: const Text('Could not save your reminder. Try again.'),
+                          backgroundColor: AppColors.error));
+                    }
+                  }
+                },
               ),
               const SizedBox(height: AppSpacing.sm),
             ],

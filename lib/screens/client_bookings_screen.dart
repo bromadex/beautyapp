@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../utils/feel.dart';
+import '../widgets/booking_bits.dart';
 import '../widgets/reschedule_sheet.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
@@ -20,6 +22,8 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
   String? _error;
   String _q = '';
   RealtimeChannel? _channel;
+  /// Cancelled on screen but not sent yet: the client has 5 seconds to undo.
+  final Set<String> _undoable = {};
 
   @override
   void initState() {
@@ -56,8 +60,11 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
           .eq('client_id', supabase.auth.currentUser!.id)
           .order('booking_time', ascending: true);
       if (mounted) {
+        final before = {for (final b in _bookings) b['id']: b['status']};
+        final fresh = List<Map<String, dynamic>>.from(data);
+        if (fresh.any((b) => before[b['id']] == 'pending' && b['status'] == 'confirmed')) Haptics.firm();
         setState(() {
-          _bookings = List<Map<String, dynamic>>.from(data);
+          _bookings = fresh;
           _loading = false;
           _error = null;
         });
@@ -80,11 +87,12 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
   }
 
   Future<void> _cancel(Map<String, dynamic> b) async {
-    if (paidSoFar(b) > 0) {
+    final paid = paidSoFar(b) > 0;
+    if (paid) {
       if (!await confirmPaidCancel(context, b, byPro: false)) return;
       if (!mounted) return;
     }
-    final ok = paidSoFar(b) > 0 ? true : await showDialog<bool>(
+    final ok = paid ? true : await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel this booking?'),
@@ -101,20 +109,56 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true || !mounted) return;
+
+    // Hide it now, send the cancellation after 5 seconds unless undone.
+    final id = b['id'] as String;
+    Haptics.warn();
+    setState(() => _undoable.add(id));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final reason = await messenger
+        .showSnackBar(SnackBar(
+          content: Text('Cancelled: ${_BookingInfo(b).service}'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(label: 'Undo', onPressed: () {}),
+        ))
+        .closed;
+    if (reason == SnackBarClosedReason.action) {
+      Haptics.light();
+      if (mounted) setState(() => _undoable.remove(id));
+      return;
+    }
     try {
-      final fee = await supabase.rpc('cancel_booking', params: {'p_booking_id': b['id'], 'p_reason': null});
-      if (mounted && (fee as num) > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      final fee = await supabase.rpc('cancel_booking', params: {'p_booking_id': id, 'p_reason': null});
+      if ((fee as num) > 0) {
+        messenger.showSnackBar(
           SnackBar(content: Text('Cancelled. A late fee of \$${fee.toStringAsFixed(2)} applies.')),
         );
       }
     } on PostgrestException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
-      }
+      messenger.showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
     }
-    _load();
+    _undoable.remove(id);
+    await _load();
+  }
+
+  Future<void> _remind(Map<String, dynamic> b) async {
+    final current = (b['client_reminder_minutes'] as num?)?.toInt() ?? 60;
+    final picked = await showReminderSheet(context, b, current);
+    if (picked == null || picked == current || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => b['client_reminder_minutes'] = picked);
+    try {
+      await supabase.rpc('set_booking_reminder', params: {'p_booking': b['id'], 'p_minutes': picked});
+      Haptics.firm();
+      messenger.showSnackBar(SnackBar(
+          content: Text(picked == 0 ? 'No reminder for this booking' : 'We\'ll remind you ${reminderLabel(picked)}')));
+    } catch (_) {
+      if (mounted) setState(() => b['client_reminder_minutes'] = current);
+      messenger.showSnackBar(
+          SnackBar(content: const Text('Could not save your reminder. Try again.'), backgroundColor: AppColors.error));
+    }
   }
 
   Future<void> _reschedule(Map<String, dynamic> b) async {
@@ -136,8 +180,9 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final upcoming = _bookings.where(_isUpcoming).where(_matches).toList();
-    final past = _bookings.where((b) => !_isUpcoming(b)).where(_matches).toList().reversed.toList();
+    final shown = _bookings.where((b) => !_undoable.contains(b['id'])).toList();
+    final upcoming = shown.where(_isUpcoming).where(_matches).toList();
+    final past = shown.where((b) => !_isUpcoming(b)).where(_matches).toList().reversed.toList();
     const noMatch = EmptyState(
       icon: TablerIcons.search,
       title: 'No bookings match',
@@ -225,16 +270,31 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
                       isUpcoming: _isUpcoming,
                       onCancel: _cancel,
                       onReschedule: _reschedule,
+                      onRemind: _remind,
                     )
                   : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      if (items.any(_isUpcoming) && items.length < 4)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text('Swipe a booking left to reschedule or cancel',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                        ),
                       for (final b in items)
                         Padding(
+                          key: ValueKey(b['id']),
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _BookingCard(
-                            booking: b,
-                            upcoming: _isUpcoming(b),
-                            onCancel: () => _cancel(b),
+                          child: _SwipeActions(
+                            enabled: _isUpcoming(b),
                             onReschedule: () => _reschedule(b),
+                            onCancel: () => _cancel(b),
+                            child: _BookingCard(
+                              booking: b,
+                              upcoming: _isUpcoming(b),
+                              onCancel: () => _cancel(b),
+                              onReschedule: () => _reschedule(b),
+                              onRemind: () => _remind(b),
+                            ),
                           ),
                         ),
                     ]),
@@ -272,9 +332,9 @@ class _BookingInfo {
       ((b['deposit_amount'] as num?) ?? 0) > 0 && b['deposit_paid'] != true && upcoming;
 
   (Color, String) get state => switch (status) {
-        'confirmed' => (AppColors.success, 'Confirmed'),
-        'pending' => (AppColors.warning, b['rescheduled_at'] != null ? 'New time, awaiting pro' : 'Awaiting pro'),
-        'completed' => (AppColors.info, 'Completed'),
+        'confirmed' => (AppColors.info, 'Confirmed'),
+        'pending' => (AppColors.goldText, b['rescheduled_at'] != null ? 'New time, awaiting pro' : 'Awaiting pro'),
+        'completed' => (AppColors.textSecondary, 'Completed'),
         _ => (AppColors.error, b['no_show_by'] != null ? 'No-show' : 'Cancelled'),
       };
 
@@ -287,14 +347,31 @@ class _BookingInfo {
   String get day => when == null ? '' : _days[when!.weekday - 1];
   String get month => when == null ? '' : _months[when!.month - 1];
   String get date => when == null ? '' : '$day, ${when!.day} $month ${when!.year}';
+  String get shortDate => when == null ? '' : '$day ${when!.day} $month';
+  int get reminder => (b['client_reminder_minutes'] as num?)?.toInt() ?? 60;
+  String get paidLine {
+    final paid = paidSoFar(b);
+    if (paid > 0) return '${money(paid)} of $price';
+    return b['payment_method'] == 'cash' || b['payment_method'] == null ? 'Cash' : payLabel;
+  }
+
+  String get payLabel => switch (b['payment_method']) {
+        'ecocash' => 'EcoCash',
+        'innbucks' => 'InnBucks',
+        'onemoney' => 'OneMoney',
+        'bank' => 'Bank',
+        _ => 'Cash',
+      };
 }
 
 typedef _Action = ({IconData icon, String label, VoidCallback onTap, bool destructive});
 
 List<_Action> _actionsFor(BuildContext context, _BookingInfo i, bool upcoming,
-        VoidCallback onCancel, VoidCallback onReschedule) =>
+        VoidCallback onCancel, VoidCallback onReschedule, [VoidCallback? onRemind]) =>
     [
       if (upcoming) ...[
+        if (onRemind != null)
+          (icon: TablerIcons.bell, label: 'Reminder', onTap: onRemind, destructive: false),
         (icon: TablerIcons.calendar_cog, label: 'Reschedule', onTap: onReschedule, destructive: false),
         (icon: TablerIcons.x, label: 'Cancel', onTap: onCancel, destructive: true),
       ] else ...[
@@ -315,61 +392,133 @@ class _BookingCard extends StatelessWidget {
   final bool upcoming;
   final VoidCallback onCancel;
   final VoidCallback onReschedule;
-  const _BookingCard(
-      {required this.booking, required this.upcoming, required this.onCancel, required this.onReschedule});
+  final VoidCallback onRemind;
+  const _BookingCard({
+    required this.booking,
+    required this.upcoming,
+    required this.onCancel,
+    required this.onReschedule,
+    required this.onRemind,
+  });
 
   @override
   Widget build(BuildContext context) {
     final i = _BookingInfo(booking);
-    final (color, label) = i.state;
-    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule);
+    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule)
+        .where((a) => !upcoming || a.label == 'Review' || a.label == 'Book again')
+        .toList();
+    Widget box(String l, String v) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.smAll),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l, style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
+              const SizedBox(height: 1),
+              Text(v,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            ]),
+          ),
+        );
 
-    return Card(
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/booking/${booking['id']}'),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _DateTile(month: i.month, day: i.when?.day),
+            Row(children: [
+              SizedBox(width: 54, height: 54, child: ProPhoto(name: i.pro, url: i.proAvatar, radius: 16)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(i.service,
-                      style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  _Meta(icon: TablerIcons.clock, text: '${i.day} · ${i.time}'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                   const SizedBox(height: 2),
-                  _Meta(icon: TablerIcons.user, text: i.pro),
+                  Text(i.pro,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
                 ]),
               ),
               const SizedBox(width: 8),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(i.price, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                const SizedBox(height: 6),
-                Pill(label: label, color: color),
-              ]),
+              _StatusPill(info: i),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              box('Date', i.shortDate),
+              const SizedBox(width: 8),
+              box('Time', i.time),
+              const SizedBox(width: 8),
+              box(paidSoFar(booking) > 0 ? 'Paid' : 'Pay', i.paidLine),
             ]),
             if (i.depositDue(upcoming)) ...[
               const SizedBox(height: 10),
               Text('Deposit of \$${(booking['deposit_amount'] as num).toStringAsFixed(2)} not paid yet',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warning)),
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.warningText)),
             ],
-            const SizedBox(height: 10),
-            Divider(height: 1, color: AppColors.border),
-            Row(children: [
-              for (final a in actions)
-                TextButton.icon(
-                  onPressed: a.onTap,
-                  style: a.destructive ? TextButton.styleFrom(foregroundColor: AppColors.error) : null,
-                  icon: Icon(a.icon, size: 18),
-                  label: Text(a.label),
+            if (upcoming) ...[
+              const SizedBox(height: 6),
+              Row(children: [
+                Icon(i.reminder == 0 ? TablerIcons.bell_off : TablerIcons.bell,
+                    size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(children: [
+                      const TextSpan(text: 'Reminder '),
+                      TextSpan(
+                          text: i.reminder == 0 ? 'off' : reminderLabel(i.reminder),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    ]),
+                    style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  ),
                 ),
-              const Spacer(),
-              if (i.ref != null)
-                Text(i.ref!,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.4)),
-            ]),
+                TextButton(
+                  onPressed: onRemind,
+                  style: TextButton.styleFrom(
+                      foregroundColor: AppColors.goldText,
+                      minimumSize: const Size(0, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 6)),
+                  child: const Text('Change', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+                // Buttons as well as the swipe, for anyone who can't swipe.
+                IconButton(
+                  tooltip: 'Reschedule',
+                  onPressed: onReschedule,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(TablerIcons.calendar_cog, size: 20, color: AppColors.textSecondary),
+                ),
+                IconButton(
+                  tooltip: 'Cancel booking',
+                  onPressed: onCancel,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(TablerIcons.x, size: 20, color: AppColors.errorText),
+                ),
+              ]),
+            ] else if (actions.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(children: [
+                for (final a in actions)
+                  TextButton.icon(
+                    onPressed: a.onTap,
+                    icon: Icon(a.icon, size: 18),
+                    label: Text(a.label),
+                  ),
+                const Spacer(),
+                if (i.ref != null)
+                  Text(i.ref!,
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textTertiary, letterSpacing: 0.4)),
+              ]),
+            ],
           ]),
         ),
       ),
@@ -377,42 +526,134 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
-class _DateTile extends StatelessWidget {
-  final String month;
-  final int? day;
-  const _DateTile({required this.month, required this.day});
+/// Status pill that changes live (Awaiting pro → Confirmed). Waiting pulses.
+class _StatusPill extends StatelessWidget {
+  final _BookingInfo info;
+  const _StatusPill({required this.info});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.smAll),
-      child: Column(children: [
-        Text(month, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
-        Text(day == null ? '–' : '$day',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
-      ]),
+    final (color, label) = info.state;
+    return AnimatedSwitcher(
+      duration: Motion.of(context, Motion.slow),
+      transitionBuilder: (c, a) => FadeTransition(opacity: a, child: ScaleTransition(scale: a, child: c)),
+      child: Container(
+        key: ValueKey(label),
+        height: 26,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.13), borderRadius: AppRadius.pill),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          info.status == 'pending' ? PulseDot(color: color) : Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ]),
+      ),
     );
   }
 }
 
-class _Meta extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _Meta({required this.icon, required this.text});
+/// Swipe left to show Reschedule and Cancel. Tapping elsewhere closes it.
+class _SwipeActions extends StatefulWidget {
+  final bool enabled;
+  final Widget child;
+  final VoidCallback onReschedule;
+  final VoidCallback onCancel;
+  const _SwipeActions(
+      {required this.enabled, required this.child, required this.onReschedule, required this.onCancel});
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, size: 14, color: AppColors.textTertiary),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
-        ),
-      ]);
+  State<_SwipeActions> createState() => _SwipeActionsState();
+}
+
+class _SwipeActionsState extends State<_SwipeActions> with SingleTickerProviderStateMixin {
+  static const _open = 184.0;
+  late final AnimationController _c = AnimationController(vsync: this, duration: Motion.normal);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _settle(bool open) {
+    if (open && _c.value < 1) Haptics.light();
+    final d = Motion.reduced(context) ? Duration.zero : Motion.normal;
+    _c.animateTo(open ? 1 : 0, duration: d, curve: Motion.curve);
+  }
+
+  void _run(VoidCallback f) {
+    _settle(false);
+    f();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    Widget action(IconData icon, String label, Color bg, Color fg, VoidCallback onTap) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Material(
+              color: bg,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () => _run(onTap),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(icon, color: fg, size: 22),
+                  const SizedBox(height: 6),
+                  Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                ]),
+              ),
+            ),
+          ),
+        );
+    return GestureDetector(
+      onHorizontalDragUpdate: (d) => _c.value = (_c.value - d.delta.dx / _open).clamp(0.0, 1.0),
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        _settle(v < -300 || (v <= 300 && _c.value > 0.45));
+      },
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) => Stack(children: [
+          if (_c.value > 0)
+            Positioned.fill(
+              child: ExcludeSemantics(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: _open,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Opacity(
+                        opacity: _c.value.clamp(0.0, 1.0),
+                        child: Row(children: [
+                          action(TablerIcons.calendar_cog, 'Reschedule', AppColors.gold, const Color(0xFF17130E),
+                              widget.onReschedule),
+                          action(TablerIcons.x, 'Cancel', const Color(0xFFE5484D), Colors.white, widget.onCancel),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Transform.translate(
+            offset: Offset(-_open * _c.value, 0),
+            child: GestureDetector(
+              onTap: _c.value > 0 ? () => _settle(false) : null,
+              child: AbsorbPointer(absorbing: _c.value > 0.05, child: child),
+            ),
+          ),
+        ]),
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 /// Wide screens: all bookings in one table, like a dashboard.
@@ -421,8 +662,14 @@ class _BookingsTable extends StatelessWidget {
   final bool Function(Map<String, dynamic>) isUpcoming;
   final void Function(Map<String, dynamic>) onCancel;
   final void Function(Map<String, dynamic>) onReschedule;
-  const _BookingsTable(
-      {required this.bookings, required this.isUpcoming, required this.onCancel, required this.onReschedule});
+  final void Function(Map<String, dynamic>) onRemind;
+  const _BookingsTable({
+    required this.bookings,
+    required this.isUpcoming,
+    required this.onCancel,
+    required this.onReschedule,
+    required this.onRemind,
+  });
 
   static const _flex = [5, 3, 2, 3, 2];
 
@@ -452,6 +699,7 @@ class _BookingsTable extends StatelessWidget {
             upcoming: isUpcoming(b),
             onCancel: () => onCancel(b),
             onReschedule: () => onReschedule(b),
+            onRemind: () => onRemind(b),
           ),
         ],
       ]),
@@ -464,14 +712,19 @@ class _BookingRow extends StatelessWidget {
   final bool upcoming;
   final VoidCallback onCancel;
   final VoidCallback onReschedule;
-  const _BookingRow(
-      {required this.booking, required this.upcoming, required this.onCancel, required this.onReschedule});
+  final VoidCallback onRemind;
+  const _BookingRow({
+    required this.booking,
+    required this.upcoming,
+    required this.onCancel,
+    required this.onReschedule,
+    required this.onRemind,
+  });
 
   @override
   Widget build(BuildContext context) {
     final i = _BookingInfo(booking);
-    final (color, label) = i.state;
-    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule);
+    final actions = _actionsFor(context, i, upcoming, onCancel, onReschedule, onRemind);
     final f = _BookingsTable._flex;
     final secondary = TextStyle(fontSize: 13, color: AppColors.textSecondary);
 
@@ -511,7 +764,7 @@ class _BookingRow extends StatelessWidget {
           Expanded(
             flex: f[3],
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Pill(label: label, color: color),
+              _StatusPill(info: i),
               if (i.depositDue(upcoming))
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
