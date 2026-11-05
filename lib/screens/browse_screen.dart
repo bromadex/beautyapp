@@ -9,6 +9,9 @@ import '../theme.dart';
 import '../utils/booking_helpers.dart';
 import '../utils/feel.dart';
 import '../utils/pro_photos.dart';
+import 'package:latlong2/latlong.dart' show LatLng;
+import '../widgets/pro_map.dart';
+import '../widgets/offers.dart';
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/ui.dart';
 
@@ -24,6 +27,8 @@ class _BrowseScreenState extends State<BrowseScreen> {
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
   Map<String, String> _covers = {};
+  List<Map<String, dynamic>> _offers = [];
+  bool _mapView = false;
   Set<String> _favourites = {};
 
   // Location
@@ -179,13 +184,15 @@ class _BrowseScreenState extends State<BrowseScreen> {
       final uid = supabase.auth.currentUser?.id;
       final extras = await Future.wait<dynamic>([
         loadCoverPhotos(),
+        loadPublicOffers(limit: 6),
         if (uid != null) supabase.from('favorites').select('provider_id').eq('client_id', uid),
       ]);
       if (mounted) {
         setState(() {
           _providers = providers;
           _covers = extras[0] as Map<String, String>;
-          if (extras.length > 1) _favourites = {for (final r in extras[1] as List) r['provider_id'] as String};
+          _offers = extras[1] as List<Map<String, dynamic>>;
+          if (extras.length > 2) _favourites = {for (final r in extras[2] as List) r['provider_id'] as String};
           _loading = false;
         });
       }
@@ -661,6 +668,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Row(children: [
                     Expanded(child: Text('Browse', style: Theme.of(context).textTheme.displaySmall)),
+
                     InkWell(
                       onTap: _openLocationPicker,
                       borderRadius: AppRadius.pill,
@@ -754,6 +762,13 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                     const Spacer(),
+                    _MapListToggle(
+                      map: _mapView,
+                      onChanged: (v) {
+                        Haptics.light();
+                        setState(() => _mapView = v);
+                      },
+                    ),
                     TextButton.icon(
                       onPressed: _showFilterSheet,
                       icon: const Icon(TablerIcons.arrows_sort, size: 18),
@@ -769,6 +784,18 @@ class _BrowseScreenState extends State<BrowseScreen> {
                 Expanded(
                   child: _loading
                       ? const LoadingPlaceholder()
+                      : _mapView
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: ProMapView(
+                            providers: filtered,
+                            covers: _covers,
+                            centre: _cityLat != null && _cityLng != null ? LatLng(_cityLat!, _cityLng!) : null,
+                            distanceOf: _distanceToProvider,
+                            saved: _favourites,
+                            onSave: _toggleFavourite,
+                          ),
+                        )
                       : RefreshIndicator.adaptive(
                           onRefresh: _loadProviders,
                           child: filtered.isEmpty
@@ -776,6 +803,9 @@ class _BrowseScreenState extends State<BrowseScreen> {
                               : ListView(
                                   padding: EdgeInsets.fromLTRB(20, 4, 20, 12 + tabBarSpace(context)),
                                   children: [
+                                    // Public offers from the pros on this list.
+                                    for (final o in _offers.where((o) => filtered.any((p) => p['provider_id'] == o['provider_id'])).take(2))
+                                      Padding(padding: const EdgeInsets.only(bottom: 12), child: OfferTile(offer: o)),
                                     // A grid of pros on wide screens, a list on phones.
                                     AdaptiveGrid(minTileWidth: 340, children: [
                                       for (final p in filtered)
@@ -1109,6 +1139,47 @@ class _ProviderCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Map | List" switch at the top of Browse.
+class _MapListToggle extends StatelessWidget {
+  final bool map;
+  final ValueChanged<bool> onChanged;
+  const _MapListToggle({required this.map, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget seg(String label, IconData icon, bool on, bool value) => Semantics(
+          selected: on,
+          button: true,
+          child: GestureDetector(
+            onTap: () => onChanged(value),
+            child: AnimatedContainer(
+              duration: Motion.fast,
+              height: 32,
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              decoration: BoxDecoration(color: on ? AppColors.primary : Colors.transparent, borderRadius: AppRadius.pill),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 15, color: on ? AppColors.onPrimary : AppColors.textSecondary),
+                const SizedBox(width: 5),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: on ? AppColors.onPrimary : AppColors.textSecondary)),
+              ]),
+            ),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: AppRadius.pill),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        seg('List', TablerIcons.list, !map, false),
+        seg('Map', TablerIcons.map, map, true),
+      ]),
     );
   }
 }

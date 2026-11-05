@@ -8,6 +8,7 @@ import '../services/smart_match_service.dart';
 import '../theme.dart';
 import '../utils/feel.dart';
 import '../utils/pro_photos.dart';
+import '../widgets/offers.dart';
 import '../widgets/ui.dart';
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/product_feed.dart';
@@ -27,6 +28,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   List<Map<String, dynamic>> _topStylists = [];
   Map<String, dynamic>? _nextBooking;
   Map<String, String> _covers = {};
+  List<Map<String, dynamic>> _offers = [];
   Set<String> _homeVisitPros = {};
   Set<String> _favourites = {};
   late AnimationController _animCtrl;
@@ -110,12 +112,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
     try {
       final extras = await Future.wait<dynamic>([
         loadCoverPhotos(),
+        loadPublicOffers(limit: 5),
         supabase.from('services').select('provider_id').eq('is_active', true).inFilter('location_mode', ['client', 'either']),
         supabase.from('favorites').select('provider_id').eq('client_id', userId),
       ]);
       covers = extras[0] as Map<String, String>;
-      homeVisit = {for (final r in extras[1] as List) r['provider_id'] as String};
-      favourites = {for (final r in extras[2] as List) r['provider_id'] as String};
+      _offers = extras[1] as List<Map<String, dynamic>>;
+      homeVisit = {for (final r in extras[2] as List) r['provider_id'] as String};
+      favourites = {for (final r in extras[3] as List) r['provider_id'] as String};
     } catch (_) {}
     try {
       final results = await Future.wait([
@@ -302,7 +306,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _RequestCard(onTap: () => context.push('/service-request/create')),
+                  // A pro's public offer when there is one, otherwise "Post a request".
+                  if (_offers.isNotEmpty)
+                    OfferBanner(
+                      offer: _offers.first,
+                      photo: coverFor(_covers, _offers.first['provider_id'] as String, _offers.first['avatar_url'] as String?),
+                    )
+                  else
+                    _RequestCard(onTap: () => context.push('/service-request/create')),
                   if (isGuest) ...[
                     const SizedBox(height: 16),
                     SoftBanner(

@@ -8,6 +8,7 @@ import '../services/location_service.dart';
 import '../utils/pay_methods.dart';
 import '../theme.dart';
 import '../widgets/booking_bits.dart';
+import '../widgets/offers.dart';
 import '../widgets/slot_picker.dart';
 import '../utils/feel.dart';
 import '../widgets/ui.dart';
@@ -154,6 +155,12 @@ class _BookingScreenState extends State<BookingScreen> {
       }
       await Future.wait([_loadServiceExtras(), _loadTeam()]);
       if (mounted) setState(() => _loading = false);
+      // Came from a public offer: fill the code in and apply it.
+      final code = OfferMemory.take(widget.providerId);
+      if (code != null && code.isNotEmpty && mounted) {
+        _promoCtrl.text = code;
+        await _applyPromo();
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

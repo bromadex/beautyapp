@@ -3,6 +3,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/booking_bits.dart';
+import '../utils/feel.dart';
 import '../widgets/ui.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -58,6 +60,28 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Swiped away: gone from the list now, deleted after 5 seconds unless undone.
+  Future<void> _removeWithUndo(Map<String, dynamic> fav) async {
+    final i = _favorites.indexOf(fav);
+    setState(() => _favorites.remove(fav));
+    final name = (fav['profiles'] as Map?)?['full_name'] ?? 'Pro';
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final reason = await messenger
+        .showSnackBar(SnackBar(
+          content: Text('Removed $name from Saved'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(label: 'Undo', onPressed: () {}),
+        ))
+        .closed;
+    if (reason == SnackBarClosedReason.action) {
+      Haptics.light();
+      if (mounted) setState(() => _favorites.insert(i.clamp(0, _favorites.length), fav));
+      return;
+    }
+    await _removeFavorite(fav['provider_id'] as String);
   }
 
   Future<void> _removeFavorite(String providerId) async {
@@ -168,8 +192,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         }
 
                         return Padding(
+                          key: ValueKey(providerId),
                           padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: Container(
+                          child: SwipeAway(
+                           itemKey: ValueKey('fav-$providerId'),
+                           onRemoved: () => _removeWithUndo(fav),
+                           child: Container(
                             decoration: BoxDecoration(
                               color: AppColors.cardLight,
                               borderRadius: AppRadius.lgAll,
@@ -289,6 +317,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 ],
                               ),
                             ),
+                          ),
                           ),
                         );
                           })),

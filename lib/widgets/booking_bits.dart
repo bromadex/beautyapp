@@ -503,3 +503,165 @@ Future<int?> showReminderSheet(BuildContext context, Map<String, dynamic> bookin
     ),
   );
 }
+
+/// Swipe right to accept (green), left to decline (red). Past a third of
+/// the width it commits with a haptic; otherwise it springs back. The card
+/// keeps its own buttons for anyone who can't swipe.
+class SwipeToDecide extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+  final String acceptLabel;
+  final String declineLabel;
+  const SwipeToDecide({
+    super.key,
+    required this.child,
+    required this.onAccept,
+    required this.onDecline,
+    this.acceptLabel = 'Accept',
+    this.declineLabel = 'Decline',
+  });
+
+  @override
+  State<SwipeToDecide> createState() => _SwipeToDecideState();
+}
+
+class _SwipeToDecideState extends State<SwipeToDecide> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: Motion.normal, lowerBound: -1.5, upperBound: 1.5)
+    ..value = 0;
+  double _w = 1;
+  bool _armed = false;
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Future<void> _end(double velocity) async {
+    final v = _c.value;
+    final reduced = Motion.reduced(context);
+    if (v > 0.35 || velocity > 900) {
+      Haptics.firm();
+      if (!reduced) await _c.animateTo(1.4, duration: Motion.fast);
+      widget.onAccept();
+    } else if (v < -0.35 || velocity < -900) {
+      Haptics.warn();
+      if (!reduced) await _c.animateTo(-1.4, duration: Motion.fast);
+      widget.onDecline();
+    }
+    if (!mounted) return;
+    _armed = false;
+    if (reduced) {
+      _c.value = 0;
+    } else {
+      _c.animateTo(0, duration: Motion.normal, curve: Motion.curve);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      _w = box.maxWidth;
+      return GestureDetector(
+        onHorizontalDragUpdate: (d) {
+          _c.value = (_c.value + d.delta.dx / _w).clamp(-1.0, 1.0);
+          final armed = _c.value.abs() > 0.35;
+          if (armed != _armed) {
+            _armed = armed;
+            if (armed) Haptics.light();
+          }
+        },
+        onHorizontalDragEnd: (d) => _end(d.primaryVelocity ?? 0),
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, child) {
+            final v = _c.value;
+            final accept = v >= 0;
+            final strength = (v.abs() / 0.35).clamp(0.0, 1.0);
+            return Stack(children: [
+              if (v != 0)
+                Positioned.fill(
+                  child: ExcludeSemantics(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Color.lerp(
+                          AppColors.surfaceMuted,
+                          accept ? const Color(0xFF1F8A4C) : const Color(0xFFE5484D),
+                          strength,
+                        ),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                      alignment: accept ? Alignment.centerLeft : Alignment.centerRight,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(accept ? TablerIcons.check : TablerIcons.x, color: Colors.white, size: 22),
+                        const SizedBox(width: 8),
+                        Text(accept ? widget.acceptLabel : widget.declineLabel,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                      ]),
+                    ),
+                  ),
+                ),
+              Transform.translate(offset: Offset(v * _w, 0), child: child),
+            ]);
+          },
+          child: widget.child,
+        ),
+      );
+    });
+  }
+}
+
+/// Swipe left to remove (notifications, saved pros). The caller shows Undo.
+class SwipeAway extends StatelessWidget {
+  final Key itemKey;
+  final Widget child;
+  final VoidCallback onRemoved;
+  final String label;
+  const SwipeAway({super.key, required this.itemKey, required this.child, required this.onRemoved, this.label = 'Remove'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: itemKey,
+      direction: DismissDirection.endToStart,
+      movementDuration: Motion.of(context),
+      onUpdate: (d) {
+        if (d.reached && !d.previousReached) Haptics.light();
+      },
+      onDismissed: (_) {
+        Haptics.warn();
+        onRemoved();
+      },
+      background: Container(
+        decoration: BoxDecoration(color: const Color(0xFFE5484D), borderRadius: BorderRadius.circular(20)),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(TablerIcons.trash, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// A money amount that counts up (or down) to its new value.
+class CountUpMoney extends StatelessWidget {
+  final double value;
+  final TextStyle style;
+  const CountUpMoney({super.key, required this.value, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: Motion.reduced(context) ? Duration.zero : const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, _) => Text('\$${v.round()}', style: style),
+    );
+  }
+}

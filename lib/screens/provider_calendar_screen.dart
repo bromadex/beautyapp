@@ -5,6 +5,8 @@ import '../supabase_client.dart';
 import '../theme.dart';
 import '../widgets/ui.dart';
 import '../utils/booking_helpers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
+import '../utils/feel.dart';
 import '../widgets/reschedule_sheet.dart' show bookingMinutes;
 
 /// Stylist's week at a glance: a day strip and a timeline of that day's bookings.
@@ -32,6 +34,11 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
   bool _loading = true;
   List<Map<String, dynamic>> _bookings = [];
   Map<int, Map<String, dynamic>> _hours = {}; // weekday (0=Sun) -> availability row
+
+  // Hold-and-drag to move a booking.
+  String? _dragId;
+  double _dragDy = 0;
+  int _dragSnap = 0; // minutes moved, in 15-minute steps
 
   @override
   void initState() {
@@ -172,6 +179,12 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
             Expanded(child: _summary(hoursLabel, working ? 'hours' : '')),
           ]),
         ),
+        if (dayBookings.any(_canMove))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text('Hold a booking and drag it to move it',
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+          ),
         Expanded(
           child: _loading
               ? const LoadingPlaceholder()
@@ -231,7 +244,10 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                               Expanded(child: Container(height: 2, color: AppColors.error)),
                             ]),
                           ),
-                        for (final b in dayBookings) _block(b, startH),
+                        for (final b in dayBookings.where((b) => b['id'] == _dragId)) _ghost(b, startH),
+                        for (final b in dayBookings.where((b) => b['id'] != _dragId)) _block(b, startH),
+                        // The dragged booking on top of the others.
+                        for (final b in dayBookings.where((b) => b['id'] == _dragId)) _block(b, startH),
                       ]),
                     ),
                   ),
@@ -254,7 +270,7 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppColors.gold : Colors.transparent,
           borderRadius: AppRadius.mdAll,
         ),
         child: Column(children: [
@@ -262,13 +278,13 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: selected ? const Color(0xFF0F3B31) : (off ? const Color(0xFF8FA69C) : const Color(0xFFD5E2DC)))),
+                  color: selected ? const Color(0xFF17130E) : (off ? const Color(0xFF8F877B) : const Color(0xFFCFC6B8)))),
           const SizedBox(height: 4),
           Text('${d.day}',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: selected ? const Color(0xFF0F3B31) : (off ? const Color(0xFF8FA69C) : Colors.white),
+                color: selected ? const Color(0xFF17130E) : (off ? const Color(0xFF8F877B) : Colors.white),
               )),
           const SizedBox(height: 4),
           if (off && count == 0)
@@ -276,19 +292,114 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                 style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
-                    color: selected ? const Color(0xFF55625D) : const Color(0xFF8FA69C)))
+                    color: selected ? const Color(0xFF4A4238) : const Color(0xFF8F877B)))
           else
             Container(
               width: 6,
               height: 6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: count == 0 ? Colors.transparent : (selected ? AppColors.primary : AppColors.gold),
+                color: count == 0 ? Colors.transparent : (selected ? const Color(0xFF17130E) : AppColors.gold),
               ),
             ),
         ]),
       ),
     );
+  }
+
+  bool _canMove(Map<String, dynamic> b) =>
+      (b['status'] == 'pending' || b['status'] == 'confirmed') &&
+      DateTime.parse(b['booking_time']).isAfter(DateTime.now());
+
+  String _hm(DateTime x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _confirmMove(Map<String, dynamic> b, DateTime from, DateTime to) async {
+    final name = (b['client']?['full_name'] ?? 'the client').toString();
+    final first = name.split(' ').first;
+    String label(DateTime d) => '${_weekdays[d.weekday - 1]} ${d.day} ${_monthNames[d.month - 1].substring(0, 3)} · ${_hm(d)}';
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Move this booking?',
+                style: TextStyle(
+                    fontFamily: AppTheme.displayFamily,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text(isManualBooking(b)
+                    ? 'This is a walk-in you added, so only your calendar changes.'
+                    : '$first gets a notification with the new time and can move it again if it doesn\'t suit them.',
+                style: TextStyle(fontSize: 13.5, height: 1.4, color: AppColors.textSecondary)),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(18)),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('From', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(label(from),
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            decoration: TextDecoration.lineThrough)),
+                  ]),
+                ),
+                Icon(TablerIcons.arrow_right, color: AppColors.textSecondary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('To', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(label(to),
+                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  ]),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(shape: const StadiumBorder()),
+                child: Text('Move to ${_hm(to)}'),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Keep ${_hm(from)}')),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await supabase.rpc('reschedule_booking', params: {
+        'p_booking_id': b['id'],
+        'p_new_time': to.toUtc().toIso8601String(),
+      });
+      Haptics.firm();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Moved to ${_hm(to)}${isManualBooking(b) ? '' : '. $first has been told.'}')));
+      }
+    } on PostgrestException catch (e) {
+      Haptics.warn();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppColors.error));
+      }
+    }
+    _load();
   }
 
   Widget _block(Map<String, dynamic> b, int startH) {
@@ -299,13 +410,52 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
     final status = b['status'] as String;
     final color = StatusColors.strip(status);
     final bg = StatusColors.background(status);
-    final end = t.add(Duration(minutes: mins));
-    String hm(DateTime x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
+    final dragging = _dragId == b['id'];
+    final shownStart = dragging ? t.add(Duration(minutes: _dragSnap)) : t;
+    final end = shownStart.add(Duration(minutes: mins));
     final service = b['service_tiers']?['name'] != null
         ? '${b['services']?['service_name']} · ${b['service_tiers']['name']}'
         : b['services']?['service_name'] ?? 'Service';
+    final movable = _canMove(b);
+    final card = Container(
+      padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
+      decoration: BoxDecoration(
+        color: dragging ? AppColors.card : bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border(left: BorderSide(color: dragging ? AppColors.gold : color, width: 4)),
+        boxShadow: dragging
+            ? const [BoxShadow(color: Color(0x47140E06), blurRadius: 30, offset: Offset(0, 14))]
+            : null,
+      ),
+      child: ClipRect(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text(b['client']?['full_name'] ?? 'Client',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppColors.textPrimary)),
+            ),
+            if (status == 'pending' && !dragging)
+              Text('pending',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningText)),
+          ]),
+          if (height > 44)
+            Text('${_hm(shownStart)}–${_hm(end)} · $service',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: dragging ? AppColors.goldText : StatusColors.foreground(status),
+                    fontWeight: FontWeight.w500)),
+        ]),
+      ),
+    );
+    final snapDy = _dragSnap / 60 * _hourHeight;
     return Positioned(
-      top: top + 1,
+      // Keyed so the drag survives this block moving to the top of the stack.
+      key: ValueKey('block-${b['id']}'),
+      top: top + 1 + (dragging ? _dragDy : 0),
       left: 66,
       right: 0,
       height: height - 2,
@@ -314,33 +464,86 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
           await context.push('/booking/${b['id']}');
           _load();
         },
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: AppRadius.smAll,
-            border: Border(left: BorderSide(color: color, width: 4)),
-          ),
-          child: ClipRect(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                  child: Text(b['client']?['full_name'] ?? 'Client',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+        onLongPressStart: !movable
+            ? null
+            : (_) {
+                Haptics.firm();
+                setState(() {
+                  _dragId = b['id'] as String;
+                  _dragDy = 0;
+                  _dragSnap = 0;
+                });
+              },
+        onLongPressMoveUpdate: !movable
+            ? null
+            : (d) {
+                final snap = ((d.offsetFromOrigin.dy / _hourHeight * 60) / 15).round() * 15;
+                if (snap != _dragSnap) Haptics.light();
+                setState(() {
+                  _dragDy = d.offsetFromOrigin.dy;
+                  _dragSnap = snap;
+                });
+              },
+        onLongPressEnd: !movable
+            ? null
+            : (_) {
+                final moved = _dragSnap;
+                setState(() => _dragId = null);
+                if (moved == 0) return;
+                final to = t.add(Duration(minutes: moved));
+                if (to.isBefore(DateTime.now())) {
+                  Haptics.warn();
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('That time has already passed.')));
+                  return;
+                }
+                _confirmMove(b, t, to);
+              },
+        child: dragging
+            ? Stack(clipBehavior: Clip.none, children: [
+                // Gold line and time where it will land.
+                Positioned(
+                  top: snapDy - _dragDy - 2,
+                  left: -10,
+                  right: 0,
+                  child: Row(children: [
+                    Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)),
+                    Expanded(child: Container(height: 2, color: AppColors.gold)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(10)),
+                      child: Text('${_hm(shownStart)} – ${_hm(end)}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF17130E))),
+                    ),
+                  ]),
                 ),
-                if (status == 'pending')
-                  Text('pending',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningText)),
-              ]),
-              if (height > 44)
-                Text('${hm(t)}–${hm(end)} · $service',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: StatusColors.foreground(status), fontWeight: FontWeight.w500)),
-            ]),
+                Positioned.fill(child: Transform.rotate(angle: -0.02, child: Transform.scale(scale: 1.03, child: card))),
+              ])
+            : card,
+      ),
+    );
+  }
+
+  /// Where the dragged booking was, shown as a dashed outline.
+  Widget _ghost(Map<String, dynamic> b, int startH) {
+    final t = DateTime.parse(b['booking_time']).toLocal();
+    final top = (t.hour - startH + t.minute / 60) * _hourHeight;
+    final height = (bookingMinutes(b) / 60 * _hourHeight).clamp(30.0, 2000.0);
+    return Positioned(
+      key: ValueKey('ghost-${b['id']}'),
+      top: top + 1,
+      left: 66,
+      right: 0,
+      height: height - 2,
+      child: IgnorePointer(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.7), width: 1.5),
+            color: AppColors.gold.withValues(alpha: 0.06),
           ),
+          alignment: Alignment.center,
+          child: Text('was ${_hm(t)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.goldText)),
         ),
       ),
     );

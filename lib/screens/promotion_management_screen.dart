@@ -52,6 +52,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
     DateTime? validUntil = existing?['valid_until'] != null
         ? DateTime.tryParse(existing!['valid_until'])
         : null;
+    bool isPublic = existing?['is_public'] == true;
 
     showDialog(
       context: context,
@@ -103,6 +104,27 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     hintText: 'e.g. Summer sale - 20% off',
                     border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
                     prefixIcon: const Icon(TablerIcons.file_text),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  decoration: BoxDecoration(
+                    color: isPublic ? AppColors.primarySoft : AppColors.surfaceMuted,
+                    borderRadius: AppRadius.mdAll,
+                    border: Border.all(color: isPublic ? AppColors.gold : Colors.transparent, width: 1.5),
+                  ),
+                  child: SwitchListTile.adaptive(
+                    value: isPublic,
+                    onChanged: (v) => setDialogState(() => isPublic = v),
+                    activeTrackColor: AppColors.gold,
+                    title: const Text('Show this offer publicly',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    subtitle: Text(
+                      isPublic
+                          ? 'Clients see it on Home and in Browse, with the code filled in for them.'
+                          : 'Off: only people you give the code to can use it.',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -240,6 +262,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                       double.tryParse(minOrderCtrl.text.trim()) ?? 0,
                   'max_uses': int.tryParse(maxUsesCtrl.text.trim()),
                   'valid_until': validUntil?.toUtc().toIso8601String(),
+                  'is_public': isPublic,
                 };
 
                 try {
@@ -502,6 +525,15 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                         ],
                       ),
                     ),
+                    if (promo['is_public'] == true) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: AppColors.gold, borderRadius: AppRadius.pill),
+                        child: const Text('Public',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF17130E))),
+                      ),
+                    ],
                     const Spacer(),
                     // Discount value
                     Container(

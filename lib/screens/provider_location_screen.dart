@@ -54,8 +54,8 @@ class _ProviderLocationScreenState extends State<ProviderLocationScreen> {
             .eq('provider_id', uid)
             .maybeSingle(),
         supabase.rpc('my_upcoming_studio_bookings'),
-        // Street address lives in a table only the pro can read.
-        supabase.from('provider_private').select('address').eq('provider_id', uid).maybeSingle(),
+        // Street address and exact pin live in a table only the pro can read.
+        supabase.from('provider_private').select('address, lat, lng').eq('provider_id', uid).maybeSingle(),
       ]);
       final pp = res[1] as Map<String, dynamic>?;
       final private = res[3] as Map<String, dynamic>?;
@@ -66,8 +66,9 @@ class _ProviderLocationScreenState extends State<ProviderLocationScreen> {
         _savedCityId = _cityId;
         _areaCtrl.text = pp?['area'] ?? '';
         _addressCtrl.text = private?['address'] ?? '';
-        _lat = (pp?['latitude'] as num?)?.toDouble();
-        _lng = (pp?['longitude'] as num?)?.toDouble();
+        // Clients only see the pin rounded to about 1 km.
+        _lat = ((private?['lat'] ?? pp?['latitude']) as num?)?.toDouble();
+        _lng = ((private?['lng'] ?? pp?['longitude']) as num?)?.toDouble();
         _upcomingAtPlace = (res[2] as num?)?.toInt() ?? 0;
         _loading = false;
       });
@@ -230,7 +231,8 @@ class _ProviderLocationScreenState extends State<ProviderLocationScreen> {
                     ),
                   ]),
                   const SizedBox(height: 6),
-                  Text('A pin makes "near me" results and travel fees accurate. Set it while you\'re at your place.',
+                  Text('A pin makes "near me" results and travel fees accurate. Set it while you\'re at your place. '
+                      'Clients only ever see your area (about 1 km), never the exact spot.',
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(

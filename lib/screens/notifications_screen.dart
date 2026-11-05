@@ -3,6 +3,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../supabase_client.dart';
 import '../theme.dart';
+import '../widgets/booking_bits.dart';
+import '../utils/feel.dart';
 import '../widgets/ui.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -50,6 +52,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         .eq('user_id', userId)
         .eq('is_read', false);
     _load();
+  }
+
+  /// Swiped away: hidden now, deleted after 5 seconds unless undone.
+  Future<void> _clearWithUndo(Map<String, dynamic> n) async {
+    final i = _notifications.indexOf(n);
+    setState(() => _notifications.remove(n));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    final reason = await messenger
+        .showSnackBar(SnackBar(
+          content: const Text('Notification cleared'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(label: 'Undo', onPressed: () {}),
+        ))
+        .closed;
+    if (reason == SnackBarClosedReason.action) {
+      Haptics.light();
+      if (mounted) setState(() => _notifications.insert(i.clamp(0, _notifications.length), n));
+      return;
+    }
+    try {
+      await supabase.from('notifications').delete().eq('id', n['id']);
+    } catch (_) {
+      // Can't delete: at least mark it read so it stops counting.
+      try {
+        await _markRead(n['id']);
+      } catch (_) {}
+    }
   }
 
   Future<void> _markRead(String id) async {
@@ -212,8 +242,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     itemCount: _notifications.length,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.xs),
-                    itemBuilder: (_, i) =>
-                        _buildNotificationCard(_notifications[i]),
+                    itemBuilder: (_, i) {
+                      final n = _notifications[i];
+                      return SwipeAway(
+                        key: ValueKey(n['id']),
+                        itemKey: ValueKey('n-${n['id']}'),
+                        label: 'Clear',
+                        onRemoved: () => _clearWithUndo(n),
+                        child: _buildNotificationCard(n),
+                      );
+                    },
                   ),
                 ),
     );

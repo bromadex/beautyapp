@@ -27,16 +27,82 @@ class _ClientsScreenState extends State<ClientsScreen> {
 
   Future<void> _load() async {
     try {
-      final rows = await supabase.rpc('my_clients') as List;
+      final rows = List<Map<String, dynamic>>.from(await supabase.rpc('my_clients') as List);
+      // Profile photos for app clients (walk-ins have none).
+      final ids = rows.map((c) => c['client_id']).whereType<String>().toSet().toList();
+      if (ids.isNotEmpty) {
+        try {
+          final pics = await supabase.from('profiles').select('id, avatar_url').inFilter('id', ids);
+          final byId = {for (final p in pics as List) p['id']: p['avatar_url']};
+          for (final c in rows) {
+            c['avatar_url'] = byId[c['client_id']];
+          }
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
-          _clients = List<Map<String, dynamic>>.from(rows);
+          _clients = rows;
           _loading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Clients whose last visit was 4+ weeks ago with nothing booked.
+  List<Widget> _touchUps() {
+    final now = DateTime.now();
+    final due = _clients.where((c) {
+      if (c['next_booking'] != null || (c['phone'] ?? '').toString().trim().isEmpty) return false;
+      final last = DateTime.tryParse(c['last_visit'] ?? '');
+      return last != null && now.difference(last).inDays >= 28;
+    }).take(3).toList();
+    if (due.isEmpty || _q.isNotEmpty) return const [];
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(2, 14, 2, 10),
+        child: Text('DUE FOR A TOUCH-UP',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1, color: AppColors.textSecondary)),
+      ),
+      for (final c in due)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(20)),
+            child: Row(children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(14)),
+                child: const Icon(TablerIcons.refresh, color: Color(0xFF17130E)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(
+                      '${(c['name'] ?? 'Client').toString().split(' ').first}\'s last visit was '
+                      '${now.difference(DateTime.parse(c['last_visit'])).inDays ~/ 7} weeks ago',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Text('Send a friendly "time for a refresh?" message.',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => shareOnWhatsApp(
+                  'Hi ${(c['name'] ?? '').toString().split(' ').first}! It\'s been a while since your last visit. '
+                  'Would you like to book a touch-up? You can book me on BeauTap.',
+                  phone: c['phone'] as String?,
+                ),
+                style: FilledButton.styleFrom(shape: const StadiumBorder(), minimumSize: const Size(0, 36)),
+                child: const Text('Message'),
+              ),
+            ]),
+          ),
+        ),
+    ];
   }
 
   List<String> get _allTags {
@@ -92,7 +158,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                               label: 'Regulars'),
                         ),
                         const SizedBox(width: 10),
-                        Expanded(child: _Stat(value: money(totalSpend), label: 'Lifetime spend')),
+                        Expanded(child: _Stat(value: money(totalSpend), label: 'Spent with you')),
                       ]),
                       const SizedBox(height: 12),
                       TextField(
@@ -130,6 +196,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                           padding: EdgeInsets.all(24),
                           child: Center(child: Text('No clients match.')),
                         ),
+                      ..._touchUps(),
                      ])),
                     ]),
             ),
@@ -144,18 +211,21 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: AppRadius.mdAll,
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppColors.isDark ? null : AppShadows.lifted,
       ),
-      child: Column(children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value,
+            style: TextStyle(
+                fontFamily: AppTheme.displayFamily,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
         const SizedBox(height: 2),
-        Text(label,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
+        Text(label, style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
       ]),
     );
   }
@@ -179,54 +249,76 @@ class _ClientRow extends StatelessWidget {
     final visits = (c['visits'] as num?)?.toInt() ?? 0;
     final tags = ((c['tags'] as List?) ?? []).cast<String>();
     final next = c['next_booking'] as String?;
-    return InkWell(
-      borderRadius: AppRadius.mdAll,
-      onTap: () async {
-        await context.push('/provider/clients/${Uri.encodeComponent(c['client_key'])}');
-        onChanged();
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: AppRadius.mdAll,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(children: [
-          PersonAvatar(name: c['name'] ?? 'C', size: 44),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(
-                  child: Text(c['name'] ?? 'Client',
-                      overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                ),
-                if (c['client_id'] == null) ...[
-                  const SizedBox(width: 6),
-                  Pill(label: 'Walk-in', color: AppColors.textTertiary),
-                ],
-              ]),
-              const SizedBox(height: 2),
-              Text(
-                [
-                  '$visits ${visits == 1 ? 'visit' : 'visits'}',
-                  if (visits > 0) money((c['total_spent'] as num?) ?? 0),
-                  if (next != null) 'next ${_shortDate(next)}' else if (c['last_visit'] != null) 'last ${_shortDate(c['last_visit'])}',
-                ].join(' · '),
-                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-              ),
-              if (tags.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Wrap(spacing: 4, runSpacing: 4, children: [
-                  for (final t in tags.take(3)) Pill(label: t, color: AppColors.primary),
+    final phone = (c['phone'] ?? '').toString().trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () async {
+            await context.push('/provider/clients/${Uri.encodeComponent(c['client_key'])}');
+            onChanged();
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            child: Row(children: [
+              PersonAvatar(name: c['name'] ?? 'C', url: c['avatar_url'] as String?, size: 46),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(
+                      child: Text(c['name'] ?? 'Client',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
+                    ),
+                    if (visits >= 2) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        height: 22,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: AppRadius.pill),
+                        child: Text('Regular',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.goldText)),
+                      ),
+                    ],
+                    if (c['client_id'] == null) ...[
+                      const SizedBox(width: 6),
+                      Pill(label: 'Walk-in', color: AppColors.textTertiary),
+                    ],
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      '$visits ${visits == 1 ? 'visit' : 'visits'}',
+                      if (visits > 0) money((c['total_spent'] as num?) ?? 0),
+                      if (next != null) 'next ${_shortDate(next)}' else if (c['last_visit'] != null) 'last ${_shortDate(c['last_visit'])}',
+                    ].join(' · '),
+                    style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                  ),
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(spacing: 4, runSpacing: 4, children: [
+                      for (final t in tags.take(3)) Pill(label: t, color: AppColors.primary),
+                    ]),
+                  ],
                 ]),
-              ],
+              ),
+              if (phone.isNotEmpty)
+                IconButton(
+                  tooltip: 'WhatsApp ${c['name'] ?? ''}',
+                  onPressed: () => shareOnWhatsApp('Hi ${(c['name'] ?? '').toString().split(' ').first}!', phone: phone),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.surfaceMuted),
+                  icon: const Icon(TablerIcons.brand_whatsapp, color: Color(0xFF25A55F), size: 20),
+                )
+              else
+                Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
             ]),
           ),
-          Icon(TablerIcons.chevron_right, color: AppColors.textTertiary),
-        ]),
+        ),
       ),
     );
   }
