@@ -11,8 +11,9 @@ ALTER TABLE public.provider_private ADD CONSTRAINT provider_private_latlng
   CHECK ((lat IS NULL OR lat BETWEEN -90 AND 90) AND (lng IS NULL OR lng BETWEEN -180 AND 180));
 
 -- About 1.1 km: two decimal places.
-CREATE OR REPLACE FUNCTION public._round_pin(v numeric) RETURNS numeric
-LANGUAGE sql IMMUTABLE AS $$ SELECT round(v, 2) $$;
+-- (provider_profiles.latitude/longitude are double precision.)
+CREATE OR REPLACE FUNCTION public._round_pin(v double precision) RETURNS double precision
+LANGUAGE sql IMMUTABLE AS $$ SELECT round(v::numeric, 2)::double precision $$;
 
 -- Move existing exact points (rows already moved keep theirs), then round
 -- the public ones.
