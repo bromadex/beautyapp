@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../widgets/specialties.dart';
 import '../services/guest_service.dart';
 import '../widgets/ui.dart';
+import '../widgets/packages.dart';
 import '../utils/booking_helpers.dart' show shareOnWhatsApp;
 import '../utils/nav.dart';
 import '../utils/feel.dart';
@@ -24,6 +25,8 @@ class _ProviderPublicProfileScreenState
     extends State<ProviderPublicProfileScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _providerProfile;
+  List<Map<String, dynamic>> _packages = [];
+  Set<String> _myPackageIds = {};
   List<Map<String, dynamic>> _services = [];
   List<Map<String, dynamic>> _gallery = [];
   bool _loading = true;
@@ -283,7 +286,17 @@ class _ProviderPublicProfileScreenState
         _gallery = [];
       }
 
+      _packages = await loadPackagesFor(id);
       final currentUser = supabase.auth.currentUser;
+      if (currentUser != null && _packages.isNotEmpty) {
+        try {
+          final mine = await supabase.rpc('my_packages') as List;
+          _myPackageIds = {
+            for (final m in mine)
+              if (m['status'] == 'active') m['package_id'] as String,
+          };
+        } catch (_) {}
+      }
       if (currentUser != null) {
         final fav = await supabase
             .from('favorites')
@@ -866,8 +879,32 @@ class _ProviderPublicProfileScreenState
         child: Text('No services listed yet.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary)),
       );
     }
+    final me = supabase.auth.currentUser?.id;
+    final name = (_profile?['full_name'] ?? 'This pro').toString();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (final sv in _services) _serviceCard(sv),
+      if (_packages.isNotEmpty) ...[
+        _sectionTitle('Monthly packages', null, null),
+        for (final pk in _packages)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: PackageCard(
+              pkg: pk,
+              proName: name,
+              joined: _myPackageIds.contains(pk['id']),
+              onJoin: me == null || me == widget.providerId
+                  ? null
+                  : () async {
+                      if (GuestService.isGuest) {
+                        context.push('/register');
+                        return;
+                      }
+                      await showJoinPackageSheet(context, pk, name, _providerProfile);
+                      _load();
+                    },
+            ),
+          ),
+      ],
       if (_gallery.isNotEmpty) ...[
         _sectionTitle('Recent work', _gallery.length > 3 ? 'See all ${_gallery.length}' : null, () => setState(() => _tab = 1)),
         _workStrip(),

@@ -90,6 +90,19 @@ class _BookingScreenState extends State<BookingScreen> {
   String _doneRef = '';
   double _doneDeposit = 0;
 
+  // Monthly package with this pro (paid this month), if any.
+  Map<String, dynamic>? _pkg;
+  bool _usePkg = true;
+
+  Map<String, dynamic>? get _pkgItem {
+    final items = List<Map<String, dynamic>>.from(_pkg?['items'] as List? ?? const []);
+    return items
+        .where((i) => i['service_id'] == _serviceId && ((i['used'] as num?) ?? 0) < ((i['included'] as num?) ?? 0))
+        .firstOrNull;
+  }
+
+  bool get _usingPkg => _usePkg && _pkgItem != null;
+
   List<BoxShadow>? get _shadow => AppColors.isDark ? null : AppShadows.lifted;
 
   @override
@@ -202,6 +215,11 @@ class _BookingScreenState extends State<BookingScreen> {
   /// The salon this pro works at, its team and their services, so the
   /// client can pick a different specialist for the same kind of service.
   Future<void> _loadTeam() async {
+    try {
+      final mine = await supabase.rpc('my_packages') as List;
+      _pkg = mine.cast<Map>().map((m) => Map<String, dynamic>.from(m)).where((m) =>
+          m['provider_id'] == widget.providerId && m['status'] == 'active' && m['pay_status'] == 'paid').firstOrNull;
+    } catch (_) {}
     try {
       final g = await supabase
           .from('hairstyle_gallery')
@@ -325,7 +343,9 @@ class _BookingScreenState extends State<BookingScreen> {
   double get _loyaltyDiscount => _loyalty?['available'] == true
       ? (_basePrice * ((_loyalty!['percent'] as num).toDouble()) / 100 * 100).roundToDouble() / 100
       : 0;
-  double get _total => math.max(0, _basePrice - _discount - _loyaltyDiscount) + _addonsTotal + _travelFee;
+  double get _total => _usingPkg
+      ? _addonsTotal + _travelFee // the service itself is covered by the package
+      : math.max(0, _basePrice - _discount - _loyaltyDiscount) + _addonsTotal + _travelFee;
   List<PayMethod> get _methods {
     final m = payMethodsOf(_providerProfile);
     return m.isEmpty ? const [PayMethod('cash', 'Cash', TablerIcons.cash)] : m;
@@ -334,8 +354,9 @@ class _BookingScreenState extends State<BookingScreen> {
   bool get _takesTransfers => _methods.any((m) => m.isTransfer);
 
   // Matches the server: no deposit if the pro has nowhere to receive it.
-  int get _depositPercent =>
-      _takesTransfers ? (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0 : 0;
+  int get _depositPercent => _usingPkg
+      ? 0
+      : _takesTransfers ? (_providerProfile?['deposit_percent'] as num?)?.toInt() ?? 0 : 0;
   double get _deposit => (_total * _depositPercent / 100 * 100).roundToDouble() / 100;
 
   String _money(double v) => '\$${v.toStringAsFixed(v % 1 == 0 ? 0 : 2)}';
@@ -476,7 +497,8 @@ class _BookingScreenState extends State<BookingScreen> {
             'client_ack': _ack,
             'status': 'pending',
             'total_price': _total,
-            'promo_code': _promo?['code'],
+            'promo_code': _usingPkg ? null : _promo?['code'],
+            if (_usingPkg) 'package_period_id': _pkg!['period_id'],
             'payment_method': _payment,
             if (_lat != null) 'client_lat': _lat,
             if (_lng != null) 'client_lng': _lng,
@@ -717,6 +739,18 @@ class _BookingScreenState extends State<BookingScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _heading('What would you like?', where),
       _chosenServiceCard(),
+      if (_pkgItem != null) ...[
+        const SizedBox(height: 10),
+        _PackageUse(
+          name: _pkg!['name'] ?? 'Package',
+          left: (((_pkgItem!['included'] as num?) ?? 0) - ((_pkgItem!['used'] as num?) ?? 0)).toInt(),
+          on: _usePkg,
+          onChanged: (v) {
+            Haptics.light();
+            setState(() => _usePkg = v);
+          },
+        ),
+      ],
       if (_specialists.length > 1) ...[
         _label('Choose your specialist',
             trailing: _salonId == null
@@ -1076,7 +1110,9 @@ class _BookingScreenState extends State<BookingScreen> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.lgAll, boxShadow: _shadow),
       child: Column(children: [
-        row('${_service['service_name'] ?? 'Service'}$tierName', _money(_basePrice)),
+        _usingPkg
+            ? row('${_service['service_name'] ?? 'Service'}$tierName', 'In ${_pkg!['name']}', color: const Color(0xFF1F8A4C))
+            : row('${_service['service_name'] ?? 'Service'}$tierName', _money(_basePrice)),
         ..._addons
             .where((a) => _addonIds.contains(a['id']))
             .map((a) => row(a['name'] ?? 'Extra', '+${_money(((a['price'] as num?) ?? 0).toDouble())}')),
@@ -1586,6 +1622,32 @@ class _SelectCard extends StatelessWidget {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+class _PackageUse extends StatelessWidget {
+  final String name;
+  final int left;
+  final bool on;
+  final ValueChanged<bool> onChanged;
+  const _PackageUse({required this.name, required this.left, required this.on, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: on ? const Color(0xFF1F8A4C).withValues(alpha: 0.12) : AppColors.card,
+      borderRadius: BorderRadius.circular(18),
+      child: SwitchListTile.adaptive(
+        value: on,
+        onChanged: onChanged,
+        activeTrackColor: const Color(0xFF1F8A4C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        secondary: const Icon(TablerIcons.calendar_repeat, color: Color(0xFF1F8A4C)),
+        title: Text('Use $name', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        subtitle: Text('$left ${left == 1 ? 'visit' : 'visits'} left this month · \$0 for the service',
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../services/smart_match_service.dart';
 import '../theme.dart';
 import '../utils/feel.dart';
 import '../utils/pro_photos.dart';
+import 'tips_screen.dart' show TipsRow;
 import '../widgets/offers.dart';
 import '../widgets/ui.dart';
 import '../widgets/location_picker_sheet.dart';
@@ -29,6 +30,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
   Map<String, dynamic>? _nextBooking;
   Map<String, String> _covers = {};
   List<Map<String, dynamic>> _offers = [];
+  int _packageCount = 0;
+  String _packageNote = '';
   Set<String> _homeVisitPros = {};
   Set<String> _favourites = {};
   late AnimationController _animCtrl;
@@ -120,6 +123,22 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
       _offers = extras[1] as List<Map<String, dynamic>>;
       homeVisit = {for (final r in extras[2] as List) r['provider_id'] as String};
       favourites = {for (final r in extras[3] as List) r['provider_id'] as String};
+    } catch (_) {}
+    try {
+      final mine = (await supabase.rpc('my_packages') as List).where((m) => m['status'] == 'active').toList();
+      _packageCount = mine.length;
+      final due = mine.where((m) => m['pay_status'] == 'unpaid').length;
+      int left = 0;
+      for (final m in mine.where((m) => m['pay_status'] == 'paid')) {
+        for (final i in m['items'] as List) {
+          left += (((i['included'] as num?) ?? 0) - ((i['used'] as num?) ?? 0)).toInt();
+        }
+      }
+      _packageNote = due > 0
+          ? '$due to pay for this month'
+          : left > 0
+              ? '$left package ${left == 1 ? 'visit' : 'visits'} left this month'
+              : 'All this month\'s visits used';
     } catch (_) {}
     try {
       final results = await Future.wait([
@@ -325,6 +344,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                       onTap: () => context.push('/account/settings'),
                     ),
                   ],
+                  if (_packageCount > 0) ...[
+                    const SizedBox(height: 16),
+                    SoftBanner(
+                      icon: TablerIcons.calendar_repeat,
+                      color: AppColors.goldText,
+                      title: 'My packages',
+                      message: _packageNote,
+                      actionLabel: 'Open',
+                      onTap: () => context.push('/packages').then((_) => _loadData()),
+                    ),
+                  ],
                   if (_nextBooking != null) ...[
                     const SizedBox(height: 22),
                     const SectionHeader(title: 'Your next appointment'),
@@ -363,6 +393,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
                   const SizedBox(height: 22),
                   if (_topStylists.isNotEmpty) _proRow('Near you', _topStylists),
                   if (comesToYou.isNotEmpty) _proRow('Comes to you', comesToYou),
+                  const TipsRow(),
                   ProductFeedSection(city: _city),
                   if (_nextBooking == null) ...[
                     const SizedBox(height: 8),

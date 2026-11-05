@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -55,6 +56,9 @@ import 'screens/service_request_quote_screen.dart';
 import 'screens/stylist_link_screen.dart';
 import 'screens/provider_calendar_screen.dart';
 import 'screens/clients_screen.dart';
+import 'screens/landing_screen.dart';
+import 'screens/packages_screen.dart';
+import 'screens/tips_screen.dart';
 import 'screens/add_booking_screen.dart';
 import 'widgets/client_shell.dart';
 import 'widgets/provider_shell.dart';
@@ -71,7 +75,7 @@ String? _pendingNext;
 /// its own laptop layout, as does booking.
 List<RouteBase> _readable(List<RouteBase> routes) => [
       for (final r in routes)
-        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin') && r.path != '/login' && !r.path.startsWith('/book/'))
+        if (r is GoRoute && r.builder != null && !r.path.startsWith('/admin') && r.path != '/login' && r.path != '/start' && !r.path.startsWith('/book/'))
           GoRoute(
             path: r.path,
             name: r.name,
@@ -118,9 +122,15 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/salon') &&
         !loc.startsWith('/provider/products') &&
         !loc.startsWith('/provider/location') &&
-        !loc.startsWith('/provider/service-requests');
+        !loc.startsWith('/provider/service-requests') &&
+        !loc.startsWith('/provider/packages') ||
+        loc == '/start' ||
+        loc == '/tips' ||
+        (loc.startsWith('/tips/') && loc != '/tips/new' && !loc.endsWith('/edit'));
     if (!isAuth) {
       if (isAuthRoute || isPublicRoute) return null;
+      // The marketing page for web visitors at the main address.
+      if (kIsWeb && (loc == '/' || loc == '/home')) return '/start';
       // Remember where they were going, and take them there after signing in.
       if (loc != '/' && loc != '/home' && loc != '/provider/home') _pendingNext = state.uri.toString();
       return '/login';
@@ -132,7 +142,7 @@ final appRouter = GoRouter(
     }
 
     // Authenticated: route away from auth screens and root to the right shell
-    if (isAuthRoute || loc == '/') {
+    if (isAuthRoute || loc == '/' || loc == '/start') {
       return _isProvider() ? '/provider/home' : '/home';
     }
     // Providers landing on client home go to their own home
@@ -351,6 +361,40 @@ final appRouter = GoRouter(
       path: '/notifications',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const NotificationsScreen(),
+    ),
+    GoRoute(path: '/start', builder: (_, __) => const LandingScreen()),
+    GoRoute(path: '/tips', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const TipsFeedScreen()),
+    GoRoute(path: '/tips/new', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const TipEditorScreen()),
+    GoRoute(
+      path: '/tips/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => TipScreen(tipId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/tips/:id/edit',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => TipEditorScreen(tipId: state.pathParameters['id']!),
+    ),
+    GoRoute(path: '/packages', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const MyPackagesScreen()),
+    GoRoute(
+      path: '/provider/packages',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProPackagesScreen(),
+    ),
+    GoRoute(
+      path: '/provider/packages/new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const PackageEditScreen(),
+    ),
+    GoRoute(
+      path: '/provider/packages/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => PackageMembersScreen(packageId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/provider/packages/:id/edit',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => PackageEditScreen(packageId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/book/:providerId/:serviceId',

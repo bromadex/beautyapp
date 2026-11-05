@@ -195,6 +195,14 @@ class _ClientBookingsScreenState extends State<ClientBookingsScreen> {
         appBar: largeTitleBar(
           context,
           'Bookings',
+          actions: [
+            TextButton.icon(
+              onPressed: () => context.push('/packages'),
+              icon: const Icon(TablerIcons.calendar_repeat, size: 18),
+              label: const Text('Packages'),
+            ),
+            const SizedBox(width: 8),
+          ],
           bottom: _BookingsToolbar(
             tabs: ['Upcoming${upcoming.isNotEmpty ? ' (${upcoming.length})' : ''}', 'Past'],
             onSearch: (v) => setState(() => _q = v.trim().toLowerCase()),

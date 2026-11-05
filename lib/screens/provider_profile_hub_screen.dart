@@ -189,6 +189,22 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                     onTap: () => context.push('/provider/subscription'),
                   ),
                   IosRow(
+                    icon: TablerIcons.calendar_repeat,
+                    iconColor: IosColors.gold,
+                    title: 'Monthly packages',
+                    subtitle: 'Regular visits for one monthly price',
+                    onTap: () => context.push('/provider/packages'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.sparkles,
+                    iconColor: IosColors.orange,
+                    title: 'Tips & trends',
+                    subtitle: _profile?['is_verified'] == true
+                        ? 'Share aftercare and how-tos with clients'
+                        : 'Read tips. Verified pros can write them',
+                    onTap: () => context.push('/tips'),
+                  ),
+                  IosRow(
                     icon: TablerIcons.tag,
                     iconColor: IosColors.purple,
                     title: 'Promotions',
