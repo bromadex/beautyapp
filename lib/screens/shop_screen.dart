@@ -891,8 +891,11 @@ class _CartScreenState extends State<CartScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(l.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
-                  Text(money(l.price * l.qty),
-                      style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  Text.rich(TextSpan(children: [
+                    TextSpan(text: money(l.price * l.qty), style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    if (l.qty > 1)
+                      TextSpan(text: '  ${money(l.price)} each', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ])),
                 ]),
               ),
               _QtyStepper(

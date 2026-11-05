@@ -690,6 +690,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           const SizedBox(height: 16),
                         ],
 
+                        if (_ordersWaiting > 0) ...[
+                          _Nudge(
+                            icon: TablerIcons.shopping_bag,
+                            title: _ordersWaiting == 1 ? '1 shop order needs you' : '$_ordersWaiting shop orders need you',
+                            message: 'Send terms, confirm a payment or get an order ready.',
+                            action: 'Open',
+                            onTap: () => context.push('/provider/shop?tab=orders').then((_) => _loadData()),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         if (isVerified) ...[
                           if (!hasActiveSubscription) ...[
                             _PlanBanner(
@@ -763,16 +773,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                               ),
                           const SizedBox(height: 18),
 
-                          if (_ordersWaiting > 0) ...[
-                            _Nudge(
-                              icon: TablerIcons.shopping_bag,
-                              title: _ordersWaiting == 1 ? '1 shop order needs you' : '$_ordersWaiting shop orders need you',
-                              message: 'Send terms, confirm a payment or get an order ready.',
-                              action: 'Open',
-                              onTap: () => context.push('/provider/shop?tab=orders').then((_) => _loadData()),
-                            ),
-                            const SizedBox(height: 18),
-                          ],
                           ..._nudges(),
 
                           if (_providerProfile == null) ...[

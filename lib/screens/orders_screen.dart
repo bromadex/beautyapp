@@ -253,7 +253,7 @@ class _OrderScreenState extends State<OrderScreen> {
     try {
       final res = await Future.wait<dynamic>([
         supabase.from('orders').select(_orderSelect).eq('id', widget.orderId).maybeSingle(),
-        supabase.from('order_messages').select().eq('order_id', widget.orderId).order('created_at'),
+        supabase.from('order_messages').select().eq('order_id', widget.orderId).order('created_at', ascending: true),
         supabase.from('seller_ratings').select().eq('order_id', widget.orderId).maybeSingle(),
       ]);
       if (res[0] != null) {
@@ -825,7 +825,11 @@ class _OrderScreenState extends State<OrderScreen> {
               ),
             ),
             const SizedBox(width: 6),
-            IconButton.filled(onPressed: _send, icon: const Icon(TablerIcons.send, size: 20)),
+            IconButton.filled(
+              onPressed: _send,
+              style: IconButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.onPrimary),
+              icon: Icon(TablerIcons.send, size: 20, color: AppColors.onPrimary),
+            ),
           ]),
         ),
       );
