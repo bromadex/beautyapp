@@ -150,6 +150,7 @@ class AppTheme {
           height: h,
           color: c ?? AppColors.textPrimary,
         );
+    final chipText = AppColors.textPrimary;
     final text = TextTheme(
       displayLarge: t(40, FontWeight.w700, display: true, ls: -0.8),
       displayMedium: t(36, FontWeight.w700, display: true, ls: -0.7),
@@ -312,9 +313,9 @@ class AppTheme {
         showCheckmark: false,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         // Selected chips are filled gold, so their label turns ink.
-        labelStyle: WidgetStateTextStyle.resolveWith((s) => s.contains(WidgetState.selected)
-            ? t(15, FontWeight.w600, c: const Color(0xFF17130E))
-            : t(15, FontWeight.w500, c: AppColors.textPrimary)),
+        // Chips resolve the label colour by state: ink on gold when selected.
+        labelStyle: t(15, FontWeight.w500,
+            c: WidgetStateColor.resolveWith((s) => s.contains(WidgetState.selected) ? const Color(0xFF17130E) : chipText)),
         secondaryLabelStyle: t(15, FontWeight.w600, c: AppColors.onPrimary),
       ),
 
