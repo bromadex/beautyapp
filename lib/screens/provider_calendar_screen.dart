@@ -501,7 +501,8 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
               },
         child: dragging
             ? Stack(clipBehavior: Clip.none, children: [
-                // Gold line and time where it will land.
+                Positioned.fill(child: Transform.rotate(angle: -0.02, child: Transform.scale(scale: 1.03, child: card))),
+                // Gold line and time where it will land, drawn on top of the card.
                 Positioned(
                   top: snapDy - _dragDy - 2,
                   left: -10,
@@ -517,7 +518,6 @@ class _ProviderCalendarScreenState extends State<ProviderCalendarScreen> {
                     ),
                   ]),
                 ),
-                Positioned.fill(child: Transform.rotate(angle: -0.02, child: Transform.scale(scale: 1.03, child: card))),
               ])
             : card,
       ),

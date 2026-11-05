@@ -48,8 +48,10 @@ class _ProMapViewState extends State<ProMapView> {
   int _selected = 0;
   bool _ready = false;
 
+  /// Pros with a map area of their own. Pros who never set one would all
+  /// sit on the city centre, so they stay in the list instead.
   List<Map<String, dynamic>> get _pinned => widget.providers
-      .where((p) => p['latitude'] != null && p['longitude'] != null)
+      .where((p) => p['latitude'] != null && p['longitude'] != null && p['has_own_pin'] != false)
       .toList();
 
   LatLng _at(Map<String, dynamic> p) =>

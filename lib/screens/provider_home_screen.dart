@@ -458,6 +458,14 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
           action: 'Turn on',
           onTap: () => context.push('/provider/settings').then((_) => _loadData()),
         ),
+      if (pp['has_own_pin'] == false && pp['city_id'] != null)
+        _Nudge(
+          icon: TablerIcons.map_pin,
+          title: 'Put yourself on the map',
+          message: 'Clients browsing the map only see pros with a map area. Clients see your area, never the exact spot.',
+          action: 'Set',
+          onTap: () => context.push('/provider/location').then((_) => _loadData()),
+        ),
       if ((_profile?['avatar_url'] ?? '').toString().isEmpty)
         _Nudge(
           icon: TablerIcons.camera,
