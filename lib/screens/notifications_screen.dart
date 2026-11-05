@@ -95,7 +95,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final refId = n['reference_id'];
 
     if (refId == null) {
-      if (type == 'products') context.push('/provider/products');
+      if (type == 'products') context.push('/provider/shop');
       if (type == 'location') context.push('/provider/location');
       if (type == 'app_error') context.push('/admin/errors');
       if (type == 'verification') context.push('/verify');
@@ -139,7 +139,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         context.push('/provider/salon');
         break;
       case 'products':
-        context.push('/provider/products');
+        context.push('/provider/shop');
+        break;
+      case 'order':
+        context.push('/orders/$refId');
         break;
       case 'waitlist':
         final parts = refId.toString().split('|');

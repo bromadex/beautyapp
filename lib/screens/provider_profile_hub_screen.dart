@@ -216,9 +216,23 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                   IosRow(
                     icon: TablerIcons.shopping_bag,
                     iconColor: IosColors.teal,
-                    title: 'Products',
-                    subtitle: 'Advertise what you sell. 3 free',
-                    onTap: () => context.push('/provider/products'),
+                    title: 'My shop',
+                    subtitle: 'Sell products. Buyers order and pay you directly',
+                    onTap: () => context.push('/provider/shop'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.building_store,
+                    iconColor: IosColors.orange,
+                    title: 'Shop',
+                    subtitle: 'Browse and buy from other pros',
+                    onTap: () => context.push('/market'),
+                  ),
+                  IosRow(
+                    icon: TablerIcons.receipt,
+                    iconColor: IosColors.gray,
+                    title: 'Orders',
+                    subtitle: 'What you\'ve bought and sold',
+                    onTap: () => context.push('/orders'),
                   ),
                   IosRow(
                     icon: TablerIcons.building_store,

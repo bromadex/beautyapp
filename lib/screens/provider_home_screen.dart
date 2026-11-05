@@ -47,6 +47,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   /// Earnings for each of the last 7 days, oldest first (for the bar chart).
   List<double> _daily = List.filled(7, 0);
   int _galleryCount = 0;
+  int _ordersWaiting = 0;
   /// Requests answered on screen but not sent yet (5 seconds to undo).
   final Set<String> _deciding = {};
   /// Bookings marked paid on screen but not saved yet (5 seconds to undo).
@@ -268,6 +269,11 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     try {
       final g = await supabase.from('hairstyle_gallery').select('id').eq('provider_id', userId).limit(12);
       _galleryCount = (g as List).length;
+    } catch (_) {}
+
+    try {
+      final c = await supabase.rpc('my_order_counts') as Map;
+      _ordersWaiting = (c['selling'] as num?)?.toInt() ?? 0;
     } catch (_) {}
 
     Map<String, dynamic>? plan;
@@ -757,6 +763,16 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                               ),
                           const SizedBox(height: 18),
 
+                          if (_ordersWaiting > 0) ...[
+                            _Nudge(
+                              icon: TablerIcons.shopping_bag,
+                              title: _ordersWaiting == 1 ? '1 shop order needs you' : '$_ordersWaiting shop orders need you',
+                              message: 'Send terms, confirm a payment or get an order ready.',
+                              action: 'Open',
+                              onTap: () => context.push('/provider/shop?tab=orders').then((_) => _loadData()),
+                            ),
+                            const SizedBox(height: 18),
+                          ],
                           ..._nudges(),
 
                           if (_providerProfile == null) ...[

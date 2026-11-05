@@ -9,7 +9,7 @@ import '../supabase_client.dart';
 /// Every page has a sensible parent, ending at the user's home tab.
 
 const _tabs = {
-  '/home', '/browse', '/client/bookings', '/favorites',
+  '/home', '/browse', '/client/bookings', '/shop', '/favorites',
   '/provider/home', '/provider/calendar', '/provider/clients', '/provider/profile',
 };
 
@@ -19,7 +19,7 @@ const _roots = {'/login', '/register', '/welcome', '/'};
 /// Pro tools reached from the pro's Profile tab.
 const _proTools = {
   'profile', 'services', 'gallery', 'subscription', 'promotions', 'availability', 'referrals',
-  'salon', 'location', 'products', 'settings', 'service-requests',
+  'salon', 'location', 'products', 'shop', 'settings', 'service-requests',
 };
 
 bool get _isPro => supabase.auth.currentUser?.userMetadata?['user_type'] == 'provider';

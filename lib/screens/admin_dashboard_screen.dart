@@ -115,6 +115,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _Tool(TablerIcons.bug, 'App errors', 'Crashes reported by the app', '/admin/errors', _n(t['errors'])),
       _Tool(TablerIcons.users, 'Users', 'Search, ban, deactivate', '/admin/users', 0),
       _Tool(TablerIcons.calendar_month, 'Bookings', 'Every booking on BeauTap', '/admin/bookings', 0),
+      _Tool(TablerIcons.shopping_bag, 'Shop orders', 'Every order in the shop', '/admin/orders', 0),
       _Tool(TablerIcons.chart_bar, 'Analytics', 'Growth, income, cities', '/admin/analytics', 0),
       _Tool(TablerIcons.map, 'Area demand', 'Where clients look for pros', '/admin/moderation?tab=demand', 0),
       _Tool(TablerIcons.sparkles, 'Tips & trends', 'Write, hide or show tips', '/tips', 0),

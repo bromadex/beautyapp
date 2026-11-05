@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
+import '../services/cart.dart';
 import 'ui.dart';
 
 class ClientShell extends StatelessWidget {
@@ -9,6 +10,7 @@ class ClientShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Cart.instance.load();
     // Back button funnels to Home before exiting: on any other tab, back
     // returns to Home; only a second back from Home leaves the app.
     return PopScope(
@@ -16,7 +18,9 @@ class ClientShell extends StatelessWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) navigationShell.goBranch(0);
       },
-      child: AdaptiveTabScaffold(
+      child: ListenableBuilder(
+        listenable: Cart.instance,
+        builder: (context, _) => AdaptiveTabScaffold(
         subtitle: 'Book beauty pros',
         body: navigationShell,
         index: navigationShell.currentIndex,
@@ -24,12 +28,14 @@ class ClientShell extends StatelessWidget {
           index,
           initialLocation: index == navigationShell.currentIndex,
         ),
-        items: const [
+        items: [
           (icon: TablerIcons.home, label: 'Home', badge: 0),
           (icon: TablerIcons.search, label: 'Browse', badge: 0),
           (icon: TablerIcons.calendar_event, label: 'Bookings', badge: 0),
+          (icon: TablerIcons.shopping_bag, label: 'Shop', badge: Cart.instance.count),
           (icon: TablerIcons.heart, label: 'Saved', badge: 0),
         ],
+      ),
       ),
     );
   }

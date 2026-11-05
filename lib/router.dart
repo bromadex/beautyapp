@@ -36,6 +36,8 @@ import 'screens/referrals_screen.dart';
 import 'screens/salon_screen.dart';
 import 'screens/salon_public_screen.dart';
 import 'screens/products_screen.dart';
+import 'screens/shop_screen.dart';
+import 'screens/orders_screen.dart';
 import 'screens/provider_location_screen.dart';
 import 'services/fee_checkout.dart';
 import 'screens/provider_earnings_screen.dart';
@@ -121,10 +123,15 @@ final appRouter = GoRouter(
         !loc.startsWith('/provider/referrals') &&
         !loc.startsWith('/provider/salon') &&
         !loc.startsWith('/provider/products') &&
+        !loc.startsWith('/provider/shop') &&
         !loc.startsWith('/provider/location') &&
         !loc.startsWith('/provider/service-requests') &&
         !loc.startsWith('/provider/packages') ||
         loc == '/start' ||
+        loc == '/market' ||
+        loc == '/cart' ||
+        loc.startsWith('/shop/item/') ||
+        loc.startsWith('/shop/seller/') ||
         loc == '/tips' ||
         (loc.startsWith('/tips/') && loc != '/tips/new' && !loc.endsWith('/edit'));
     if (!isAuth) {
@@ -184,6 +191,9 @@ final appRouter = GoRouter(
         ]),
         StatefulShellBranch(routes: [
           GoRoute(path: '/client/bookings', builder: (_, __) => const ClientBookingsScreen()),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(path: '/shop', builder: (_, __) => const ShopScreen(asTab: true)),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(path: '/favorites', builder: (_, __) => const FavoritesScreen()),
@@ -458,11 +468,47 @@ final appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (_, __) => const ProviderLocationScreen(),
     ),
+    GoRoute(path: '/provider/products', redirect: (_, __) => '/provider/shop'),
     GoRoute(
-      path: '/provider/products',
+      path: '/provider/shop',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, __) => const ProductsScreen(),
+      builder: (_, state) => ProductsScreen(
+          initialTab: switch (state.uri.queryParameters['tab']) { 'orders' => 1, 'settings' => 2, _ => 0 }),
     ),
+    GoRoute(
+      path: '/provider/shop/item/new',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, __) => const ProductEditScreen(),
+    ),
+    GoRoute(
+      path: '/provider/shop/item/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ProductEditScreen(productId: state.pathParameters['id']!),
+    ),
+    // The shop outside the client tab bar: pros and signed-out visitors.
+    GoRoute(path: '/market', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const ShopScreen()),
+    GoRoute(
+      path: '/shop/item/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => ProductScreen(productId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/shop/seller/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => SellerShopScreen(sellerId: state.pathParameters['id']!),
+    ),
+    GoRoute(path: '/cart', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const CartScreen()),
+    GoRoute(
+      path: '/orders',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => MyOrdersScreen(selling: state.uri.queryParameters['tab'] == 'selling'),
+    ),
+    GoRoute(
+      path: '/orders/:id',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (_, state) => OrderScreen(orderId: state.pathParameters['id']!),
+    ),
+    GoRoute(path: '/admin/orders', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const AdminOrdersScreen()),
     GoRoute(
       path: '/salon/:id',
       parentNavigatorKey: _rootNavigatorKey,

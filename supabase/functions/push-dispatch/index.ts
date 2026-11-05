@@ -80,12 +80,13 @@ Deno.serve(async (req) => {
       let route = "/notifications";
       if (record.type === "review_request") route = `/review/${ref}`;
       if (record.type === "payment") route = `/booking/${ref}`;
+      if (record.type === "order" && ref) route = `/orders/${ref}`;
       const routes: Record<string, string> = {
         fee_update: "/provider/subscription",
         fee_claim: "/admin/fees",
         referral: "/provider/referrals",
         salon: "/provider/salon",
-        products: "/provider/products",
+        products: "/provider/shop",
         location: "/provider/location",
       };
       if (routes[record.type]) route = routes[record.type];
