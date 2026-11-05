@@ -89,8 +89,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             booking_addons(addon_name, addon_price, addon_duration),
             services(service_name, duration_minutes, price,
               service_categories(name, icon)),
-            client:profiles!bookings_client_id_fkey(full_name, phone, location),
-            provider:profiles!bookings_provider_id_fkey(full_name, phone)
+            client:profiles!bookings_client_id_fkey(full_name, phone:contact_phone, location),
+            provider:profiles!bookings_provider_id_fkey(full_name, phone:contact_phone)
           ''')
           .eq('id', widget.bookingId)
           .maybeSingle();

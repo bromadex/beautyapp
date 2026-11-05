@@ -131,7 +131,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     try {
       final profile = await supabase
           .from('profiles')
-          .select('is_deactivated, full_name, phone, location, avatar_url')
+          .select('is_deactivated, full_name, phone:contact_phone, location, avatar_url')
           .eq('id', uid)
           .single();
       if (mounted) {

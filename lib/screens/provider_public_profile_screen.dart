@@ -445,7 +445,7 @@ class _ProviderPublicProfileScreenState
   }
 
   void _showProduct(Map<String, dynamic> p) {
-    final phone = (_profile?['whatsapp_number'] ?? _profile?['phone'] ?? '').toString();
+    final phone = (_profile?['whatsapp_number'] ?? '').toString();
     final name = (_profile?['full_name'] ?? 'the pro').toString();
     showModalBottomSheet(
       useRootNavigator: true,

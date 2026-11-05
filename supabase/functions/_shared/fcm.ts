@@ -126,10 +126,11 @@ export async function pushToUser(admin: any, sa: ServiceAccount, opts: {
   body: string;
   data?: Record<string, string>;
 }): Promise<void> {
+  // Push tokens live in profile_private (not readable by other users).
   const { data: profile } = await admin
-    .from("profiles")
+    .from("profile_private")
     .select("fcm_token")
-    .eq("id", opts.userId)
+    .eq("user_id", opts.userId)
     .maybeSingle();
   const token = profile?.fcm_token;
   if (!token) return;
@@ -143,8 +144,8 @@ export async function pushToUser(admin: any, sa: ServiceAccount, opts: {
   if (!ok) {
     // Clear stale tokens so we stop retrying dead devices
     await admin
-      .from("profiles")
+      .from("profile_private")
       .update({ fcm_token: null })
-      .eq("id", opts.userId);
+      .eq("user_id", opts.userId);
   }
 }

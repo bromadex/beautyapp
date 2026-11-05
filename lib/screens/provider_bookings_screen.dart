@@ -59,7 +59,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> {
       final data = await supabase
           .from('bookings')
           .select(
-              '*, services(service_name, duration_minutes, service_categories(name, icon)), profiles!bookings_client_id_fkey(full_name, phone)')
+              '*, services(service_name, duration_minutes, service_categories(name, icon)), profiles!bookings_client_id_fkey(full_name, phone:contact_phone)')
           .eq('provider_id', supabase.auth.currentUser!.id)
           .order('booking_time', ascending: false);
 

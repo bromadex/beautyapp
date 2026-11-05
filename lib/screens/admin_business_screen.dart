@@ -26,7 +26,7 @@ class _AdminBusinessScreenState extends State<AdminBusinessScreen> {
     try {
       final data = await supabase
           .from('business_verifications')
-          .select('*, profiles!business_verifications_provider_id_fkey(full_name, phone)')
+          .select('*, profiles!business_verifications_provider_id_fkey(full_name, phone:contact_phone)')
           .eq('status', 'pending')
           .order('submitted_at');
       if (mounted) {

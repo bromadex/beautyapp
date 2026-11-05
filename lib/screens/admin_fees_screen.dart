@@ -42,7 +42,7 @@ class _AdminFeesScreenState extends State<AdminFeesScreen> {
       final res = await Future.wait<dynamic>([
         supabase
             .from('fee_claims')
-            .select('*, profiles!fee_claims_user_id_fkey(full_name, phone)')
+            .select('*, profiles!fee_claims_user_id_fkey(full_name, phone:contact_phone)')
             .order('created_at', ascending: false)
             .limit(100),
         supabase.from('app_settings').select('key, value').inFilter('key', ['beautap_ecocash_number', 'beautap_ecocash_name']),

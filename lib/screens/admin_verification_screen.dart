@@ -28,7 +28,7 @@ class _AdminVerificationScreenState
     try {
       final data = await supabase
           .from('verifications')
-          .select('*, profiles(full_name, user_type, phone)')
+          .select('*, profiles(full_name, user_type, phone:contact_phone)')
           .eq('status', 'pending')
           .order('submitted_at');
       if (mounted) {

@@ -45,7 +45,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     try {
       final data = await supabase
           .from('profiles')
-          .select('id, full_name, phone, user_type, is_verified, is_banned, is_deactivated, created_at, banned_reason, banned_at')
+          .select('id, full_name, phone:contact_phone, user_type, is_verified, is_banned, is_deactivated, created_at, '
+              'banned_reason:ban_reason, banned_at:banned_on')
           .order('created_at', ascending: false);
       if (mounted) {
         setState(() {

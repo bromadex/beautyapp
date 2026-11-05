@@ -282,7 +282,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       final start = DateTime(n.year, n.month, n.day);
       const sel = 'deposit_amount, deposit_paid, id, booking_time, status, total_price, payment_status, payment_method, at_studio, source, walkin_name, walkin_phone, client_id, '
           'services(service_name, duration_minutes), service_tiers(name, duration_minutes), '
-          'client:profiles!bookings_client_id_fkey(full_name, phone, avatar_url)';
+          'client:profiles!bookings_client_id_fkey(full_name, phone:contact_phone, avatar_url)';
       final results = await Future.wait<dynamic>([
         supabase
             .from('bookings')

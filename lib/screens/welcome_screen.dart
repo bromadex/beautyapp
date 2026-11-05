@@ -50,7 +50,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     try {
       final p = await supabase
           .from('profiles')
-          .select('user_type, full_name, phone')
+          .select('user_type, full_name, phone:contact_phone')
           .eq('id', supabase.auth.currentUser!.id)
           .maybeSingle();
       if (!mounted) return;

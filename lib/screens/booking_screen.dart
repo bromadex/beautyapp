@@ -140,7 +140,7 @@ class _BookingScreenState extends State<BookingScreen> {
             .eq('is_active', true)
             .order('created_at', ascending: true),
         supabase.from('cancellation_policies').select().eq('provider_id', widget.providerId).maybeSingle(),
-        supabase.from('profiles').select().eq('id', user.id).maybeSingle(),
+        supabase.from('profiles').select('*, my_phone:contact_phone').eq('id', user.id).maybeSingle(),
       ]);
       _provider = results[0] as Map<String, dynamic>?;
       _providerProfile = results[1] as Map<String, dynamic>?;
@@ -158,7 +158,7 @@ class _BookingScreenState extends State<BookingScreen> {
       if (!_services.any((s) => s['id'] == _serviceId)) _serviceId = _services.first['id'];
       final name = (_me?['full_name'] ?? '').toString();
       _nameCtrl.text = name == 'User' ? '' : name;
-      _phoneCtrl.text = _me?['phone'] ?? '';
+      _phoneCtrl.text = _me?['my_phone'] ?? '';
       _addressCtrl.text = _me?['location'] ?? '';
       if (((_providerProfile?['loyalty_visits'] as num?) ?? 0) > 0) {
         try {
@@ -480,7 +480,7 @@ class _BookingScreenState extends State<BookingScreen> {
       final uid = supabase.auth.currentUser!.id;
       final name = _nameCtrl.text.trim();
       final phone = _phoneCtrl.text.trim();
-      if (name != (_me?['full_name'] ?? '') || phone != (_me?['phone'] ?? '')) {
+      if (name != (_me?['full_name'] ?? '') || phone != (_me?['my_phone'] ?? '')) {
         await supabase.from('profiles').update({'full_name': name, 'phone': phone}).eq('id', uid);
       }
 

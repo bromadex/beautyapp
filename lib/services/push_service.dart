@@ -101,7 +101,7 @@ class PushService {
     final uid = supabase.auth.currentUser?.id;
     if (uid == null || !firebaseConfigured) return;
     try {
-      await supabase.from('profiles').update({'fcm_token': null}).eq('id', uid);
+      await supabase.rpc('clear_push_token');
       await FirebaseMessaging.instance.deleteToken();
     } catch (_) {}
   }
