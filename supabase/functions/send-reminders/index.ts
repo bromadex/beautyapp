@@ -2,6 +2,7 @@
 // Pros: confirmed bookings starting in 45-75 minutes (reminder_sent).
 // Clients: at the time they chose (30 min, 1 h or 1 day before, or never),
 // tracked by client_reminder_sent.
+// Package members: before each new month and if this month isn't paid.
 //
 // Deploy with --no-verify-jwt. Secrets: FCM_SERVICE_ACCOUNT, WEBHOOK_SECRET.
 
@@ -98,6 +99,22 @@ Deno.serve(async (req) => {
       data: { route: `/booking/${b.id}`, bookingId: String(b.id) },
     });
     sent++;
+  }
+
+  // ---- monthly packages: "renews on 1 Dec" and "pay for this month" ----
+  const { data: pkg, error: pErr } = await admin.rpc("package_reminders");
+  if (pErr) {
+    console.error(`package_reminders failed: ${pErr.message}`);
+  } else {
+    for (const r of pkg ?? []) {
+      await pushToUser(admin, sa, {
+        userId: r.user_id,
+        title: r.title,
+        body: r.body,
+        data: { route: r.route },
+      });
+      sent++;
+    }
   }
 
   return new Response(JSON.stringify({ reminded: sent }), {
