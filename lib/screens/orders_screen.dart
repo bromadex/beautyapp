@@ -179,6 +179,258 @@ class OrderCard extends StatelessWidget {
   }
 }
 
+// =====================================================================
+// Shop messages: every order conversation in one place
+// =====================================================================
+
+/// Unread shop messages, for badges.
+Future<int> shopUnread() async {
+  if (!isSignedIn) return 0;
+  try {
+    final c = await supabase.rpc('my_order_counts') as Map;
+    return (c['unread'] as num?)?.toInt() ?? 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+/// App bar button that opens the shop inbox, with an unread count.
+class InboxButton extends StatefulWidget {
+  const InboxButton({super.key});
+
+  @override
+  State<InboxButton> createState() => _InboxButtonState();
+}
+
+class _InboxButtonState extends State<InboxButton> {
+  int _n = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final n = await shopUnread();
+    if (mounted) setState(() => _n = n);
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: 'Shop messages',
+        onPressed: () async {
+          await context.push('/shop/messages');
+          _refresh();
+        },
+        icon: Badge(
+          isLabelVisible: _n > 0,
+          label: Text(_n > 99 ? '99+' : '$_n'),
+          backgroundColor: AppColors.gold,
+          textColor: Colors.black,
+          child: const Icon(TablerIcons.messages),
+        ),
+      );
+}
+
+class ShopInboxScreen extends StatefulWidget {
+  const ShopInboxScreen({super.key});
+
+  @override
+  State<ShopInboxScreen> createState() => _ShopInboxScreenState();
+}
+
+class _ShopInboxScreenState extends State<ShopInboxScreen> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = [];
+  String _filter = 'all'; // all | unread | buying | selling
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    // New messages in any of my orders (RLS only sends me mine).
+    _channel = supabase
+        .channel('shop_inbox_${myId ?? ''}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'order_messages',
+          callback: (_) => _load(),
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    if (_channel != null) supabase.removeChannel(_channel!);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await supabase.rpc('order_inbox', params: {'p_limit': 200});
+      _rows = List<Map<String, dynamic>>.from(res as List);
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  String _preview(Map<String, dynamic> r) {
+    final body = (r['last_body'] ?? '').toString();
+    if (body.isEmpty) return 'No messages yet';
+    final prefix = r['last_mine'] == true ? 'You: ' : '';
+    return switch (r['last_kind']) {
+      'offer' => '${prefix}Price offer · ${body.replaceFirst('Offer: ', '')}',
+      'terms' => '${prefix}Terms · ${body.replaceFirst('Terms: ', '')}',
+      _ => '$prefix$body',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasSelling = _rows.any((r) => r['selling'] == true);
+    final shown = _rows.where((r) => switch (_filter) {
+          'unread' => ((r['unread'] as num?) ?? 0) > 0,
+          'buying' => r['selling'] != true,
+          'selling' => r['selling'] == true,
+          _ => true,
+        }).toList();
+    final unread = _rows.where((r) => ((r['unread'] as num?) ?? 0) > 0).length;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Shop messages')),
+      body: _loading
+          ? const LoadingPlaceholder()
+          : RefreshIndicator.adaptive(
+              onRefresh: _load,
+              child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+                if (_rows.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(children: [
+                      for (final f in [
+                        ('all', 'All'),
+                        ('unread', unread > 0 ? 'Unread · $unread' : 'Unread'),
+                        if (hasSelling) ('selling', 'Selling'),
+                        if (hasSelling) ('buying', 'Buying'),
+                      ])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            showCheckmark: false,
+                            label: Text(f.$2),
+                            selected: _filter == f.$1,
+                            onSelected: (_) => setState(() => _filter = f.$1),
+                          ),
+                        ),
+                    ]),
+                  ),
+                const SizedBox(height: 10),
+                if (shown.isEmpty)
+                  EmptyState(
+                    icon: TablerIcons.messages,
+                    title: _rows.isEmpty ? 'No shop messages yet' : 'Nothing here',
+                    message: _rows.isEmpty
+                        ? 'When you order from the shop, or someone orders from you, you talk about it here.'
+                        : 'No conversations match this filter.',
+                  )
+                else
+                  Container(
+                    decoration: BoxDecoration(color: AppColors.card, borderRadius: AppRadius.mdAll),
+                    child: Column(children: [
+                      for (var i = 0; i < shown.length; i++) ...[
+                        if (i > 0) Divider(height: 1, indent: 76, color: AppColors.border),
+                        _row(shown[i]),
+                      ],
+                    ]),
+                  ),
+              ]),
+            ),
+    );
+  }
+
+  Widget _row(Map<String, dynamic> r) {
+    final n = (r['unread'] as num?)?.toInt() ?? 0;
+    final st = orderStatus(r, asSeller: r['selling'] == true);
+    final items = (r['items'] as num?)?.toInt() ?? 1;
+    final what = '${r['item'] ?? 'Order'}${items > 1 ? ' + ${items - 1} more' : ''}';
+    return InkWell(
+      onTap: () async {
+        await context.push('/orders/${r['id']}');
+        _load();
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Positioned.fill(child: PersonAvatar(name: r['other_name'] ?? '', url: r['other_avatar'], size: 52)),
+              Positioned(
+                right: -4,
+                bottom: -4,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  padding: const EdgeInsets.all(1.5),
+                  decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(8)),
+                  child: ProductImage(r['image'], radius: BorderRadius.circular(7)),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(
+                  child: Text(r['other_name'] ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: n > 0 ? FontWeight.w800 : FontWeight.w600, fontSize: 15)),
+                ),
+                Text(_when(r['last_at']),
+                    style: TextStyle(fontSize: 12, color: n > 0 ? AppColors.goldText : AppColors.textTertiary)),
+              ]),
+              const SizedBox(height: 1),
+              Text('${r['selling'] == true ? 'Selling' : 'Buying'} · $what',
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+              const SizedBox(height: 3),
+              Row(children: [
+                Expanded(
+                  child: Text(_preview(r),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.3,
+                        color: n > 0 ? AppColors.textPrimary : AppColors.textSecondary,
+                        fontWeight: n > 0 ? FontWeight.w600 : null,
+                      )),
+                ),
+                if (n > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 22),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: AppColors.gold, borderRadius: AppRadius.pill),
+                    child: Text('$n',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 6),
+              statusChip(st.label, st.color),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 /// /orders: what I bought, and (for pros) what I sold.
 class MyOrdersScreen extends StatelessWidget {
   final bool selling;
@@ -188,7 +440,9 @@ class MyOrdersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPro = supabase.auth.currentUser?.userMetadata?['user_type'] == 'provider';
     if (!isPro) {
-      return Scaffold(appBar: AppBar(title: const Text('My orders')), body: const OrdersList(role: 'buying'));
+      return Scaffold(
+          appBar: AppBar(title: const Text('My orders'), actions: const [InboxButton(), SizedBox(width: 4)]),
+          body: const OrdersList(role: 'buying'));
     }
     return DefaultTabController(
       length: 2,
@@ -196,6 +450,7 @@ class MyOrdersScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Orders'),
+          actions: const [InboxButton(), SizedBox(width: 4)],
           bottom: const TabBar(tabs: [Tab(text: 'Buying'), Tab(text: 'Selling')]),
         ),
         body: const TabBarView(children: [OrdersList(role: 'buying'), OrdersList(role: 'selling')]),
@@ -249,7 +504,10 @@ class _OrderScreenState extends State<OrderScreen> {
     super.dispose();
   }
 
+  void _markRead() => supabase.rpc('mark_order_read', params: {'p_order': widget.orderId}).then((_) {}, onError: (_) {});
+
   Future<void> _load({bool first = false}) async {
+    _markRead();
     try {
       final res = await Future.wait<dynamic>([
         supabase.from('orders').select(_orderSelect).eq('id', widget.orderId).maybeSingle(),
@@ -287,7 +545,11 @@ class _OrderScreenState extends State<OrderScreen> {
             final m = Map<String, dynamic>.from(p.newRecord);
             if (_msgs.any((x) => x['id'] == m['id'])) return;
             if (mounted) setState(() => _msgs.add(m));
-            if (m['kind'] != 'text') _load();
+            if (m['kind'] != 'text') {
+              _load();
+            } else {
+              _markRead();
+            }
             _toEnd();
           },
         )

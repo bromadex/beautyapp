@@ -235,6 +235,13 @@ class _ProviderProfileHubScreenState extends State<ProviderProfileHubScreen> {
                     onTap: () => context.push('/orders'),
                   ),
                   IosRow(
+                    icon: TablerIcons.messages,
+                    iconColor: IosColors.blue,
+                    title: 'Shop messages',
+                    subtitle: 'Every order chat in one place',
+                    onTap: () => context.push('/shop/messages'),
+                  ),
+                  IosRow(
                     icon: TablerIcons.building_store,
                     iconColor: IosColors.indigo,
                     title: 'Salon',

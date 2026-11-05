@@ -98,6 +98,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
         'deposit' => 'Deposit · ${payMethodLabel(e.method)}',
         'balance' => 'Balance · ${payMethodLabel(e.method)}',
         'full' => payMethodLabel(e.method),
+        'shop' => 'Shop sale · ${payMethodLabel(e.method)}',
         _ => 'Marked paid · ${payMethodLabel(e.method)}',
       };
 
@@ -315,7 +316,7 @@ class _ProviderEarningsScreenState extends State<ProviderEarningsScreen> {
         title: e.client,
         subtitle: '${e.service} · ${_kindLabel(e)}',
         amount: money(e.amount),
-        onTap: () => context.push('/booking/${e.bookingId}').then((_) => _load()),
+        onTap: () => context.push(e.route).then((_) => _load()),
       ));
     }
     flush();

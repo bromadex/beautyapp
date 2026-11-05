@@ -14,6 +14,7 @@ import '../widgets/booking_bits.dart' show payBrand;
 import '../utils/pay_methods.dart' show payMethodLabel;
 import '../widgets/shop_bits.dart';
 import '../widgets/ui.dart';
+import 'orders_screen.dart' show InboxButton;
 
 // =====================================================================
 // The shop: everyone can browse. Clients and pros can buy, but not
@@ -86,6 +87,7 @@ class _ShopScreenState extends State<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final actions = [
+      if (isSignedIn) const InboxButton(),
       if (isSignedIn)
         IconButton(
           tooltip: 'My orders',

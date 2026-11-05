@@ -48,6 +48,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
   List<double> _daily = List.filled(7, 0);
   int _galleryCount = 0;
   int _ordersWaiting = 0;
+  int _shopUnread = 0;
   /// Requests answered on screen but not sent yet (5 seconds to undo).
   final Set<String> _deciding = {};
   /// Bookings marked paid on screen but not saved yet (5 seconds to undo).
@@ -274,6 +275,7 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     try {
       final c = await supabase.rpc('my_order_counts') as Map;
       _ordersWaiting = (c['selling'] as num?)?.toInt() ?? 0;
+      _shopUnread = (c['unread'] as num?)?.toInt() ?? 0;
     } catch (_) {}
 
     Map<String, dynamic>? plan;
@@ -690,11 +692,23 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                           const SizedBox(height: 16),
                         ],
 
+                        if (_ordersWaiting == 0 && _shopUnread > 0) ...[
+                          _Nudge(
+                            icon: TablerIcons.messages,
+                            title: _shopUnread == 1 ? '1 new shop message' : '$_shopUnread new shop messages',
+                            message: 'Buyers and sellers are waiting for your reply.',
+                            action: 'Read',
+                            onTap: () => context.push('/shop/messages').then((_) => _loadData()),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         if (_ordersWaiting > 0) ...[
                           _Nudge(
                             icon: TablerIcons.shopping_bag,
                             title: _ordersWaiting == 1 ? '1 shop order needs you' : '$_ordersWaiting shop orders need you',
-                            message: 'Send terms, confirm a payment or get an order ready.',
+                            message: _shopUnread > 0
+                                ? 'Send terms, confirm a payment or get an order ready. $_shopUnread unread message${_shopUnread == 1 ? '' : 's'}.'
+                                : 'Send terms, confirm a payment or get an order ready.',
                             action: 'Open',
                             onTap: () => context.push('/provider/shop?tab=orders').then((_) => _loadData()),
                           ),

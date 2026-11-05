@@ -11,9 +11,12 @@ class EarningEntry {
   final DateTime when;
   final double amount;
   final String method; // ecocash | innbucks | onemoney | bank | cash
-  final String kind; // deposit | balance | full | paid
+  final String kind; // deposit | balance | full | paid | shop
   final String client;
   final String service;
+
+  /// Shop sales open the order, everything else the booking.
+  String get route => kind == 'shop' ? '/orders/$bookingId' : '/booking/$bookingId';
 
   const EarningEntry({
     required this.bookingId,
@@ -85,7 +88,14 @@ class EarningsService {
         .order('booking_time', ascending: false)
         .limit(50);
 
-    final res = await Future.wait<dynamic>([payQ, paidQ, owedQ]);
+    // Shop sales: counted once the pro confirms the buyer's payment.
+    final shopQ = supabase
+        .from('orders')
+        .select('id, total, paid_at, pref_pay, terms, order_items(name, qty), buyer:profiles!orders_buyer_id_fkey(full_name)')
+        .eq('seller_id', uid)
+        .inFilter('status', ['paid', 'ready', 'done']);
+
+    final res = await Future.wait<dynamic>([payQ, paidQ, owedQ, shopQ.then((v) => v, onError: (_) => const [])]);
     final pays = List<Map<String, dynamic>>.from(res[0] as List);
     final paid = List<Map<String, dynamic>>.from(res[1] as List);
     final owedRows = List<Map<String, dynamic>>.from(res[2] as List);
@@ -126,6 +136,22 @@ class EarningsService {
         kind: 'paid',
         client: _name(b, 'client'),
         service: _service(b),
+      ));
+    }
+    for (final o in List<Map<String, dynamic>>.from(res[3] as List)) {
+      final items = List<Map<String, dynamic>>.from(o['order_items'] as List? ?? const []);
+      entries.add(EarningEntry(
+        bookingId: o['id'],
+        when: DateTime.parse(o['paid_at']).toLocal(),
+        amount: _n(o['total']),
+        method: ((o['terms'] as Map?)?['pay'] ?? o['pref_pay'] ?? 'cash').toString(),
+        kind: 'shop',
+        client: _name(o, 'buyer'),
+        service: items.isEmpty
+            ? 'Shop order'
+            : items.length == 1
+                ? '${items.first['name']}'
+                : '${items.first['name']} + ${items.length - 1} more',
       ));
     }
     entries.sort((a, b) => b.when.compareTo(a.when));

@@ -49,6 +49,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         appBar: AppBar(
           title: const Text('My shop'),
           actions: [
+            const InboxButton(),
             TextButton.icon(
               onPressed: () => context.push('/market'),
               icon: const Icon(TablerIcons.building_store, size: 18),

@@ -498,6 +498,7 @@ final appRouter = GoRouter(
       builder: (_, state) => SellerShopScreen(sellerId: state.pathParameters['id']!),
     ),
     GoRoute(path: '/cart', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const CartScreen()),
+    GoRoute(path: '/shop/messages', parentNavigatorKey: _rootNavigatorKey, builder: (_, __) => const ShopInboxScreen()),
     GoRoute(
       path: '/orders',
       parentNavigatorKey: _rootNavigatorKey,
