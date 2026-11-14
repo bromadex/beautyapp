@@ -197,9 +197,14 @@ class SmartMatchService {
         .not('area', 'is', null)
         .order('average_rating', ascending: false)
         .order('total_reviews', ascending: false)
-        .limit(limit * 2);
-    var providerList = List<Map<String, dynamic>>.from(providers);
+        .limit(limit);
+    final providerList = List<Map<String, dynamic>>.from(providers);
 
+    return localFirst(providerList, location, limit);
+  }
+
+  /// Pros in the person's own town first, when there are any.
+  static List<Map<String, dynamic>> localFirst(List<Map<String, dynamic>> providerList, String? location, int limit) {
     if (location != null && location.isNotEmpty) {
       final parts = location.toLowerCase().split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
       final local = providerList.where((p) {
@@ -208,7 +213,6 @@ class SmartMatchService {
       }).toList();
       if (local.isNotEmpty) providerList = local;
     }
-
     return providerList.take(limit).toList();
   }
 

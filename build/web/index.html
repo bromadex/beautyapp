@@ -15,7 +15,10 @@
     the `--base-href` argument provided to `flutter build`.
   -->
   <base href="/">
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+  <!-- Start the big downloads and the first connections straight away. -->
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preconnect" href="https://suxohsmcgjzzllmyesgt.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">

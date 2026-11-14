@@ -163,158 +163,115 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
       return;
     }
 
-    Map<String, dynamic> profile;
-    try {
-      profile = await supabase
-          .from('profiles').select().eq('id', userId).single();
-    } catch (_) {
-      await supabase.auth.signOut();
-      if (mounted) context.go('/login');
-      return;
-    }
-
-    final adminRows = await supabase
-        .from('admins').select().eq('user_id', userId);
-    final isAdmin = (adminRows as List).isNotEmpty;
-
-    Map<String, dynamic>? verification;
-    try {
-      verification = await supabase
+    // Everything is asked for at once: one wait instead of fourteen.
+    Future<T?> soft<T>(Future<T> f) => f.then<T?>((v) => v, onError: (_) => null);
+    final n = DateTime.now();
+    final start = DateTime(n.year, n.month, n.day);
+    const sel = 'deposit_amount, deposit_paid, id, booking_time, status, total_price, payment_status, payment_method, at_studio, source, walkin_name, walkin_phone, client_id, '
+        'services(service_name, duration_minutes), service_tiers(name, duration_minutes), '
+        'client:profiles!bookings_client_id_fkey(full_name, phone:contact_phone, avatar_url)';
+    final res = await Future.wait<dynamic>([
+      soft(supabase.from('profiles').select().eq('id', userId).single()),
+      soft(supabase.from('admins').select('user_id').eq('user_id', userId)),
+      soft(supabase
           .from('verifications').select()
           .eq('user_id', userId)
           .order('submitted_at', ascending: false)
-          .limit(1).single();
-    } catch (_) {}
-
-    Map<String, dynamic>? providerProfile;
-    Map<String, dynamic>? subscription;
-    Map<String, dynamic>? nextBooking;
-    double weeklyEarnings = 0;
-    double prevWeekEarnings = 0;
-    int weeklyBookingsCount = 0;
-    int pendingBookingsCount = 0;
-    int totalReviews = 0;
-    double avgRating = 0;
-    int unreadNotifs = 0;
-
-    try {
-      providerProfile = await supabase
-          .from('provider_profiles').select()
-          .eq('provider_id', userId).single();
-    } catch (_) {}
-
-    try {
-      subscription = await supabase
-          .from('subscriptions')
-          .select()
-          .eq('provider_id', userId)
-          .maybeSingle();
-    } catch (_) {}
-
-    try {
-      nextBooking = await supabase
+          .limit(1).maybeSingle()),
+      soft(supabase.from('provider_profiles').select().eq('provider_id', userId).maybeSingle()),
+      soft(supabase.from('subscriptions').select().eq('provider_id', userId).maybeSingle()),
+      soft(supabase
           .from('bookings')
           .select('*, services(service_name, duration_minutes), profiles!bookings_client_id_fkey(full_name)')
           .eq('provider_id', userId)
           .eq('status', 'confirmed')
-          .gte('booking_time', DateTime.now().subtract(const Duration(hours: 3)).toUtc().toIso8601String())
+          .gte('booking_time', n.subtract(const Duration(hours: 3)).toUtc().toIso8601String())
           .order('booking_time', ascending: true)
           .limit(1)
-          .maybeSingle();
-    } catch (_) {}
-
-    try {
-      final now = DateTime.now();
-      final earned = await EarningsService.load();
-      weeklyEarnings = earned.between(now.subtract(const Duration(days: 7)), now.add(const Duration(days: 1)));
-      final today = DateTime(now.year, now.month, now.day);
-      _daily = [
-        for (var i = 6; i >= 0; i--)
-          earned.between(today.subtract(Duration(days: i)), today.subtract(Duration(days: i - 1))),
-      ];
-      prevWeekEarnings = earned.between(now.subtract(const Duration(days: 14)), now.subtract(const Duration(days: 7)));
-    } catch (_) {}
-
-    try {
-      final weekAgo = DateTime.now().subtract(const Duration(days: 7)).toUtc().toIso8601String();
-      final bookings = await supabase
+          .maybeSingle()),
+      soft(EarningsService.load()),
+      soft(supabase
           .from('bookings')
           .select('id, status')
           .eq('provider_id', userId)
-          .gte('created_at', weekAgo);
-      weeklyBookingsCount = (bookings as List).length;
-      pendingBookingsCount = bookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
-    } catch (_) {}
+          .gte('created_at', n.subtract(const Duration(days: 7)).toUtc().toIso8601String())),
+      soft(supabase.from('reviews').select('rating').eq('provider_id', userId)),
+      soft(NotificationService.unreadCount(userId)),
+      soft(supabase.from('hairstyle_gallery').select('id').eq('provider_id', userId).limit(12)),
+      soft(supabase.rpc('my_order_counts')),
+      soft(supabase.rpc('my_plan')),
+      soft(supabase
+          .from('bookings')
+          .select(sel)
+          .eq('provider_id', userId)
+          .inFilter('status', ['confirmed', 'completed'])
+          .gte('booking_time', start.toUtc().toIso8601String())
+          .lt('booking_time', start.add(const Duration(days: 1)).toUtc().toIso8601String())
+          .order('booking_time', ascending: true)),
+      soft(supabase
+          .from('bookings')
+          .select(sel)
+          .eq('provider_id', userId)
+          .eq('status', 'pending')
+          .gte('booking_time', n.toUtc().toIso8601String())
+          .order('booking_time', ascending: true)
+          .limit(10)),
+    ]);
 
+    if (res[0] == null) {
+      await supabase.auth.signOut();
+      if (mounted) context.go('/login');
+      return;
+    }
+    final profile = Map<String, dynamic>.from(res[0] as Map);
+    final isAdmin = ((res[1] as List?) ?? const []).isNotEmpty;
+    final Map<String, dynamic>? verification = res[2] as Map<String, dynamic>?;
+    final Map<String, dynamic>? providerProfile = res[3] as Map<String, dynamic>?;
+    final Map<String, dynamic>? subscription = res[4] as Map<String, dynamic>?;
+    final Map<String, dynamic>? nextBooking = res[5] as Map<String, dynamic>?;
 
-    try {
-      final reviews = await supabase
-          .from('reviews')
-          .select('rating')
-          .eq('provider_id', userId);
-      final list = reviews as List;
-      totalReviews = list.length;
-      if (list.isNotEmpty) {
-        double sum = 0;
-        for (final r in list) sum += (r['rating'] as num).toDouble();
-        avgRating = sum / list.length;
+    double weeklyEarnings = 0;
+    double prevWeekEarnings = 0;
+    if (res[6] != null) {
+      final earned = res[6] as Earnings;
+      weeklyEarnings = earned.between(n.subtract(const Duration(days: 7)), n.add(const Duration(days: 1)));
+      _daily = [
+        for (var i = 6; i >= 0; i--)
+          earned.between(start.subtract(Duration(days: i)), start.subtract(Duration(days: i - 1))),
+      ];
+      prevWeekEarnings = earned.between(n.subtract(const Duration(days: 14)), n.subtract(const Duration(days: 7)));
+    }
+
+    final weekBookings = (res[7] as List?) ?? const [];
+    final weeklyBookingsCount = weekBookings.length;
+    final pendingBookingsCount =
+        weekBookings.where((b) => b['status'] == 'pending' || b['status'] == 'confirmed').length;
+
+    final reviewRows = (res[8] as List?) ?? const [];
+    final totalReviews = reviewRows.length;
+    double avgRating = 0;
+    if (reviewRows.isNotEmpty) {
+      double sum = 0;
+      for (final r in reviewRows) {
+        sum += (r['rating'] as num).toDouble();
       }
-    } catch (_) {}
+      avgRating = sum / reviewRows.length;
+    }
 
-
-
-    try {
-      unreadNotifs = await NotificationService.unreadCount(userId);
-    } catch (_) {}
-
-    try {
-      final g = await supabase.from('hairstyle_gallery').select('id').eq('provider_id', userId).limit(12);
-      _galleryCount = (g as List).length;
-    } catch (_) {}
-
-    try {
-      final c = await supabase.rpc('my_order_counts') as Map;
+    final unreadNotifs = (res[9] as int?) ?? 0;
+    if (res[10] != null) _galleryCount = (res[10] as List).length;
+    if (res[11] != null) {
+      final c = res[11] as Map;
       _ordersWaiting = (c['selling'] as num?)?.toInt() ?? 0;
       _shopUnread = (c['unread'] as num?)?.toInt() ?? 0;
-    } catch (_) {}
+    }
+    final Map<String, dynamic>? plan = res[12] == null ? null : Map<String, dynamic>.from(res[12] as Map);
 
-    Map<String, dynamic>? plan;
-    try {
-      plan = Map<String, dynamic>.from(await supabase.rpc('my_plan') as Map);
-    } catch (_) {}
-
-    var todayBookings = <Map<String, dynamic>>[];
-    var requests = <Map<String, dynamic>>[];
-    try {
-      final n = DateTime.now();
-      final start = DateTime(n.year, n.month, n.day);
-      const sel = 'deposit_amount, deposit_paid, id, booking_time, status, total_price, payment_status, payment_method, at_studio, source, walkin_name, walkin_phone, client_id, '
-          'services(service_name, duration_minutes), service_tiers(name, duration_minutes), '
-          'client:profiles!bookings_client_id_fkey(full_name, phone:contact_phone, avatar_url)';
-      final results = await Future.wait<dynamic>([
-        supabase
-            .from('bookings')
-            .select(sel)
-            .eq('provider_id', userId)
-            .inFilter('status', ['confirmed', 'completed'])
-            .gte('booking_time', start.toUtc().toIso8601String())
-            .lt('booking_time', start.add(const Duration(days: 1)).toUtc().toIso8601String())
-            .order('booking_time', ascending: true),
-        supabase
-            .from('bookings')
-            .select(sel)
-            .eq('provider_id', userId)
-            .eq('status', 'pending')
-            .gte('booking_time', n.toUtc().toIso8601String())
-            .order('booking_time', ascending: true)
-            .limit(10),
-      ]);
-      todayBookings = List<Map<String, dynamic>>.from(results[0] as List);
-      requests = List<Map<String, dynamic>>.from(results[1] as List);
-      for (final b in [...todayBookings, ...requests]) {
-        fillWalkin(b, 'client');
-      }
-    } catch (_) {}
+    final todayBookings = List<Map<String, dynamic>>.from((res[13] as List?) ?? const []);
+    final requests = List<Map<String, dynamic>>.from((res[14] as List?) ?? const []);
+    for (final b in [...todayBookings, ...requests]) {
+      fillWalkin(b, 'client');
+    }
 
     if (mounted) {
       setState(() {

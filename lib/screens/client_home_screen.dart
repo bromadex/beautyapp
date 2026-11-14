@@ -87,45 +87,43 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
       return;
     }
 
-    Map<String, dynamic> profile;
-    try {
-      profile = await supabase
-          .from('profiles').select().eq('id', userId).single();
-    } catch (_) {
+    // Everything is asked for at once: one wait instead of eight.
+    Future<T?> soft<T>(Future<T> f) => f.then<T?>((v) => v, onError: (_) => null);
+    final res = await Future.wait<dynamic>([
+      soft(supabase.from('profiles').select().eq('id', userId).single()),
+      soft(supabase.from('admins').select('user_id').eq('user_id', userId)),
+      soft(NotificationService.unreadCount(userId)),
+      soft(loadCoverPhotos()),
+      soft(loadPublicOffers(limit: 5)),
+      soft(supabase.from('services').select('provider_id').eq('is_active', true).inFilter('location_mode', ['client', 'either'])),
+      soft(supabase.from('favorites').select('provider_id').eq('client_id', userId)),
+      soft(supabase.rpc('my_packages')),
+      soft(SmartMatchService.getTopRated(limit: 24)),
+      soft(supabase
+          .from('bookings')
+          .select('id, booking_time, status, services(service_name), profiles!bookings_provider_id_fkey(full_name)')
+          .eq('client_id', userId)
+          .inFilter('status', ['pending', 'confirmed'])
+          .gte('booking_time', DateTime.now().toUtc().toIso8601String())
+          .order('booking_time')
+          .limit(1)),
+    ]);
+
+    if (res[0] == null) {
       await supabase.auth.signOut();
       if (mounted) context.go('/login');
       return;
     }
+    final profile = Map<String, dynamic>.from(res[0] as Map);
+    final isAdmin = ((res[1] as List?) ?? const []).isNotEmpty;
+    final unreadNotifs = (res[2] as int?) ?? 0;
+    final covers = (res[3] as Map<String, String>?) ?? <String, String>{};
+    _offers = (res[4] as List<Map<String, dynamic>>?) ?? [];
+    final homeVisit = {for (final r in (res[5] as List?) ?? const []) r['provider_id'] as String};
+    final favourites = {for (final r in (res[6] as List?) ?? const []) r['provider_id'] as String};
 
-    final adminRows = await supabase
-        .from('admins').select().eq('user_id', userId);
-    final isAdmin = (adminRows as List).isNotEmpty;
-
-
-    int unreadNotifs = 0;
-    try {
-      unreadNotifs = await NotificationService.unreadCount(userId);
-    } catch (_) {}
-
-    List<Map<String, dynamic>> stylists = [];
-    Map<String, dynamic>? nextBooking;
-    var covers = <String, String>{};
-    var homeVisit = <String>{};
-    var favourites = <String>{};
-    try {
-      final extras = await Future.wait<dynamic>([
-        loadCoverPhotos(),
-        loadPublicOffers(limit: 5),
-        supabase.from('services').select('provider_id').eq('is_active', true).inFilter('location_mode', ['client', 'either']),
-        supabase.from('favorites').select('provider_id').eq('client_id', userId),
-      ]);
-      covers = extras[0] as Map<String, String>;
-      _offers = extras[1] as List<Map<String, dynamic>>;
-      homeVisit = {for (final r in extras[2] as List) r['provider_id'] as String};
-      favourites = {for (final r in extras[3] as List) r['provider_id'] as String};
-    } catch (_) {}
-    try {
-      final mine = (await supabase.rpc('my_packages') as List).where((m) => m['status'] == 'active').toList();
+    if (res[7] != null) {
+      final mine = (res[7] as List).where((m) => m['status'] == 'active').toList();
       _packageCount = mine.length;
       final due = mine.where((m) => m['pay_status'] == 'unpaid').length;
       int left = 0;
@@ -139,26 +137,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> with SingleTickerPr
           : left > 0
               ? '$left package ${left == 1 ? 'visit' : 'visits'} left this month'
               : 'All this month\'s visits used';
-    } catch (_) {}
-    try {
-      final results = await Future.wait([
-        SmartMatchService.getTopRated(location: profile['location'], limit: 12),
-        supabase
-            .from('bookings')
-            .select('id, booking_time, status, services(service_name), profiles!bookings_provider_id_fkey(full_name)')
-            .eq('client_id', userId)
-            .inFilter('status', ['pending', 'confirmed'])
-            .gte('booking_time', DateTime.now().toUtc().toIso8601String())
-            .order('booking_time')
-            .limit(1),
-      ]);
-      stylists = List<Map<String, dynamic>>.from(results[0] as List);
-      bool featured(Map<String, dynamic> p) =>
-          DateTime.tryParse((p['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
-      stylists.sort((a, b) => (featured(b) ? 1 : 0).compareTo(featured(a) ? 1 : 0));
-      final nb = results[1] as List;
-      nextBooking = nb.isNotEmpty ? nb.first as Map<String, dynamic> : null;
-    } catch (_) {}
+    }
+
+    final stylists = SmartMatchService.localFirst(
+        List<Map<String, dynamic>>.from((res[8] as List?) ?? const []), profile['location'] as String?, 12);
+    bool featured(Map<String, dynamic> p) =>
+        DateTime.tryParse((p['featured_until'] ?? '').toString())?.isAfter(DateTime.now()) ?? false;
+    stylists.sort((a, b) => (featured(b) ? 1 : 0).compareTo(featured(a) ? 1 : 0));
+    final nb = (res[9] as List?) ?? const [];
+    final Map<String, dynamic>? nextBooking = nb.isNotEmpty ? nb.first as Map<String, dynamic> : null;
 
     if (mounted) {
       setState(() {
