@@ -203,6 +203,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return AppColors.warning;
       case 'waitlist':
         return AppColors.success;
+      case 'order':
+      case 'package':
+        return AppColors.goldText;
       default:
         return AppColors.textTertiary;
     }
@@ -305,7 +308,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final color = _colorForType(type);
 
     return Material(
-      color: isRead ? Colors.white : color.withValues(alpha: 0.03),
+      color: isRead ? AppColors.card : AppColors.primarySoft,
       borderRadius: AppRadius.mdAll,
       child: InkWell(
         onTap: () => _onTap(n),

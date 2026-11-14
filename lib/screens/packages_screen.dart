@@ -32,7 +32,7 @@ Widget _pill(String t, Color fg) => Container(
       child: Text(t, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
     );
 
-const _green = Color(0xFF1F8A4C);
+Color get _green => AppColors.success;
 
 // =====================================================================
 // Pro: my packages
