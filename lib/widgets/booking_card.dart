@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -260,7 +261,7 @@ class BookingCard extends StatelessWidget {
     final profile = booking['profiles'] as Map?;
     final bookingTime = DateTime.tryParse(booking['booking_time'] ?? '')?.toLocal();
     final timeStr = bookingTime != null
-        ? '${bookingTime.day}/${bookingTime.month}/${bookingTime.year} at ${TimeOfDay.fromDateTime(bookingTime).format(context)}'
+        ? niceDate(bookingTime, time: true)
         : 'Unknown time';
 
     final statusBg = StatusColors.background(status);

@@ -555,13 +555,19 @@ class _MemberRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            Text(line, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(line, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ]),
         ),
         if (badge != null) _pill(badge!, _green),
         if (secondary != null)
-          TextButton(onPressed: onSecondary, child: Text(secondary!)),
+          TextButton(
+              onPressed: onSecondary,
+              style: TextButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 8)),
+              child: Text(secondary!)),
         if (action != null)
           FilledButton(
             onPressed: onAction,

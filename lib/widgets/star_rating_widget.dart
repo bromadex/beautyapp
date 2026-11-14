@@ -22,7 +22,7 @@ class StarRatingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filled_ = filledColor ?? AppColors.warning;
+    final filled_ = filledColor ?? const Color(0xFFC8A15A);
     final empty_ = emptyColor ?? AppColors.textTertiary;
 
     return Row(

@@ -117,6 +117,10 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ---- close requests the pro never answered before their time ----
+  const { error: xErr } = await admin.rpc("expire_past_requests");
+  if (xErr) console.error(`expire_past_requests failed: ${xErr.message}`);
+
   return new Response(JSON.stringify({ reminded: sent }), {
     status: 200,
     headers: { "Content-Type": "application/json" },

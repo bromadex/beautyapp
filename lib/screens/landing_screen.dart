@@ -146,6 +146,7 @@ class _LandingScreenState extends State<LandingScreen> {
           onPressed: onTap,
           style: OutlinedButton.styleFrom(
             foregroundColor: _text,
+            backgroundColor: Colors.transparent,
             side: const BorderSide(color: Color(0xFF3A342C), width: 1.5),
             padding: const EdgeInsets.symmetric(horizontal: 26),
             shape: const StadiumBorder(),

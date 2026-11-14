@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../theme.dart';
@@ -16,7 +17,7 @@ class ReviewCard extends StatelessWidget {
     final imageUrl = review['after_service_image_url'];
     final createdAt = DateTime.tryParse(review['created_at'] ?? '')?.toLocal();
     final dateStr = createdAt != null
-        ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
+        ? niceDate(createdAt, relative: false)
         : '';
 
     return Card(
@@ -150,6 +151,6 @@ class ReviewCard extends StatelessWidget {
     if (iso == null) return '';
     final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
-    return '${dt.day}/${dt.month}/${dt.year}';
+    return niceDate(dt, relative: false);
   }
 }

@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
@@ -169,7 +170,7 @@ class _ClientNotesScreenState extends State<ClientNotesScreen> {
                     final createdAt =
                         DateTime.tryParse(note['created_at'] ?? '')?.toLocal();
                     final dateStr = createdAt != null
-                        ? '${createdAt.day}/${createdAt.month}/${createdAt.year}'
+                        ? niceDate(createdAt)
                         : '';
 
                     return Card(

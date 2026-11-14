@@ -56,7 +56,7 @@ class _ProductFeedSectionState extends State<ProductFeedSection> {
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
       const SizedBox(height: 10),
       SizedBox(
-        height: 252,
+        height: 264,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _items.length,

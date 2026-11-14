@@ -719,7 +719,7 @@ class _SellerShopScreenState extends State<SellerShopScreen> {
                           Text(
                             [
                               if (s['rating'] != null) '★ ${s['rating']} (${s['ratings']})' else 'New seller',
-                              if ((s['sold'] as num? ?? 0) > 0) '${s['sold']} orders',
+                              if ((s['sold'] as num? ?? 0) > 0) '${s['sold']} order${s['sold'] == 1 ? '' : 's'}',
                               [s['area'], s['city']].where((x) => (x ?? '').toString().isNotEmpty).join(', '),
                             ].where((x) => x.isNotEmpty).join(' · '),
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 13),

@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -449,9 +450,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return '--';
     final local = dt.toLocal();
-    return '${local.day}/${local.month}/${local.year} '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+    return niceDate(local, time: true);
   }
 
   Widget _adminPanel(Map<String, dynamic> b, Map? client) {

@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../supabase_client.dart';
@@ -245,7 +246,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                       spacing: AppSpacing.sm,
                       runSpacing: AppSpacing.sm,
                       children: _blockedDates.map((d) {
-                        final label = '${d.day}/${d.month}/${d.year}';
+                        final label = niceDate(d, relative: false);
                         return Chip(
                           label: Text(label, style: const TextStyle(fontSize: 13)),
                           deleteIcon: const Icon(TablerIcons.x, size: 16),
@@ -300,9 +301,11 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           ),
           const SizedBox(width: AppSpacing.lg),
           SizedBox(
-            width: 80,
+            width: 92,
             child: Text(
               _dayNames[index],
+              maxLines: 1,
+              softWrap: false,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 color: day.isAvailable

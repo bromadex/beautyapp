@@ -643,8 +643,10 @@ class _PayProScreenState extends State<PayProScreen> {
       icon: TablerIcons.cash,
       color: AppColors.primary,
       bg: AppColors.primarySoft,
-      title: 'Pay in cash on the day',
-      body: '$_firstName takes cash only. Bring ${_money(amount)} to your appointment.',
+      title: _booking?['status'] == 'completed' ? 'Pay ${_money(amount)} in cash' : 'Pay in cash on the day',
+      body: _booking?['status'] == 'completed'
+          ? '$_firstName takes cash only. Pay them ${_money(amount)} for this appointment; they\'ll mark it paid.'
+          : '$_firstName takes cash only. Bring ${_money(amount)} to your appointment.',
     );
   }
 }

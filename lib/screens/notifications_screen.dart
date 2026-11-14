@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -170,6 +171,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return TablerIcons.message_star;
       case 'waitlist':
         return TablerIcons.calendar_check;
+      case 'order':
+      case 'products':
+        return TablerIcons.shopping_bag;
+      case 'package':
+        return TablerIcons.calendar_repeat;
+      case 'salon':
+        return TablerIcons.building_store;
+      case 'referral':
+        return TablerIcons.gift;
       default:
         return TablerIcons.bell;
     }
@@ -207,7 +217,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${dt.day}/${dt.month}/${dt.year}';
+    return niceDate(dt, relative: false);
   }
 
   @override

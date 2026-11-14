@@ -530,33 +530,6 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
     final availability = (_providerProfile?['availability_status'] ?? 'offline').toString();
 
     return Scaffold(
-      bottomNavigationBar: isVerified
-          ? Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                border: Border(top: BorderSide(color: AppColors.border)),
-              ),
-              child: Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => context.go('/provider/calendar'),
-                    icon: const Icon(TablerIcons.calendar_event, size: 18),
-                    label: const Text('Calendar'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll)),
-                    onPressed: () => context.push('/provider/add-booking').then((_) => _loadData()),
-                    icon: const Icon(TablerIcons.plus, size: 18),
-                    label: const Text('Add walk-in'),
-                  ),
-                ),
-              ]),
-            )
-          : null,
       body: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
@@ -664,6 +637,27 @@ class _ProviderHomeScreenState extends State<ProviderHomeScreen> with SingleTick
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (isVerified) ...[
+                          Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.go('/provider/calendar'),
+                    icon: const Icon(TablerIcons.calendar_event, size: 18),
+                    label: const Text('Calendar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll)),
+                    onPressed: () => context.push('/provider/add-booking').then((_) => _loadData()),
+                    icon: const Icon(TablerIcons.plus, size: 18),
+                    label: const Text('Add walk-in'),
+                  ),
+                ),
+              ]),
+                          const SizedBox(height: 14),
+                        ],
                         if (!isVerified) ...[
                           _VerificationBanner(
                             status: vStatus,

@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -238,7 +239,7 @@ class _CreateServiceRequestScreenState
                         icon: const Icon(TablerIcons.calendar_month,
                             size: 18),
                         label: Text(_preferredDate != null
-                            ? '${_preferredDate!.day}/${_preferredDate!.month}/${_preferredDate!.year}'
+                            ? niceDate(_preferredDate!)
                             : 'Date'),
                       ),
                     ),

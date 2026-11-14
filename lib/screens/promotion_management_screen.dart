@@ -1,3 +1,4 @@
+import '../utils/dates.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
@@ -206,7 +207,7 @@ class _PromotionManagementScreenState extends State<PromotionManagementScreen> {
                     ),
                     child: Text(
                       validUntil != null
-                          ? '${validUntil!.day}/${validUntil!.month}/${validUntil!.year}'
+                          ? niceDate(validUntil!, relative: false)
                           : 'No expiry date',
                       style: TextStyle(
                         color: validUntil != null

@@ -267,7 +267,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
-                            Icon(TablerIcons.star_filled, size: 14, color: AppColors.warning),
+                            const Icon(TablerIcons.star_filled, size: 14, color: Color(0xFFC8A15A)),
                             const SizedBox(width: AppSpacing.sm),
                             Expanded(
                               child: ClipRRect(
@@ -276,7 +276,7 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                                   value: fraction,
                                   minHeight: 6,
                                   backgroundColor: AppColors.surfaceMuted,
-                                  valueColor: AlwaysStoppedAnimation(AppColors.warning),
+                                  valueColor: const AlwaysStoppedAnimation(Color(0xFFC8A15A)),
                                 ),
                               ),
                             ),
